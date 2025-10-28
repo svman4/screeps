@@ -6,14 +6,8 @@ var towerMonitor=require('towerController');
 var roomPlanner=require('RoomPlanner');
 
 module.exports.loop = function () {
-    // Καθαρισμός Memory νεκρών Creeps (Καλή πρακτική)
-    for (var name in Memory.creeps) {
-        if (!Game.creeps[name]) {
-            delete Memory.creeps[name];
-        }
-    }
     
-    
+
     // 1. Έλεγχος και αρχικοποίηση Memory.rooms (αν λείπει)
     if (!Memory.rooms) {
         Memory.rooms = {};
@@ -49,4 +43,5 @@ module.exports.loop = function () {
             roleBuilder.run(creep);
         }
     }
+
 };

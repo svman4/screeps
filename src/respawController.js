@@ -3,7 +3,7 @@
  */
 const Harvester_MAX=10;
 const upgrader_MAX=3;
-const builder_MAX=2;
+const builder_MAX=3;
 const respawController = {
     
     run: function() {

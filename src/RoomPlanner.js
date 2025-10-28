@@ -37,6 +37,39 @@ const MASTER_BLUEPRINT_SPAWN_ANCHOR = [
     { rcl: 3, offsetX: 2, offsetY: 1, structureType: STRUCTURE_ROAD },
     { rcl: 3, offsetX: 3, offsetY: 0, structureType: STRUCTURE_ROAD },
     // ... (Περισσότεροι δρόμοι RCL 3) ...
+    { rcl: 3, offsetX: 9, offsetY: 5, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 6, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 7, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 8, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 9, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 10, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 11, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 12, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 13, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 14, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 15, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 16, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 17, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 18, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 19, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 20, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 21, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 22, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 23, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 24, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 25, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 26, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 27, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 28, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 29, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 30, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 31, structureType: STRUCTURE_ROAD },
+    { rcl: 3, offsetX: 9, offsetY: 32, structureType: STRUCTURE_ROAD },
+     { rcl: 3, offsetX: 9, offsetY: 33, structureType: STRUCTURE_ROAD },
+     { rcl: 3, offsetX: 9, offsetY: 34, structureType: STRUCTURE_ROAD },
+     { rcl: 3, offsetX: 9, offsetY: 35, structureType: STRUCTURE_ROAD },
+     { rcl: 3, offsetX: 9, offsetY: 36, structureType: STRUCTURE_ROAD },
+     { rcl: 3, offsetX: 9, offsetY: 37, structureType: STRUCTURE_ROAD },
 
     // ------------------------------------------------------------------
     // RCL 4: 1 Storage, 10 Extensions
@@ -60,7 +93,8 @@ const MASTER_BLUEPRINT_SPAWN_ANCHOR = [
     // RCL 5: 1 Link, 1 Tower, 10 Extensions
     // ------------------------------------------------------------------
     { rcl: 5, offsetX: 0, offsetY: -1, structureType: STRUCTURE_LINK }, // Fast Filler Link (δίπλα στο Spawn)
-    { rcl: 5, offsetX: -5, offsetY: 0, structureType: STRUCTURE_TOWER }, // 2ος Tower
+    //{ rcl: 5, offsetX: -5, offsetY: 0, structureType: STRUCTURE_TOWER }, // 2ος Tower
+    { rcl: 5, offsetX: 15, offsetY: 31, structureType: STRUCTURE_TOWER }, // 2ος Tower
     
     // Extensions (10/30)
     { rcl: 5, offsetX: 7, offsetY: 0, structureType: STRUCTURE_EXTENSION },
@@ -80,8 +114,8 @@ const MASTER_BLUEPRINT_SPAWN_ANCHOR = [
     // ------------------------------------------------------------------
     { rcl: 6, offsetX: -2, offsetY: -1, structureType: STRUCTURE_TERMINAL }, // Δίπλα στο Storage
     { rcl: 6, offsetX: -2, offsetY: 0, structureType: STRUCTURE_LINK }, // Terminal Link
-    { rcl: 6, offsetX: 0, offsetY: 5, structureType: STRUCTURE_TOWER }, // 3ος Tower
-    
+    //{ rcl: 6, offsetX: 0, offsetY: 5, structureType: STRUCTURE_TOWER }, // 3ος Tower
+    { rcl: 6, offsetX: -1, offsetY: 7, structureType: STRUCTURE_TOWER }, // 3ος Tower
     // Labs (5/10) - Στο Lab Cluster (π.χ. anchor Lab στο (4, 4) σχετικό με το Spawn)
     { rcl: 6, offsetX: 4, offsetY: 4, structureType: STRUCTURE_LAB },
     { rcl: 6, offsetX: 5, offsetY: 4, structureType: STRUCTURE_LAB },
@@ -98,7 +132,7 @@ const MASTER_BLUEPRINT_SPAWN_ANCHOR = [
     { rcl: 7, offsetX: 1, offsetY: -1, structureType: STRUCTURE_SPAWN }, // 2ο Spawn (Κοντά στο Core)
     { rcl: 7, offsetX: -1, offsetY: -2, structureType: STRUCTURE_FACTORY }, // Δίπλα στο Storage/Terminal
     { rcl: 7, offsetX: 2, offsetY: -2, structureType: STRUCTURE_LINK }, // Upgrader Link (πιο μακριά)
-    { rcl: 7, offsetX: 0, offsetY: -5, structureType: STRUCTURE_TOWER }, // 4ος Tower
+    { rcl: 7, offsetX: 27, offsetY: -1, structureType: STRUCTURE_TOWER }, // 4ος Tower
 
     // Labs (3/10)
     { rcl: 7, offsetX: 6, offsetY: 4, structureType: STRUCTURE_LAB },
@@ -114,11 +148,11 @@ const MASTER_BLUEPRINT_SPAWN_ANCHOR = [
     { rcl: 8, offsetX: -1, offsetY: 1, structureType: STRUCTURE_SPAWN }, // 3ο Spawn
     { rcl: 8, offsetX: 2, offsetY: 2, structureType: STRUCTURE_POWER_SPAWN },
     { rcl: 8, offsetX: 0, offsetY: 3, structureType: STRUCTURE_OBSERVER },
-    { rcl: 8, offsetX: -4, offsetY: -4, structureType: STRUCTURE_NUKER },
-    
+    //{ rcl: 8, offsetX: -4, offsetY: -4, structureType: STRUCTURE_NUKER },
+    { rcl: 8, offsetX: -4, offsetY: -2, structureType: STRUCTURE_NUKER },
     { rcl: 8, offsetX: 8, offsetY: 8, structureType: STRUCTURE_TOWER }, // 5ος Tower
-    { rcl: 8, offsetX: -8, offsetY: -8, structureType: STRUCTURE_TOWER }, // 6ος Tower
-    
+    //{ rcl: 8, offsetX: -8, offsetY: -8, structureType: STRUCTURE_TOWER }, // 6ος Tower
+    { rcl: 8, offsetX: 14, offsetY: -2, structureType: STRUCTURE_TOWER }, // 6ος Tower
     // Labs (2/10)
     { rcl: 8, offsetX: 4, offsetY: 3, structureType: STRUCTURE_LAB },
     { rcl: 8, offsetX: 5, offsetY: 3, structureType: STRUCTURE_LAB },
@@ -134,7 +168,7 @@ const MASTER_BLUEPRINT_SPAWN_ANCHOR = [
  * @param {Room} room Το αντικείμενο του δωματίου.
  * @param {string} structureType Ο τύπος της δομής.
  * @returns {number} Ο συνολικός αριθμός (Structures + Construction Sites).
- * * ΣΗΜΕΙΩΣΗ: ΑΥΤΗ Η ΣΥΝΑΡΤΗΣΗ ΕΛΕΙΠΕ ΚΑΙ ΠΡΟΚΑΛΟΥΣΕ ΤΟ ΠΡΩΤΟ ΣΦΑΛΜΑ!
+ * 
  */
 function countStructuresAndSites(room, structureType) {
     const structures = room.find(FIND_MY_STRUCTURES, {
@@ -153,18 +187,22 @@ var roomPlanner={
     run:function(roomName){ 
     
         const room=Game.rooms[roomName];
+       
         // Πάντα προσπαθεί να αρχικοποιήσει (αλλά τρέχει μόνο μία φορά)
         if(!room) {
             console.log("Δε βρέθηκε το dωμάτιο "+roomName);
             return;
         }
-      
+       // this.initializeBlueprint(room)
+        
         // 2. Οπτικοποίηση (σε κάθε tick)
         //this.visualizeBlueprint(room);
+        
         if(Game.time%100!=0) {
                   // 1. Εξοικονόμηση CPU: Τρέχουμε τον planner μόνο κάθε 100 ticks.
             return;
         }
+        
         this.lookForNewConstructionSite(room);
         this.lookForDefenceConstuctionSite(room);
         
@@ -172,60 +210,81 @@ var roomPlanner={
     lookForDefenceConstuctionSite:function(room) {
       return;  
     },
+    getAnchor:function () {
+        const flag=Game.flags['centerFlag'];
+        if(!flag){
+            return {x:55/2,y:55/2};
+        }
+        const anchorX = flag.pos.x;//spawn.pos.x;
+        const anchorY = flag.pos.y; //spawn.pos.y;
+        return {x:anchorX,y:anchorY};
+    },
     lookForNewConstructionSite:function(room) {
-        // Βρίσκουμε το κεντρικό Spawn. Αυτό είναι το σημείο αναφοράς (άγκυρα).
-         const spawn = room.find(FIND_MY_SPAWNS)[0];
-
-        if (!spawn) {
-           console.log("Δεν βρέθηκε Spawn στο δωμάτιο.");
-            return;
+        //return;
+        const blueprint = Memory.rooms[room.name].blueprint;
+        const currentRCL = room.controller.level;
+        console.log(currentRCL);
+        // 1. Έλεγχος Ορίων Construction Sites
+        const totalConstructionSites = room.find(FIND_CONSTRUCTION_SITES).length;
+        
+        if (totalConstructionSites >= MAX_CONSTRUCTION_SITE) {
+            return; // Έχουμε φτάσει το μέγιστο όριο.
         }
     
-        const totalConstructionSites = room.find(FIND_CONSTRUCTION_SITES).length;
-        if (totalConstructionSites >= MAX_CONSTRUCTION_SITE) {
-             // Το όριο των 10 είναι το μέγιστο που μπορείτε να έχετε ανά δωμάτιο.
-             return; 
+        if (!blueprint) {
+            console.log(`[Planner] Δε βρέθηκε Blueprint στο Memory για το ${room.name}.`);
+            return;
         }
-        
-        if(room.controller.level===2) {
-            var x=1;
-            for (let x=0 ; x<MASTER_BLUEPRINT_SPAWN_ANCHOR.length ; x++ )  {
-                const site=MASTER_BLUEPRINT_SPAWN_ANCHOR[x];
-                if(site.rcl!=2) {
-                    return;
-                }
-                const targetX=spawn.pos.x+site.offsetX;
-                const targetY=spawn.pos.y+site.offsetY;
-                const existingStructures = room.lookAt(targetX, targetY);
-                const isOccupied = existingStructures.some(item => 
-                    item.structure || 
-                    item.constructionSite || 
-                    (item.terrain && item.terrain === 'wall')
-                );
-                
-                const structureType=site.structureType;
-                this.createNewConstructionSite(room,targetX,targetY,structureType);
-                return;
-                
+
+        // 2. Εύρεση του Επόμενου Site
+        for (let i = 0; i < blueprint.length; i++) {
+            const site = blueprint[i];
+            
+            // α) Έλεγχος RCL: Κατασκευάζουμε μόνο ό,τι έχει ξεκλειδωθεί
+            if (currentRCL < site.rcl) {
+                // Επειδή το MASTER_BLUEPRINT_SPAWN_ANCHOR είναι ταξινομημένο,
+                // μπορούμε να σταματήσουμε εδώ για βελτιστοποίηση.
+                break; 
             }
-             
+            
+            // β) Έλεγχος Μέγιστου Αριθμού: Ελέγχουμε αν έχουμε ήδη τον μέγιστο αριθμό (Structures + Sites)
+            const maxStructuresForRCL = CONTROLLER_STRUCTURES[site.type][currentRCL];
+            const currentCount = countStructuresAndSites(room, site.type);
+            
+            // Αν ο αριθμός των δομών είναι ίσος ή μεγαλύτερος από το όριο του RCL, το παραβλέπουμε.
+            if (currentCount >= maxStructuresForRCL) {
+                 continue;
+            }
+
+            // γ) Έλεγχος Θέσης: Δημιουργία Construction Site
+            const targetX = site.x;
+            const targetY = site.y;
+            const structureType = site.type;
+            
+            // Δημιουργία του site. Η createNewConstructionSite() θα κάνει τους τελικούς ελέγχους (wall/occupied)
+            const result = this.createNewConstructionSite(room, targetX, targetY, structureType);
+
+            // Αν η δημιουργία ήταν επιτυχής (OK) ή απέτυχε λόγω πληρότητας (ERR_FULL, κλπ.),
+            // σταματάμε εδώ για να μη δημιουργήσουμε πάνω από ένα site ανά tick
+            // (ή για να σεβαστούμε το όριο των 10).
+            if (result === OK) {
+                // Σταματάμε μετά τη δημιουργία ενός site για να επιτρέψουμε στους builders να ξεκινήσουν.
+                return; 
+            }
         }
     },
     initializeBlueprint : function(room) {
     // 1. Έλεγχος: Αν το Blueprint υπάρχει, σταματάμε.
     if (Memory.rooms[room.name].blueprint) {
-        return; 
+       //return; 
     }
 
-    const spawn = room.find(FIND_MY_SPAWNS)[0];
-    if (!spawn) {
-        console.log("Δεν βρέθηκε Spawn για να οριστεί Άγκυρα.");
-        return; 
+    
+    const anchorX = this.getAnchor().x;
+    const anchorY = this.getAnchor().y;
+    if(anchorX<=0 ) {
+        console.log("δεν υπάρχει άγκιστρο για τη δημιουργια του blueprint. Χρειάζεται να μπει σημαία με όνομα \"centerFlag");
     }
-    
-    const anchorX = spawn.pos.x;
-    const anchorY = spawn.pos.y;
-    
     const blueprint = [];
     
     // 2. Υπολογισμός Απόλυτων Θέσεων
@@ -332,5 +391,81 @@ roomPlanner.visualizeBlueprint = function(room) {
             }
         }
     });
-};
+},
+
+roomPlanner.exportRoomLayout=function(room) {
+    // Εξασφαλίζουμε ότι έχουμε ορατότητα στο δωμάτιο
+    
+    if (!room) {
+        return `Δεν υπάρχει ορατότητα στο δωμάτιο ${roomName}.`;
+    }
+
+    const roomData = [];
+
+    // 1. Συλλογή μόνιμων αντικειμένων (Sources, Controller, Mineral)
+    const permanentObjects = room.find(FIND_SOURCES).map(s => ({
+        structureType: "SOURCE",
+        x: s.pos.x,
+        y: s.pos.y
+    }));
+    roomData.push(...permanentObjects);
+
+    const controller = room.controller;
+    if (controller) {
+        roomData.push({
+            structureType: "CONTROLLER",
+            x: controller.pos.x,
+            y: controller.pos.y
+        });
+    }
+
+    const mineral = room.find(FIND_MINERALS)[0];
+    if (mineral) {
+        roomData.push({
+            structureType: "MINERAL",
+            x: mineral.pos.x,
+            y: mineral.pos.y,
+            resourceType: mineral.mineralType // Προαιρετικό, αλλά χρήσιμο
+        });
+    }
+
+    // 2. Συλλογή δεδομένων εδάφους (Walls, Swamps)
+    // Χρησιμοποιούμε το lookForAtArea για να πάρουμε όλο το terrain 50x50
+    const terrain = room.lookForAtArea(LOOK_TERRAIN, 0, 0, 49, 49, true);
+
+    for (const tile of terrain) {
+        // Οι φυσικοί τοίχοι (Walls) και οι βάλτοι (Swamps) πρέπει να προστεθούν
+        if (tile.terrain === 'wall' || tile.terrain === 'swamp') {
+            // Τα SOURCES/CONTROLLERS/MINERALS βρίσκονται ήδη σε tiles τύπου 'wall',
+            // αλλά ο planner πρέπει να ξέρει τη θέση τους ξεχωριστά.
+            // Για το απλό Import αρκεί μόνο το terrain.
+            
+            // Για το Screeps Room Planner, πολλές φορές, το μόνο που χρειάζεται να περάσεις
+            // είναι τα μόνιμα αντικείμενα (όπως παραπάνω), καθώς ο planner
+            // έχει τη δυνατότητα να φορτώσει το terrain του δωματίου από το API
+            // του Screeps. Ωστόσο, για να είμαστε σίγουροι ότι όλα είναι εκεί:
+
+            if (tile.terrain === 'wall') {
+                // Προσθήκη τοίχων (εκτός από εκεί που ήδη έχουμε μόνιμα αντικείμενα)
+                const isPermanentObjectTile = roomData.some(obj => obj.x === tile.x && obj.y === tile.y);
+                if (!isPermanentObjectTile) {
+                    roomData.push({
+                        structureType: "NATURAL_WALL", // ή απλά STRUCTURE_WALL
+                        x: tile.x,
+                        y: tile.y
+                    });
+                }
+            } else if (tile.terrain === 'swamp') {
+                // Οι βάλτοι συνήθως δεν χρειάζονται στον JSON, αλλά βοηθάει για πλήρη εικόνα
+                // Πολλοί planners τους αγνοούν, αλλά ας τους κρατήσουμε στη μνήμη
+                // για ενδεχόμενη χρήση.
+                // Αν ο planner υποστηρίζει custom terrain, θα χρειαζόταν διαφορετική μορφή.
+            }
+        }
+    }
+
+    // Τελική μορφοποίηση JSON για αντιγραφή
+    return JSON.stringify(roomData, null, 2);
+}
+
 module.exports = roomPlanner;

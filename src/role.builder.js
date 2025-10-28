@@ -31,7 +31,7 @@ var roleBuilder = {
                     
                     // Δρόμοι και Containers: επισκευή αν πέσουν κάτω από το 50%
                     if (structure.structureType === STRUCTURE_ROAD || structure.structureType === STRUCTURE_CONTAINER) {
-                        return structure.hits < structure.hitsMax * 0.5;
+                        return structure.hits < structure.hitsMax * 0.6;
                     }
                     // Τείχη (WALL) και Ramparts: επισκευή μόνο αν έχουν πολύ χαμηλή ζωή (π.χ. < 50.000)
                     if (structure.structureType === STRUCTURE_WALL || structure.structureType === STRUCTURE_RAMPART) {

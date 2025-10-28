@@ -6,20 +6,24 @@ var roleHarvester = {
      **/
     run: function(creep) {
         
+
         // --- ΕΝΑΛΛΑΓΗ ΚΑΤΑΣΤΑΣΗΣ (State Switching) ---
         // Σημείωση: Χρησιμοποιούμε 'working' αντί για 'harvesting' για μεγαλύτερη σαφήνεια.
-        // 'working' = true όταν μεταφέρει/χτίζει/κάνει upgrade (ξοδεύει ενέργεια).
-        // 'working' = false όταν συλλέγει (γεμίζει).
+        // 'noWorking' = true όταν μεταφέρει/χτίζει/κάνει upgrade (ξοδεύει ενέργεια).
+        // 'n Working' = false όταν συλλέγει (γεμίζει).
+        if(!creep.memory.hasOwnProperty('working')) {
+            creep.memory.working=false;
+        }
         
         // Αν ήταν σε λειτουργία 'εργασίας' και άδειασε, πρέπει να επιστρέψει στη συλλογή.
         if(creep.memory.working && creep.store.getUsedCapacity() === 0) {
             creep.memory.working = false; // Ξεκινάει η συλλογή
-            //creep.say('⛏️ harvest');
+          //  creep.say('⛏️ harvest');
         }
         // Αν ήταν σε λειτουργία 'συλλογής' και γέμισε, αρχίζει την εργασία.
         if(!creep.memory.working && creep.store.getFreeCapacity() === 0) {
             creep.memory.working = true; // Ξεκινάει η μεταφορά/εργασία
-            //creep.say('🚚 transfer');
+         //   creep.say('🚚 transfer');
         }
 
         // ----------------------------------
@@ -35,8 +39,8 @@ var roleHarvester = {
             if(creep.harvest(source) == ERR_NOT_IN_RANGE) {
                 // Κίνηση προς την πηγή
                 creep.moveTo(source, {
-                    visualizePathStyle: {stroke: '#ffaa00'}, // Πορτοκαλί διαδρομή
-                    reusePath: 50 // Αποθήκευση διαδρομής
+                //    visualizePathStyle: {stroke: '#ffaa00'}, // Πορτοκαλί διαδρομή
+                 //   reusePath: 50 // Αποθήκευση διαδρομής
                 }); 
             }
             return; 
@@ -60,7 +64,7 @@ var roleHarvester = {
             const closestTarget = creep.pos.findClosestByPath(highPriorityTargets);
             if (creep.transfer(closestTarget, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
                 creep.moveTo(closestTarget, {
-                    visualizePathStyle: {stroke: '#ffffff'}, 
+                //    visualizePathStyle: {stroke: '#ffffff'}, 
                     reusePath: 10
                 });
             }
@@ -72,7 +76,7 @@ var roleHarvester = {
         var mediumPriorityTargets = creep.room.find(FIND_STRUCTURES, {
             filter: (structure) => {
                 // Τροφοδοτούμε Towers μέχρι το 80% (αφήνουμε τα τελευταία 20% για τους Towers να το κάνουν)
-                const isTower = structure.structureType == STRUCTURE_TOWER && structure.store.getUsedCapacity(RESOURCE_ENERGY) < structure.store.getCapacity(RESOURCE_ENERGY) * 0.8;
+                const isTower = structure.structureType == STRUCTURE_TOWER && structure.store.getUsedCapacity(RESOURCE_ENERGY) < structure.store.getCapacity(RESOURCE_ENERGY) * 0.95;
                 // Τροφοδοτούμε Links αν δεν είναι ο Harvester Link (π.χ. Storage Link ή Upgrader Link)
                 // Εδώ επιλέγουμε μόνο Towers για απλότητα
                 return isTower;
@@ -83,7 +87,7 @@ var roleHarvester = {
             const closestTarget = creep.pos.findClosestByPath(mediumPriorityTargets);
             if (creep.transfer(closestTarget, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
                 creep.moveTo(closestTarget, {
-                    visualizePathStyle: {stroke: '#ffff00'}, // Κίτρινη διαδρομή
+                  //  visualizePathStyle: {stroke: '#ffff00'}, // Κίτρινη διαδρομή
                     reusePath: 10
                 });
             }
@@ -95,7 +99,8 @@ var roleHarvester = {
         var lowPriorityTargets = creep.room.find(FIND_STRUCTURES, {
             filter: (structure) => {
                 return (structure.structureType == STRUCTURE_STORAGE ||
-                        structure.structureType == STRUCTURE_TERMINAL) &&
+                        structure.structureType == STRUCTURE_TERMINAL || 
+                        structure.structureType == STRUCTURE_CONTAINER) &&
                        structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
             }
         });
@@ -104,8 +109,8 @@ var roleHarvester = {
             const closestTarget = creep.pos.findClosestByPath(lowPriorityTargets);
             if (creep.transfer(closestTarget, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
                 creep.moveTo(closestTarget, {
-                    visualizePathStyle: {stroke: '#00ff00'}, // Πράσινη διαδρομή
-                    reusePath: 10
+                 // visualizePathStyle: {stroke: '#00ff00'}, // Πράσινη διαδρομή
+                    //reusePath: 10
                 });
             }
             return;

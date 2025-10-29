@@ -76,7 +76,7 @@ var roleHarvester = {
         var mediumPriorityTargets = creep.room.find(FIND_STRUCTURES, {
             filter: (structure) => {
                 // Τροφοδοτούμε Towers μέχρι το 80% (αφήνουμε τα τελευταία 20% για τους Towers να το κάνουν)
-                const isTower = structure.structureType == STRUCTURE_TOWER && structure.store.getUsedCapacity(RESOURCE_ENERGY) < structure.store.getCapacity(RESOURCE_ENERGY) * 0.95;
+                const isTower = structure.structureType == STRUCTURE_TOWER && structure.store.getUsedCapacity(RESOURCE_ENERGY) < structure.store.getCapacity(RESOURCE_ENERGY) * 0.8;
                 // Τροφοδοτούμε Links αν δεν είναι ο Harvester Link (π.χ. Storage Link ή Upgrader Link)
                 // Εδώ επιλέγουμε μόνο Towers για απλότητα
                 return isTower;
@@ -99,8 +99,7 @@ var roleHarvester = {
         var lowPriorityTargets = creep.room.find(FIND_STRUCTURES, {
             filter: (structure) => {
                 return (structure.structureType == STRUCTURE_STORAGE ||
-                        structure.structureType == STRUCTURE_TERMINAL || 
-                        structure.structureType == STRUCTURE_CONTAINER) &&
+                        structure.structureType == STRUCTURE_TERMINAL) &&
                        structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
             }
         });
@@ -110,7 +109,7 @@ var roleHarvester = {
             if (creep.transfer(closestTarget, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
                 creep.moveTo(closestTarget, {
                  // visualizePathStyle: {stroke: '#00ff00'}, // Πράσινη διαδρομή
-                    //reusePath: 10
+                    reusePath: 10
                 });
             }
             return;

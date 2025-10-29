@@ -4,6 +4,11 @@ var roleBuilder = require('role.builder');
 var respawManager=require('respawController');
 var towerMonitor=require('towerController');
 var roomPlanner=require('RoomPlanner');
+var staticHarvester=require("role.staticHarvester");
+var staticBuilder=require("role.staticBuilder");
+var staticUpgrader=require("role.staticUpgrader");
+var staticHauler=require("role.Hauler");
+
 
 module.exports.loop = function () {
     
@@ -37,11 +42,20 @@ module.exports.loop = function () {
         var creep = Game.creeps[name];
         if(creep.memory.role == 'harvester') {
             roleHarvester.run(creep);
-        } else if(creep.memory.role == 'upgrader') {
+        } else if(creep.memory.role === 'upgrader') {
             roleUpgrader.run(creep);
-        } else if(creep.memory.role == 'builder') {
+        } else if(creep.memory.role === 'builder') {
             roleBuilder.run(creep);
+        } else if( creep.memory.role==="staticHarvester") {
+            staticHarvester.run(creep);
+        } else if (creep.memory.role==="staticBuilder") {
+            staticBuilder.run(creep);
+        } else if (creep.memory.role==="staticUpgrader") {
+            staticUpgrader.run(creep);
+        } else if (creep.memory.role=== "staticHauler") {
+            staticHauler.run(creep);
         }
+        
     }
 
 };

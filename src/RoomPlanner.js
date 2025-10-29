@@ -37,39 +37,6 @@ const MASTER_BLUEPRINT_SPAWN_ANCHOR = [
     { rcl: 3, offsetX: 2, offsetY: 1, structureType: STRUCTURE_ROAD },
     { rcl: 3, offsetX: 3, offsetY: 0, structureType: STRUCTURE_ROAD },
     // ... (Περισσότεροι δρόμοι RCL 3) ...
-    { rcl: 3, offsetX: 9, offsetY: 5, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 6, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 7, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 8, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 9, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 10, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 11, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 12, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 13, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 14, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 15, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 16, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 17, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 18, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 19, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 20, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 21, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 22, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 23, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 24, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 25, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 26, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 27, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 28, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 29, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 30, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 31, structureType: STRUCTURE_ROAD },
-    { rcl: 3, offsetX: 9, offsetY: 32, structureType: STRUCTURE_ROAD },
-     { rcl: 3, offsetX: 9, offsetY: 33, structureType: STRUCTURE_ROAD },
-     { rcl: 3, offsetX: 9, offsetY: 34, structureType: STRUCTURE_ROAD },
-     { rcl: 3, offsetX: 9, offsetY: 35, structureType: STRUCTURE_ROAD },
-     { rcl: 3, offsetX: 9, offsetY: 36, structureType: STRUCTURE_ROAD },
-     { rcl: 3, offsetX: 9, offsetY: 37, structureType: STRUCTURE_ROAD },
 
     // ------------------------------------------------------------------
     // RCL 4: 1 Storage, 10 Extensions
@@ -93,9 +60,8 @@ const MASTER_BLUEPRINT_SPAWN_ANCHOR = [
     // RCL 5: 1 Link, 1 Tower, 10 Extensions
     // ------------------------------------------------------------------
     { rcl: 5, offsetX: 0, offsetY: -1, structureType: STRUCTURE_LINK }, // Fast Filler Link (δίπλα στο Spawn)
-    //{ rcl: 5, offsetX: -5, offsetY: 0, structureType: STRUCTURE_TOWER }, // 2ος Tower
-    { rcl: 5, offsetX: 15, offsetY: 31, structureType: STRUCTURE_TOWER }, // 2ος Tower
-    
+  //  { rcl: 5, offsetX: -5, offsetY: 0, structureType: STRUCTURE_TOWER }, // 2ος Tower
+    // TODO να τοποθετηθει κοντα ή αναμεσα σγα δυο source
     // Extensions (10/30)
     { rcl: 5, offsetX: 7, offsetY: 0, structureType: STRUCTURE_EXTENSION },
     { rcl: 5, offsetX: 7, offsetY: 1, structureType: STRUCTURE_EXTENSION },
@@ -114,8 +80,8 @@ const MASTER_BLUEPRINT_SPAWN_ANCHOR = [
     // ------------------------------------------------------------------
     { rcl: 6, offsetX: -2, offsetY: -1, structureType: STRUCTURE_TERMINAL }, // Δίπλα στο Storage
     { rcl: 6, offsetX: -2, offsetY: 0, structureType: STRUCTURE_LINK }, // Terminal Link
-    //{ rcl: 6, offsetX: 0, offsetY: 5, structureType: STRUCTURE_TOWER }, // 3ος Tower
-    { rcl: 6, offsetX: -1, offsetY: 7, structureType: STRUCTURE_TOWER }, // 3ος Tower
+    { rcl: 6, offsetX: 0, offsetY: 5, structureType: STRUCTURE_TOWER }, // 3ος Tower
+    
     // Labs (5/10) - Στο Lab Cluster (π.χ. anchor Lab στο (4, 4) σχετικό με το Spawn)
     { rcl: 6, offsetX: 4, offsetY: 4, structureType: STRUCTURE_LAB },
     { rcl: 6, offsetX: 5, offsetY: 4, structureType: STRUCTURE_LAB },
@@ -132,7 +98,7 @@ const MASTER_BLUEPRINT_SPAWN_ANCHOR = [
     { rcl: 7, offsetX: 1, offsetY: -1, structureType: STRUCTURE_SPAWN }, // 2ο Spawn (Κοντά στο Core)
     { rcl: 7, offsetX: -1, offsetY: -2, structureType: STRUCTURE_FACTORY }, // Δίπλα στο Storage/Terminal
     { rcl: 7, offsetX: 2, offsetY: -2, structureType: STRUCTURE_LINK }, // Upgrader Link (πιο μακριά)
-    { rcl: 7, offsetX: 27, offsetY: -1, structureType: STRUCTURE_TOWER }, // 4ος Tower
+    { rcl: 7, offsetX: 0, offsetY: -5, structureType: STRUCTURE_TOWER }, // 4ος Tower
 
     // Labs (3/10)
     { rcl: 7, offsetX: 6, offsetY: 4, structureType: STRUCTURE_LAB },
@@ -193,7 +159,7 @@ var roomPlanner={
             console.log("Δε βρέθηκε το dωμάτιο "+roomName);
             return;
         }
-       // this.initializeBlueprint(room)
+        this.initializeBlueprint(room)
         
         // 2. Οπτικοποίηση (σε κάθε tick)
         //this.visualizeBlueprint(room);
@@ -220,10 +186,9 @@ var roomPlanner={
         return {x:anchorX,y:anchorY};
     },
     lookForNewConstructionSite:function(room) {
-        //return;
         const blueprint = Memory.rooms[room.name].blueprint;
         const currentRCL = room.controller.level;
-        console.log(currentRCL);
+        //console.log(currentRCL);
         // 1. Έλεγχος Ορίων Construction Sites
         const totalConstructionSites = room.find(FIND_CONSTRUCTION_SITES).length;
         
@@ -276,7 +241,7 @@ var roomPlanner={
     initializeBlueprint : function(room) {
     // 1. Έλεγχος: Αν το Blueprint υπάρχει, σταματάμε.
     if (Memory.rooms[room.name].blueprint) {
-       //return; 
+       return; 
     }
 
     

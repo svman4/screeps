@@ -127,10 +127,10 @@ createNewHaulers=function(currentSpawn) {
                      MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE]; 
     } else if (energyCapacity >= 500) {
         // 500 Energy: 5 CARRY, 5 MOVE
-        bodyParts = [CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE]; 
+        bodyParts = [WORK, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE]; 
     } else if (energyCapacity >= 300) {
         // 300 Energy: 3 CARRY, 3 MOVE
-        bodyParts = [CARRY, CARRY, CARRY, MOVE, MOVE, MOVE];
+        bodyParts = [WORK, CARRY, CARRY, MOVE, MOVE, MOVE];
     } else {
         // 200 Energy (Starter): 2 CARRY, 2 MOVE
         bodyParts = [CARRY, CARRY, MOVE, MOVE]; 

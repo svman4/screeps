@@ -48,7 +48,7 @@ var roleHauler = {
             
             
             // Βρίσκουμε στόχους που χρειάζονται ενέργεια (Extensions, Spawns, Towers)
-            const targets = creep.room.find(FIND_STRUCTURES, {
+            var targets = creep.room.find(FIND_STRUCTURES, {
                 filter: (structure) => {
                     // Προτεραιότητα: Extension, Spawn, Tower (για άμυνα)
                     return (structure.structureType == STRUCTURE_TOWER) && 
@@ -74,6 +74,16 @@ var roleHauler = {
                 }
                 return; // Τελειώνουμε το tick, είτε μεταφέρουμε είτε κινούμαστε
             } 
+            
+            targets = creep.room.find(FIND_CONSTRUCTION_SITES);
+            
+            if(targets.length) {
+                if(creep.build(targets[0]) == ERR_NOT_IN_RANGE) {
+                    creep.moveTo(targets[0], {visualizePathStyle: {stroke: '#ffffff'}}); // Λευκή διαδρομή για κατασκευή
+                }
+                return; // Ο creep κινείται/χτίζει, τελειώνει το tick
+            }
+            
             
             
             // Προτεραιότητα 2 (Fallback): Upgrade Controller (αν το Storage είναι γεμάτο ή δεν υπάρχει)

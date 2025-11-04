@@ -22,7 +22,7 @@ const logisticsManager = {
             // Deliver energy
             const deliveryTarget = this.findDeliveryTarget(creep);
             if (deliveryTarget) {
-				if (creep.pos.inRangeto(deliveryTarget,1) ) {
+				if (creep.pos.inRangeTo(deliveryTarget,1) ) {
 					creep.transfer(deliveryTarget, RESOURCE_ENERGY);
 				}else {
 					creep.moveTo(deliveryTarget, { visualizePathStyle: { stroke: '#ffffff' } });

@@ -6,7 +6,7 @@ const expansionManager = require('manager.expansion');
 const roleManager = require('manager.role');
 
 module.exports.loop = function () {
-
+	
     // 1. Memory Cleanup: Clear memory of dead creeps
     for (const name in Memory.creeps) {
         if (!Game.creeps[name]) {

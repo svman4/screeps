@@ -6,8 +6,8 @@ const logisticsManager = {
                 this.runHauler(creep);
             }
         }
-    },
-
+    } // end of run
+	,
     runHauler: function(creep) {
         if (creep.memory.working && creep.store.getUsedCapacity() === 0) {
             creep.memory.working = false;
@@ -22,21 +22,28 @@ const logisticsManager = {
             // Deliver energy
             const deliveryTarget = this.findDeliveryTarget(creep);
             if (deliveryTarget) {
-                if (creep.transfer(deliveryTarget, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-                    creep.moveTo(deliveryTarget, { visualizePathStyle: { stroke: '#ffffff' } });
-                }
+				if (creep.pos.inRangeto(deliveryTarget,1) ) {
+					creep.transfer(deliveryTarget, RESOURCE_ENERGY);
+				}else {
+					creep.moveTo(deliveryTarget, { visualizePathStyle: { stroke: '#ffffff' } });
+				}
+                
             }
         } else {
             // Withdraw energy
             const withdrawTarget = this.findWithdrawTarget(creep);
             if (withdrawTarget) {
-                if (creep.withdraw(withdrawTarget, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-                    creep.moveTo(withdrawTarget, { visualizePathStyle: { stroke: '#ffaa00' } });
-                }
+				if(creep.pos.inRangeTo(witdrawTarget,1) ){
+					creep.withdraw(withdrawTarget, RESOURCE_ENERGY);
+				}
+				else {
+					creep.moveTo(withdrawTarget, { visualizePathStyle: { stroke: '#ffaa00' } });
+				}
+                
             }
         }
-    },
-
+    } // end of runHauler
+	,
     findDeliveryTarget: function(creep) {
         // Priority: Spawns/Extensions > Towers > Storage
         let target = creep.pos.findClosestByPath(FIND_STRUCTURES, {
@@ -54,8 +61,8 @@ const logisticsManager = {
             filter: (s) => s.structureType === STRUCTURE_STORAGE && s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
         });
         return target;
-    },
-
+    } // end of findDeliveryTarget
+	,
     findWithdrawTarget: function(creep) {
         // Priority: Dropped Resources > Containers > Storage
         let target = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES, {
@@ -77,7 +84,7 @@ const logisticsManager = {
             filter: (s) => s.structureType === STRUCTURE_STORAGE && s.store[RESOURCE_ENERGY] > 10000
         });
         return target;
-    }
-};
+    } // end of findWithdrawTarget
+}; // end of logisticsManager
 
 module.exports = logisticsManager;

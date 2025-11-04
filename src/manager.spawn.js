@@ -31,6 +31,7 @@ const spawnManager = {
                 const currentCreeps = _.filter(creeps, c => c.memory.role === roleName).length;
 
                 if (currentCreeps < role.min) {
+					
                     this.spawnCreep(spawn, roleName, role.body);
                     break; // Spawn one at a time
                 }
@@ -40,30 +41,38 @@ const spawnManager = {
 
     spawnCreep: function(spawn, roleName, body) {
         const energyAvailable = spawn.room.energyAvailable;
+		
         const maxEnergy = spawn.room.energyCapacityAvailable;
-        let finalBody = body;
+        
+		let finalBody = body;
 
         // Adaptive spawning: if we have max energy, build bigger creeps
         if (energyAvailable === maxEnergy) {
-            const bodyMapping = {
-                harvester: [WORK, WORK, WORK, CARRY, MOVE, MOVE],
-                hauler: [CARRY, CARRY, CARRY, CARRY, MOVE, MOVE],
-                upgrader: [WORK, WORK, WORK, CARRY, MOVE],
-                builder: [WORK, WORK, CARRY, MOVE, MOVE],
-                repairer: [WORK, WORK, CARRY, MOVE, MOVE],
-                defender: [TOUGH, TOUGH, ATTACK, ATTACK, MOVE, MOVE, MOVE, MOVE]
-            };
-            finalBody = bodyMapping[roleName] || body;
+			if (!finalBody) {
+				const bodyMapping = {
+					harvester: [WORK, WORK,  CARRY, MOVE, MOVE],
+					hauler: [CARRY, CARRY, CARRY, CARRY, MOVE, MOVE],
+					upgrader: [WORK, WORK, WORK, CARRY, MOVE],
+					builder: [WORK, WORK, CARRY, MOVE, MOVE],
+					repairer: [WORK, WORK, CARRY, MOVE, MOVE],
+					defender: [TOUGH, TOUGH, ATTACK, ATTACK, MOVE, MOVE, MOVE, MOVE]
+				};
+            finalBody = bodyMapping[roleName];
+			}
         }
 
+		
         const newName = roleName + Game.time;
-        const result = spawn.spawnCreep(finalBody, newName, {
-            memory: { role: roleName, working: false }
-        });
-
+        const result = spawn.spawnCreep(finalBody, 
+							newName, 
+							{   memory: { role: roleName, working: false }
+							});
+		
         if (result === OK) {
             console.log(`Spawning new ${roleName}: ${newName}`);
-        }
+        } else {
+		//	console.log(`Error on Spawning new ${roleName}: ${newName} ${result}`);
+		}
     }
 };
 

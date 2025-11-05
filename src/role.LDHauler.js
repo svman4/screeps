@@ -1,4 +1,4 @@
-var LDHarvester = {
+var LDHauler = {
 
      /**
     * @param {Creep} creep
@@ -136,23 +136,18 @@ var LDHarvester = {
                 }
             });
             if(source) {
-                if(creep.withdraw(source, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
+                if ( creep.pos.inRangeTo(source,1)) {
+                    creep.withdraw(source, RESOURCE_ENERGY);
+                } else { 
                     creep.moveTo(source, {
                         visualizePathStyle: {stroke: '#ffaa00'},
                         reusePath: 10
                     }); // Πορτοκαλί διαδρομή
-                    creep.say("Controller link");
                 }
+                
             } else {
-                // Αν δεν υπάρχει ενέργεια στα containers, περιμένουμε κοντά στο Spawn για εξοικονόμηση ενέργειας.
-                 const currentSpawn = creep.room.find(FIND_MY_SPAWNS)[0];
-                 if (currentSpawn && creep.pos.getRangeTo(currentSpawn) > 3) {
-                     creep.moveTo(currentSpawn, {
-                         visualizePathStyle: {stroke: '#aaaaaa'},
-                         reusePath: 10
-                     });
-                 }
+                // doNothing
             }
-	}
-}; // end of LDHarvester
-module.exports = LDHarvester;
+	} // end of findAndCollect
+}; // end of LDHauler
+module.exports = LDHauler;

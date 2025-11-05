@@ -34,18 +34,23 @@ var roleHauler = {
 		if (creep.memory.transferring) {
 			
 			// Οι προτεραιότητες δίνονται με τη σειρά που καλούνται:
-			
-			// 2.1. Προτεραιότητα 1: Γέμισμα Towers (Άμυνα)
-			if (this.fillTowers(creep) === true) { return; }
-			
+			if (creep.room.memory.threatLevel>0.5) {
+			    if (this.fillTowers(creep) === true) { return; }	    
+			    if (this.fillExtensionSpawn(creep) === true) { return; }
+			    
+			    
+			} else {
+			    if (this.fillExtensionSpawn(creep) === true) { return; }
+			    if (this.fillTowers(creep) === true) { return; }	    
+			}
 			// 2.2. Προτεραιότητα 2: Γέμισμα Spawns/Extensions (Αναπαραγωγή Creeps)
-			if (this.fillExtensionSpawn(creep) === true) { return; }
 			
+		        
 			// 2.3. Προτεραιότητα 3: Γέμισμα Storage (Αποθήκευση πλεονάζουσας ενέργειας)
 			if (this.fillStorage(creep) === true) { return; }
 
 			// 2.4. Προτεραιότητα 4: Κατασκευή Construction Sites (Αν υπάρχει πλεονάζουσα ενέργεια)
-     		//	if (this.fixConstructionSites(creep) === true) { return; }
+     			if (this.fixConstructionSites(creep) === true) { return; }
 	        	
 			// 2.5. Προτεραιότητα 5: Upgrade του Room Controller (Αύξηση RCL)
 			if (this.upgradeRoomController(creep,creep.memory.homeRoom) === true) { return; }
@@ -154,7 +159,7 @@ var roleHauler = {
 
 		if (targets.length) {
 			creep.say("🛠️ Build");
-		if( creep.pos.inRangeTo(targets[0],4) ) {
+		if( creep.pos.inRangeTo(targets[0],3) ) {
 		    creep.build(targets[0]);
 		} else {
 		    creep.moveTo(targets[0], { visualizePathStyle: { stroke: '#ffffff' } }); // Λευκή διαδρομή για κατασκευή

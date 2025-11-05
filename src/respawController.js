@@ -61,10 +61,12 @@ const respawController = {
             
              room.memory.populationMax.upgraderMax=2;
              room.memory.populationMax.builderMax=1;
-            room.memory.populationMax.HaulerMax=3;
+            room.memory.populationMax.haulers=3;
+            room.memory.populationMax.LDHaulers=0;
+            room.memory.populationMax.LDHarverster=0;
             room.memory.populationMax.simpleHarvester=0;
         }
-        console.log
+        
         
         if (currentSpawn.spawning) {
             // Εμφάνιση του creep που παράγεται για οπτική επιβεβαίωση
@@ -123,6 +125,7 @@ const respawController = {
         const STATIC_HARVESTER_MAX = sources.length;
         
         if (staticHarvesters.length < STATIC_HARVESTER_MAX) {
+            console.log(roomName+ "harvester");
             // Βρίσκουμε ποιες Sources είναι ήδη δεσμευμένες
             const assignedSourceIds = staticHarvesters.map(creep => creep.memory.sourceId).filter(id => id);
             
@@ -139,24 +142,29 @@ const respawController = {
                  }
             }
         } 
-        else if (haulers.length<HAULER_MAX) { 
+        else if (haulers.length<room.memory.populationMax.haulers) { 
+            console.log(roomName+ " haulers");
             result=createNewHaulers(currentSpawn,rcl,roomName);
             
             
         }
-        // 4.2. Upgraders (ΔΕΥΤΕΡΗ ΠΡΟΤΕΡΑΙΟΤΗΤΑ)
-        // Σημείωση: Δεν ελέγχουμε αν υπάρχει ενέργεια. Αυτό το κάνει το role.upgrader.js.
+        
+        
         else if (upgraders && upgraders.length < room.memory.populationMax.upgraderMax) {
+            console.log(roomName+ " upgrade");
             result = createNewUpgrader(currentSpawn,rcl,roomName);
-        }
+            
+            
+            
+        }else if (LDHaulers && LDHaulers.length < room.memory.populationMax.LDHaulers) {
+          
+            result=createNewLDHauler(currentSpawn,rcl,roomName);
+        } 
         
         else if (LDHarvesters && LDHarvesters.length < LD_HARVESTER_MAX) {
             result=createNewLDHarvester(currentSpawn,rcl,roomName);
         } 
-        else if (LDHaulers && LDHaulers.length < LD_HAULER_MAX) {
-            
-            result=createNewLDHauler(currentSpawn,rcl,roomName);
-        } 
+        
         // 4.3. Builders (ΤΡΙΤΗ ΠΡΟΤΕΡΑΙΟΤΗΤΑ - Μόνο αν υπάρχει Construction Site)
         else if (builders.length < room.memory.populationMax.builderMax) {
             const constructionSites = currentSpawn.room.find(FIND_CONSTRUCTION_SITES);
@@ -178,14 +186,91 @@ const respawController = {
             }
         } else if (result.length > 0 && result[0] === ERR_NOT_ENOUGH_ENERGY) {
             
-             // console.log(`Δεν υπάρχει αρκετή ενέργεια για να φτιαχτεί το creep.  ${result[1]}`);
-        }  
-    }    
-};
+              console.log(`${roomName} - Δεν υπάρχει αρκετή ενέργεια για να φτιαχτεί το creep.  ${result[1]}`);
+        }  else {
+            console.log(`${roomName} - Error creep.  ${result[1]}`);
+        }
+        
+    }     // end of run
+
+
+}; // end of respawController
 
 // ===========================================
 // ΛΟΓΙΚΗ ΔΗΜΙΟΥΡΓΙΑΣ CREP (Helper Functions)
 // ===========================================
+    createNewBuilder=function(currentSpawn,roomName) {
+        const energyCapacity = currentSpawn.room.energyCapacityAvailable;
+        let bodyParts;
+        const bodyType = STATIC_BUILDER_ROLE;
+    
+        const costs = {
+        WORK: 100,
+        CARRY: 50,
+        MOVE: 50
+    };
+    
+    // let body=[];
+    // let currentCost=0; 
+    // if(energyCapacity<(costs.WORK+costs.CARRY+costs.MOVE)) {
+    //     return ERR_NOT_ENOUGH_ENERGY;
+    // }
+    
+    // const energy=Math.min(energyCapacity,1200);
+    // console.log(energy+"(0) /"+currentCost+" "+body.length);
+    
+    // body.push(WORK,CARRY,MOVE,MOVE);
+    // currentCost+=costs.WORK+costs.CARRY+costs.MOVE+costs.MOVE;
+    // console.log(energy+"(1) /"+currentCost+" "+body.length);
+    
+    // while(currentCost+costs.WORK+costs.CARRY+costs.MOVE+costs.MOVE<=energy) { 
+    //     body.push(WORK,CARRY,MOVE,MOVE);
+    //     currentCost+=costs.WORK+costs.CARRY+costs.MOVE+costs.MOVE;
+    //     console.log(energy+"(2) /"+currentCost+" "+body.length);
+    // }
+    
+    
+    // while(currentCost+costs.WORK+costs.CARRY+costs.MOVE<=energy) { 
+    //     body.push(WORK,CARRY,MOVE);
+    //     currentCost+=costs.WORK+costs.CARRY+costs.MOVE;
+    //     console.log(energy+"(3) /"+currentCost+" "+body.length);
+    // }
+    
+    
+    // while(currentCost+costs.CARRY+costs.MOVE+costs.MOVE<=energy) { 
+    //     body.push(CARRY,MOVE,MOVE);
+    //     currentCost+=costs.CARRY+costs.MOVE+costs.MOVE;
+    //     console.log(energy+"(4) /"+currentCost+" "+body.length);
+    // }
+    
+    
+    // while(currentCost+costs.MOVE<=energy) { 
+    //     body.push(MOVE);
+    //     currentCost+=costs.CARRY+costs.MOVE+costs.MOVE;
+    //     console.log(energy+"(4) /"+currentCost+" "+body.length);
+    // }
+    
+    // Memory.test=body;
+    // console.log(energy+"(5) /"+currentCost+" "+body.length);
+     // Εστίαση σε balanced body για Builder/Mobile Worker (WORK, CARRY, MOVE)
+     if (energyCapacity > 800) {
+      bodyParts = [WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE]; // 800 Energy (4W, 4C, 4M)
+     } else if (energyCapacity >= 550) {
+         bodyParts = [WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE]; // 550 Energy (3W, 2C, 3M)
+     } else if (energyCapacity >= 300) {
+         bodyParts = [WORK, CARRY, CARRY, MOVE, MOVE]; // 300 Energy (1W, 2C, 2M)
+     } else {
+         bodyParts = [WORK, CARRY, MOVE]; // 200 Energy (Starter)
+     }
+    //console.log(energy+" /"+currentCost);
+    const newName = bodyType + Game.time;
+    const creepMemory = { memory: { role: bodyType, homeRoom: roomName } };
+        //let result = [ currentSpawn.spawnCreep(body, newName, creepMemory), newName ];
+        let result = [ currentSpawn.spawnCreep(bodyParts, newName, creepMemory), newName ];
+        return result;
+    } // end of createNewBuilder
+
+
 
 createNewLDHauler=function(currentSpawn,rcl,roomName) { 
     if (rcl<4) {
@@ -194,7 +279,7 @@ createNewLDHauler=function(currentSpawn,rcl,roomName) {
         let bodyParts;
     const bodyType = SIMPLE_LDHAULER_ROLE;
     
-        bodyParts = [WORK, CARRY,CARRY, CARRY, MOVE,MOVE, MOVE,MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE]; 
+        bodyParts = [WORK, CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY, CARRY, MOVE,MOVE, MOVE,MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE]; 
     
     
     const newName = bodyType + Game.time;
@@ -249,7 +334,7 @@ createNewSimpleHarvester=function(currentSpawn,rcl,roomName) {
     let bodyParts;
     const bodyType = SIMPLE_HARVESTER_ROLE;
     
-        bodyParts = [WORK,  CARRY, MOVE]; // 800 Energy (4W, 4C, 4M)
+        bodyParts = [WORK,  CARRY, MOVE]; 
     
     
     const newName = bodyType + Game.time;
@@ -258,32 +343,12 @@ createNewSimpleHarvester=function(currentSpawn,rcl,roomName) {
     let result = [ currentSpawn.spawnCreep(bodyParts, newName, creepMemory), newName ];
     return result;
 }
-createNewBuilder = function(currentSpawn,roomName) {
-    const energyCapacity = currentSpawn.room.energyCapacityAvailable;
-    let bodyParts;
-    const bodyType = STATIC_BUILDER_ROLE;
-    
-    // Εστίαση σε balanced body για Builder/Mobile Worker (WORK, CARRY, MOVE)
-    if (energyCapacity > 800) {
-        bodyParts = [WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE]; // 800 Energy (4W, 4C, 4M)
-    } else if (energyCapacity >= 550) {
-        bodyParts = [WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE]; // 550 Energy (3W, 2C, 3M)
-    } else if (energyCapacity >= 300) {
-        bodyParts = [WORK, CARRY, CARRY, MOVE, MOVE]; // 300 Energy (1W, 2C, 2M)
-    } else {
-        bodyParts = [WORK, CARRY, MOVE]; // 200 Energy (Starter)
-    }
-    
-    const newName = bodyType + Game.time;
-    const creepMemory = { memory: { role: bodyType, homeRoom: roomName } };
 
-    let result = [ currentSpawn.spawnCreep(bodyParts, newName, creepMemory), newName ];
-    return result;
-};
 
 // Τροποποιημένη συνάρτηση για Static Harvester
 createNewStaticHarvester = function(currentSpawn, sourceId) {
     const energyCapacity = currentSpawn.room.energyCapacityAvailable; 
+    
     let bodyParts;
     const bodyType = STATIC_HARVESTER_ROLE;
     
@@ -318,7 +383,7 @@ createNewUpgrader = function(currentSpawn,rcl,homeroom) {
     if (energyCapacity >= 1000) {
         bodyParts = [MOVE,MOVE,MOVE,MOVE,MOVE,WORK,WORK,WORK,WORK,WORK,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY];
     } else if (energyCapacity >= 600) {
-        bodyParts = [WORK, WORK, WORK, WORK, WORK, CARRY, MOVE]; // 600 Energy (5 WORK, 1 CARRY, 1 MOVE)
+        bodyParts = [WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY,MOVE, MOVE,MOVE, MOVE]; // 600 Energy (5 WORK, 1 CARRY, 1 MOVE)
     } else if (energyCapacity >= 400) {
         bodyParts = [WORK, WORK, WORK, CARRY, MOVE]; // 400 Energy (3 WORK, 1 CARRY, 1 MOVE)
     } else {

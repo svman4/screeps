@@ -13,6 +13,8 @@ var roleClaimer=require("role.claimer");
 var roleLDHauler=require("role.LDHauler");
 module.exports.loop = function () {
     
+        var startCpu = Game.cpu.getUsed();
+    
     // 1. Έλεγχος και αρχικοποίηση Memory.rooms (αν λείπει)
     if (!Memory.rooms) {
         Memory.rooms = {};
@@ -20,7 +22,7 @@ module.exports.loop = function () {
     }
     if (!Memory.rooms.E25S7.controllerLink) {
         // Τοποθετεί το link που βρίσκεται δίπλα στο controller
-        Memory.rooms.E25S7.controllerLink="69050d532340f4c09a643cdd";
+       Memory.rooms.E25S7.controllerLink="69050d532340f4c09a643cdd";
     }
     
     // 2. Επανάληψη σε όλα τα Δωμάτια που ελέγχουμε
@@ -34,9 +36,7 @@ module.exports.loop = function () {
         if(Game.rooms[roomName].controller.my) {
             // 3. Εκτέλεση Λογικής Δωματίου
             towerMonitor.run(roomName);
-        
             roomPlanner.run(roomName);
-        
             checkLink(roomName);    
             
             // 4. Εκτέλεση Respawn (Συνήθως εκτός βρόχου δωματίων)
@@ -54,11 +54,6 @@ module.exports.loop = function () {
             }
                 
         }
-        
-        
-        
-        
-        
     }
     
     
@@ -90,9 +85,16 @@ module.exports.loop = function () {
         }
         
         
+    }  
+    
+    if (Game.time % 10 === 0) {
+        var endCpu = Game.cpu.getUsed();
+    var cpuUsed = endCpu - startCpu;
+    
+        console.log(`CPU Bucket: ${Game.cpu.bucket} | Creeps: ${Object.keys(Game.creeps).length} |cpusUser: ${cpuUsed}`);
     }
 
-};
+}; // end of loop()
 
 checkLink=function(roomName) {
     
@@ -102,7 +104,7 @@ checkLink=function(roomName) {
         filter: { structureType: STRUCTURE_LINK }
         }
     );
-    var controllerLink = Game.getObjectById("69050d532340f4c09a643cdd");
+    //var controllerLink = Game.getObjectById("69050d532340f4c09a643cdd");
     //console.log(Memory.rooms[roomName].controllerLink);
     var controllerLink=Game.getObjectById(Memory.rooms["E25S7"].controllerLink);
     if (!controllerLink) { 
@@ -122,14 +124,13 @@ checkLink=function(roomName) {
                 continue; // Πάμε στο επόμενο Link αν αυτό είναι σε cooldown
             }
             
-            
             if (sender.store.getUsedCapacity(RESOURCE_ENERGY) > 550) {
                 
                 // 3. Εκτέλεση της Μεταφοράς
                 const result = sender.transferEnergy(controllerLink);
 
                 if (result === OK) {
-                    console.log(`Link: Η μεταφορά ενέργειας από ${sender.id} προς Controller Link ήταν επιτυχής.`);
+                    console.log(`${roomName} - Link: Η μεταφορά ενέργειας από ${sender.id} προς Controller Link ήταν επιτυχής.`);
                     return; // Σταματάμε μόλις γίνει μία επιτυχής μεταφορά (για να σώσουμε CPU)
                 } else if (result === ERR_NOT_IN_RANGE) {
                     // Αυτό δεν πρέπει να συμβεί αν όλα τα Links είναι στο ίδιο δωμάτιο

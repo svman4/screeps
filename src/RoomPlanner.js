@@ -273,7 +273,7 @@ function countStructuresAndSites(room, structureType) {
     
     return structures + sites;
 }
-const MAX_CONSTRUCTION_SITE=10;
+const MAX_CONSTRUCTION_SITE=1;
 var roomPlanner={
     
     run:function(roomName){ 

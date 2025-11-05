@@ -26,9 +26,8 @@ var roleBuilder = {
 
 			// 2C. FALLBACK: UPGRADE CONTROLLER
 			// Αν δεν υπάρχει ούτε Build ούτε Repair, ο Builder βοηθάει στην αναβάθμιση.
-			if (creep.upgradeController(creep.room.controller) == ERR_NOT_IN_RANGE) {
-				creep.moveTo(creep.room.controller, { visualizePathStyle: { stroke: '#cc66cc' }, reusePath: 5 });
-			}
+            if (this.upgradeController(creep,creep.room.controller)) {return;}			
+			
 			return; // Τελείωσε η εργασία (είτε Build, είτε Repair, είτε Upgrade)
 		}
 
@@ -96,8 +95,22 @@ var roleBuilder = {
 			return true;
 		}
 		return false;
-	}, // end of buildingNewStructures
-
+	} // end of buildingNewStructures
+	,
+	upgradeController:function(creep,controller) { 
+	    if(!controller) { 
+	        return false;
+	    }
+	    creep.say("Upgrade");
+	    if (creep.pos.inRangeTo(controller,3)) {
+	        creep.upgradeController();
+	    } else { 
+	        creep.moveTo(creep.room.controller, { visualizePathStyle: { stroke: '#cc66cc' }, reusePath: 5 });
+	        
+	    }
+	   return true;     
+	} // end of upgradeController()
+    ,
 	repairStructures:function(creep) {
 		const targetsToRepair = creep.room.find(FIND_STRUCTURES, {
 			filter: (structure) => {

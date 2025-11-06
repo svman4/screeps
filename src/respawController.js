@@ -170,7 +170,7 @@ const respawController = {
             const constructionSites = currentSpawn.room.find(FIND_CONSTRUCTION_SITES);
             // Ελέγχουμε αν υπάρχει κάτι για χτίσιμο ΠΡΙΝ φτιάξουμε builder
             if(constructionSites.length >0 || builders.length===1){
-                result = createNewBuilder(currentSpawn,rcl,roomName);
+                result = this.createNewBuilder(currentSpawn,rcl,roomName);
             }
         }
         
@@ -186,12 +186,65 @@ const respawController = {
             }
         } else if (result.length > 0 && result[0] === ERR_NOT_ENOUGH_ENERGY) {
             
-              console.log(`${roomName} - Δεν υπάρχει αρκετή ενέργεια για να φτιαχτεί το creep.  ${result[1]}`);
+          //    console.log(`${roomName} - Δεν υπάρχει αρκετή ενέργεια για να φτιαχτεί το creep.  ${result[1]}`);
         }  else {
-            console.log(`${roomName} - Error creep.  ${result[1]}`);
+        //    console.log(`${roomName} - Error creep.  ${result[1]}`);
         }
         
     }     // end of run
+    ,
+    createNewBuilder:function(currentSpawn,rlc, roomName,maxPreferredEnergy=1200 ) {
+        var energyCapacity = currentSpawn.room.energyCapacityAvailable;
+        
+        
+    
+        const costs = {
+            WORK: 100,
+            CARRY: 50,
+            MOVE: 50
+        };
+        if(maxPreferredEnergy) {
+            energyCapacity=Math.min(energyCapacity,maxPreferredEnergy);
+        }
+     
+        const CORE_BODY = [WORK, CARRY, MOVE];
+        const CORE_COST = costs.WORK + costs.CARRY + costs.MOVE;
+    
+    
+        if (energyCapacity<CORE_BODY) { 
+            return [ERROR_NOT_ENOUGH_ENERGY,bodyType];
+        }
+        let bodyParts;
+        const bodyType = STATIC_BUILDER_ROLE;
+    
+        let body=[];
+        let currentCost=0; 
+    
+        while((currentCost+CORE_COST)<=energyCapacity) { 
+            body.push(...CORE_BODY);
+            currentCost+=CORE_COST;
+           // console.log(energyCapacity+"(0) /"+currentCost+" "+body.length);
+        }
+        while((currentCost+costs.CARRY+costs.MOVE)<=energyCapacity) { 
+            body.push(CARRY,MOVE);
+            currentCost+=costs.CARRY+costs.MOVE;
+            //console.log(energyCapacity+"(1) /"+currentCost+" "+body.length);
+        }
+        
+        
+        while((currentCost+costs.MOVE)<=energyCapacity) { 
+            body.push(MOVE);
+            currentCost+=costs.MOVE;
+            console.log(energyCapacity+"(4) /"+currentCost+" "+body.length);
+        }
+        body.sort();
+        
+        const newName = bodyType + Game.time;
+        const creepMemory = { memory: { role: bodyType, homeRoom: roomName } };
+        let result = [ currentSpawn.spawnCreep(body, newName, creepMemory), newName ];
+        
+        return result;
+    } // end of createNewBuilder
 
 
 }; // end of respawController
@@ -199,76 +252,7 @@ const respawController = {
 // ===========================================
 // ΛΟΓΙΚΗ ΔΗΜΙΟΥΡΓΙΑΣ CREP (Helper Functions)
 // ===========================================
-    createNewBuilder=function(currentSpawn,roomName) {
-        const energyCapacity = currentSpawn.room.energyCapacityAvailable;
-        let bodyParts;
-        const bodyType = STATIC_BUILDER_ROLE;
     
-        const costs = {
-        WORK: 100,
-        CARRY: 50,
-        MOVE: 50
-    };
-    
-    // let body=[];
-    // let currentCost=0; 
-    // if(energyCapacity<(costs.WORK+costs.CARRY+costs.MOVE)) {
-    //     return ERR_NOT_ENOUGH_ENERGY;
-    // }
-    
-    // const energy=Math.min(energyCapacity,1200);
-    // console.log(energy+"(0) /"+currentCost+" "+body.length);
-    
-    // body.push(WORK,CARRY,MOVE,MOVE);
-    // currentCost+=costs.WORK+costs.CARRY+costs.MOVE+costs.MOVE;
-    // console.log(energy+"(1) /"+currentCost+" "+body.length);
-    
-    // while(currentCost+costs.WORK+costs.CARRY+costs.MOVE+costs.MOVE<=energy) { 
-    //     body.push(WORK,CARRY,MOVE,MOVE);
-    //     currentCost+=costs.WORK+costs.CARRY+costs.MOVE+costs.MOVE;
-    //     console.log(energy+"(2) /"+currentCost+" "+body.length);
-    // }
-    
-    
-    // while(currentCost+costs.WORK+costs.CARRY+costs.MOVE<=energy) { 
-    //     body.push(WORK,CARRY,MOVE);
-    //     currentCost+=costs.WORK+costs.CARRY+costs.MOVE;
-    //     console.log(energy+"(3) /"+currentCost+" "+body.length);
-    // }
-    
-    
-    // while(currentCost+costs.CARRY+costs.MOVE+costs.MOVE<=energy) { 
-    //     body.push(CARRY,MOVE,MOVE);
-    //     currentCost+=costs.CARRY+costs.MOVE+costs.MOVE;
-    //     console.log(energy+"(4) /"+currentCost+" "+body.length);
-    // }
-    
-    
-    // while(currentCost+costs.MOVE<=energy) { 
-    //     body.push(MOVE);
-    //     currentCost+=costs.CARRY+costs.MOVE+costs.MOVE;
-    //     console.log(energy+"(4) /"+currentCost+" "+body.length);
-    // }
-    
-    // Memory.test=body;
-    // console.log(energy+"(5) /"+currentCost+" "+body.length);
-     // Εστίαση σε balanced body για Builder/Mobile Worker (WORK, CARRY, MOVE)
-     if (energyCapacity > 800) {
-      bodyParts = [WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE]; // 800 Energy (4W, 4C, 4M)
-     } else if (energyCapacity >= 550) {
-         bodyParts = [WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE]; // 550 Energy (3W, 2C, 3M)
-     } else if (energyCapacity >= 300) {
-         bodyParts = [WORK, CARRY, CARRY, MOVE, MOVE]; // 300 Energy (1W, 2C, 2M)
-     } else {
-         bodyParts = [WORK, CARRY, MOVE]; // 200 Energy (Starter)
-     }
-    //console.log(energy+" /"+currentCost);
-    const newName = bodyType + Game.time;
-    const creepMemory = { memory: { role: bodyType, homeRoom: roomName } };
-        //let result = [ currentSpawn.spawnCreep(body, newName, creepMemory), newName ];
-        let result = [ currentSpawn.spawnCreep(bodyParts, newName, creepMemory), newName ];
-        return result;
-    } // end of createNewBuilder
 
 
 

@@ -23,11 +23,6 @@ var roleHauler = {
 			creep.memory.transferring = true;
 			//creep.say('🚚 push'); // Αλλαγή σε λειτουργία διανομής
 		}
-        
-        
-        
-        
-        
 		// ----------------------------------
 		// 2. ΕΚΤΕΛΕΣΗ ΕΡΓΑΣΙΑΣ (TRANSFER - Μεταφορά/Γέμισμα)
 		// ----------------------------------
@@ -37,20 +32,17 @@ var roleHauler = {
 			if (creep.room.memory.threatLevel>0.5) {
 			    if (this.fillTowers(creep) === true) { return; }	    
 			    if (this.fillExtensionSpawn(creep) === true) { return; }
-			    
-			    
 			} else {
 			    if (this.fillExtensionSpawn(creep) === true) { return; }
 			    if (this.fillTowers(creep) === true) { return; }	    
 			}
 			// 2.2. Προτεραιότητα 2: Γέμισμα Spawns/Extensions (Αναπαραγωγή Creeps)
-			
-		        
-			// 2.3. Προτεραιότητα 3: Γέμισμα Storage (Αποθήκευση πλεονάζουσας ενέργειας)
-			if (this.fillStorage(creep) === true) { return; }
-
+			if (this.fillStorage(creep,0.5) === true) { return; }
+            if (this.fillLab(creep,1) === true) { return; }
+            if (this.fillTerminal(creep,0.3) === true) { return; }
+            if (this.fillStorage(creep,1) === true) { return; }
 			// 2.4. Προτεραιότητα 4: Κατασκευή Construction Sites (Αν υπάρχει πλεονάζουσα ενέργεια)
-     			if (this.fixConstructionSites(creep) === true) { return; }
+     	//		if (this.fixConstructionSites(creep) === true) { return; }
 	        	
 			// 2.5. Προτεραιότητα 5: Upgrade του Room Controller (Αύξηση RCL)
 			if (this.upgradeRoomController(creep,creep.memory.homeRoom) === true) { return; }
@@ -60,53 +52,41 @@ var roleHauler = {
 		// 3. ΣΥΛΛΟΓΗ ΕΝΕΡΓΕΙΑΣ (WITHDRAW - Τράβηγμα/Γέμισμα)
 		// ----------------------------------
 		else {
-
+            
 			// 3.2. Προτεραιότητα 2: Link κοντά στον Controller (Ενέργεια για Upgrader)
 
 			if(creep.room.memory.controllerLink) { 
                 
                 if (this.harvestFromLink(creep,creep.room.memory.controllerLink) ===true) { return; }
 			}
-			
+			if (harvestDroppedEnergy(creep)===true) {return;}
 			    
-			// 3.1. Προτεραιότητα 1: Dropped Energy (ενέργεια στο έδαφος)
-			let source = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES, {
-				filter: (resource) => resource.resourceType === RESOURCE_ENERGY &&
-					resource.amount > 100 // Συλλέγουμε μόνο αν είναι αρκετή ποσότητα
-			});
 			
-			if (source) {
-				creep.say("🎁 Dropped");
-				if (creep.pickup(source) == ERR_NOT_IN_RANGE) {
-					creep.moveTo(source, {
-						visualizePathStyle: { stroke: '#00ff00' }, // Πράσινη διαδρομή
-						reusePath: 10
-					}); 
-				}
-				return; // Τελειώνουμε το tick, ο hauler κινείται προς την πεταμένη ενέργεια
-			}
-
+            
 			// 3.3. Προτεραιότητα 3: Containers, Storage, Terminal (Γενικές Πηγές)
 			// Ψάχνουμε για την πιο κοντινή δομή με αποθηκευμένη ενέργεια (Containers, Storage, Terminal)
 			source = creep.pos.findClosestByPath(FIND_STRUCTURES, {
 				filter: (structure) => {
 					// Ελέγχουμε αν είναι Container Ή Storage Ή Terminal
-					return (structure.structureType === STRUCTURE_CONTAINER ||
+					return (structure.structureType === STRUCTURE_CONTAINER 
 						
-						structure.structureType === STRUCTURE_TERMINAL) &&
+						
+						)&&
 						// Και αν έχει αρκετή ενέργεια για να αξίζει τον κόπο
 						structure.store.getUsedCapacity(RESOURCE_ENERGY) > 100;
 				}
 			});
 
 			if (source) {
-				//creep.say("Pull");
-				if (creep.withdraw(source, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-					creep.moveTo(source, {
+				creep.say("Pull");
+				if (creep.pos.inRangeTo(source,1) ) {
+				    creep.withdraw(source, RESOURCE_ENERGY);
+				} else {
+				    creep.moveTo(source, {
 						visualizePathStyle: { stroke: '#ffaa00' }, // Πορτοκαλί διαδρομή
 						reusePath: 10
 					}); 
-			    }
+				}
 			    return;
 			}
 			
@@ -119,14 +99,68 @@ var roleHauler = {
 				const currentSpawn = creep.room.find(FIND_MY_SPAWNS)[0];
 				if (currentSpawn && creep.pos.getRangeTo(currentSpawn) > 3) {
 					creep.say("🅿️ Idle");
-					creep.moveTo(currentSpawn, {
-						visualizePathStyle: { stroke: '#aaaaaa' }, // Γκρι διαδρομή για αναμονή
-						reusePath: 10
-					});
+				// 	creep.moveTo(currentSpawn, {
+				// 		visualizePathStyle: { stroke: '#aaaaaa' }, // Γκρι διαδρομή για αναμονή
+				// 		reusePath: 10
+				// 	});
 				}
 			}
 		}
 	} // end of run
+	,
+	fillTerminal:function(creep,percentOfCapacity) { 
+	    const terminal=creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {
+	        filter: (structure) => {
+				// Ψάχνουμε για Extensions Ή Spawns με ελεύθερο χώρο
+				return (structure.structureType === STRUCTURE_TERMINAL ) &&
+					structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
+			}
+	    }
+	    );
+	    
+	    if (terminal) {
+	        
+				creep.say("terminal");
+				if (creep.pos.inRangeTo(terminal,1) ) {
+				    creep.transfer(terminal, RESOURCE_ENERGY);
+				} else {
+				    creep.moveTo(terminal, {
+						visualizePathStyle: { stroke: '#ffaa00' }, // Πορτοκαλί διαδρομή
+						reusePath: 10
+					}); 
+				}
+			    return true;
+			}
+	    return false;
+	}
+	,
+	fillLab:function(creep,percentOfCapacity) { 
+	  
+	    const lab=creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {
+	        filter: (structure) => {
+				// Ψάχνουμε για Extensions Ή Spawns με ελεύθερο χώρο
+				return (structure.structureType === STRUCTURE_LAB &&
+					structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0);
+			}
+	    }
+	    );
+	    
+	    if (lab) {
+				creep.say("Lab");
+				if (creep.pos.inRangeTo(lab,1) ) {
+				    creep.transfer(lab, RESOURCE_ENERGY);
+				} else {
+				    creep.moveTo(lab, {
+						visualizePathStyle: { stroke: '#ffaa00' }, // Πορτοκαλί διαδρομή
+						reusePath: 10
+					}); 
+				}
+			    return true;
+			    
+		}
+		return false;
+	    
+	} // end of fillLab()
 	,
 	harvestFromLink:function(creep,link) { 
 	   	/** @type {StructureLink} */
@@ -134,16 +168,14 @@ var roleHauler = {
     	// Ελέγχουμε αν το Link υπάρχει και αν έχει τουλάχιστον 200 ενέργεια για να αξίζει το withdraw
 	   	if (controllerLink && controllerLink.store.getUsedCapacity(RESOURCE_ENERGY) >= 200) { 
 	       	creep.say("Link"); 
-		    if (creep.withdraw(controllerLink, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-	    	    // Κινούμαστε προς το Link
-    	    	creep.moveTo(controllerLink, {
+	       	if( creep.pos.inRangeTo(controllerLink,1) ) {
+	       	    creep.withdraw(controllerLink, RESOURCE_ENERGY);
+	       	} else { 
+	       	    creep.moveTo(controllerLink, {
 	   		    	visualizePathStyle: { stroke: '#ffaa00' }, // Πορτοκαλί διαδρομή
     				reusePath: 10
 			    });
-			} else if (creep.withdraw(controllerLink, RESOURCE_ENERGY) === OK) {
-                // Επιτυχές withdraw (μπορεί να γίνει και την ίδια στιγμή που φτάνει αν είναι in range)
-                // Δε χρειάζεται return εδώ, συνεχίζει
-            }
+	       	}
 			return true; // Τελειώνουμε το tick, είτε τραβάμε είτε κινούμαστε προς το link
 		}
 		return false;
@@ -155,16 +187,16 @@ var roleHauler = {
 	 */
 	fixConstructionSites: function(creep) {
 		// Εύρεση όλων των Construction Sites στο δωμάτιο
-		const targets = creep.room.find(FIND_CONSTRUCTION_SITES);
-
-		if (targets.length) {
+		
+        const target= creep.pos.findClosestByPath(FIND_CONSTRUCTION_SITES);
+		if (target.length) {
 			creep.say("🛠️ Build");
-		if( creep.pos.inRangeTo(targets[0],3) ) {
-		    creep.build(targets[0]);
-		} else {
-		    creep.moveTo(targets[0], { visualizePathStyle: { stroke: '#ffffff' } }); // Λευκή διαδρομή για κατασκευή
-		}
-		return true;
+		    if( creep.pos.inRangeTo(target,2) ) {
+		        creep.build(target);
+		    } else {
+		        creep.moveTo(target, { visualizePathStyle: { stroke: '#ffffff' } }); // Λευκή διαδρομή για κατασκευή
+    		}
+	    	return true;
 		}
 		return false;
 	} // end of fixConstructionSites()
@@ -180,7 +212,7 @@ var roleHauler = {
 		const controller=Game.rooms[creep.memory.homeRoom].controller;
 		if (controller) { 
 		    
-		    if (creep.pos.inRangeTo(controller, 3)) {
+		    if (creep.pos.inRangeTo(controller, 2)) {
 			    creep.upgradeController(controller);
 		    } else {
     			// Αν δεν είναι εντός εμβέλειας, κινείται προς τον Controller
@@ -198,12 +230,14 @@ var roleHauler = {
 	 * @param {Creep} creep
 	 * @returns {boolean} true αν βρήκε Storage και το γεμίζει, false αν όχι.
 	 */
-	fillStorage: function(creep) {
+	fillStorage: function(creep,percent) {
 		const storage = creep.room.storage;
-
+        const needCap=storage.store.getCapacity() *percent;
+        console.log(creep.room.name+"|"+storage.store.getUsedCapacity(RESOURCE_ENERGY)+"/"+needCap);
+       
 		// Ελέγχουμε αν υπάρχει Storage και αν έχει ελεύθερο χώρο
-		if (storage && storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
-		//	creep.say("📦 Storage");
+		if (storage && (storage.store.getUsedCapacity(RESOURCE_ENERGY) <needCap)) {
+			creep.say("📦 Storage");
 			
 			if (creep.pos.inRangeTo(storage, 1)) {
 				creep.transfer(storage, RESOURCE_ENERGY);
@@ -264,12 +298,12 @@ var roleHauler = {
 			filter: (structure) => {
 				// Ψάχνουμε για Towers που τους λείπει ενέργεια
 				return (structure.structureType === STRUCTURE_TOWER) &&
-					structure.store.getFreeCapacity(RESOURCE_ENERGY) > 100; // Αν έχει χώρο για τουλάχιστον 100
+					structure.store.getFreeCapacity(RESOURCE_ENERGY) > 300; // Αν έχει χώρο για τουλάχιστον 100
 			}
 		});
 
 		if (targets && targets.length > 0) {
-		//	creep.say("🛡️ Tower");
+			creep.say("🛡️ Tower");
 			// Βρίσκουμε τον πιο κοντινό στόχο για να μεταφέρουμε ενέργεια
 			const target = creep.pos.findClosestByPath(targets);
 			if (target) {
@@ -289,3 +323,23 @@ var roleHauler = {
 }; //end of roleHauler
 
 module.exports = roleHauler;
+harvestDroppedEnergy=function(creep) {
+
+			let source = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES, {
+				filter: (resource) => resource.resourceType === RESOURCE_ENERGY &&
+					resource.amount > 100 // Συλλέγουμε μόνο αν είναι αρκετή ποσότητα
+			});
+			if (source) {
+				creep.say("🎁 Dropped");
+				if (creep.pos.inRangeTo(source,1)) {
+				    creep.pickup(source);
+				} else {
+				    creep.moveTo(source, {
+						visualizePathStyle: { stroke: '#00ff00' }, // Πράσινη διαδρομή
+						reusePath: 10
+					}); 
+				}
+            	return true;
+			}
+			return false;
+} // end of harvestDropEnergy

@@ -170,7 +170,7 @@ const respawController = {
             const constructionSites = currentSpawn.room.find(FIND_CONSTRUCTION_SITES);
             // Ελέγχουμε αν υπάρχει κάτι για χτίσιμο ΠΡΙΝ φτιάξουμε builder
             if(constructionSites.length >0 || builders.length===1){
-                result = this.createNewBuilder(currentSpawn,rcl,roomName);
+                result = this.createNewBuilder(currentSpawn,rcl,roomName,1200);
             }
         }
         

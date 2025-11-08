@@ -19,8 +19,10 @@ module.exports.loop = function () {
     if (!Memory.rooms) {
         Memory.rooms = {};
         console.log("Memory.rooms αρχικοποιήθηκε.");
+        
     }
     if (!Memory.rooms.E25S7.controllerLink) {
+        
         // Τοποθετεί το link που βρίσκεται δίπλα στο controller
        Memory.rooms.E25S7.controllerLink="69050d532340f4c09a643cdd";
     }
@@ -32,6 +34,7 @@ module.exports.loop = function () {
         // Αρχικοποίηση Memory για το συγκεκριμένο δωμάτιο (Αν δεν γίνει ήδη στον Planner)
         if (!Memory.rooms[roomName]) {
              Memory.rooms[roomName] = {};
+             Memory.rooms.populationMax=respawManager.getDefaultPopulation();
         }
         if(Game.rooms[roomName].controller.my) {
             // 3. Εκτέλεση Λογικής Δωματίου
@@ -107,7 +110,7 @@ checkLink=function(roomName) {
     //var controllerLink = Game.getObjectById("69050d532340f4c09a643cdd");
     //console.log(Memory.rooms[roomName].controllerLink);
     var controllerLink=Game.getObjectById(Memory.rooms["E25S7"].controllerLink);
-    if (!controllerLink) { 
+    if (!controllerLink ) { 
         console.log("No controllerLinkFound)");
         return;
         

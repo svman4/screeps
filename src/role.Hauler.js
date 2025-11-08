@@ -39,7 +39,7 @@ var roleHauler = {
 			// 2.2. Προτεραιότητα 2: Γέμισμα Spawns/Extensions (Αναπαραγωγή Creeps)
 			if (this.fillStorage(creep,0.5) === true) { return; }
             if (this.fillLab(creep,1) === true) { return; }
-            if (this.fillTerminal(creep,0.3) === true) { return; }
+            if (this.fillTerminal(creep,0.15) === true) { return; }
             if (this.fillStorage(creep,1) === true) { return; }
 			// 2.4. Προτεραιότητα 4: Κατασκευή Construction Sites (Αν υπάρχει πλεονάζουσα ενέργεια)
      	//		if (this.fixConstructionSites(creep) === true) { return; }
@@ -109,6 +109,7 @@ var roleHauler = {
 	} // end of run
 	,
 	fillTerminal:function(creep,percentOfCapacity) { 
+	    
 	    const terminal=creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {
 	        filter: (structure) => {
 				// Ψάχνουμε για Extensions Ή Spawns με ελεύθερο χώρο
@@ -119,8 +120,11 @@ var roleHauler = {
 	    );
 	    
 	    if (terminal) {
-	        
-				creep.say("terminal");
+	            const needCapacity=percentOfCapacity*terminal.store.getCapacity();
+	            if(!(terminal.store.getFreeCapacity()<needCapacity)){
+	                return false;
+	            }
+		    		creep.say("terminal");
 				if (creep.pos.inRangeTo(terminal,1) ) {
 				    creep.transfer(terminal, RESOURCE_ENERGY);
 				} else {
@@ -165,6 +169,7 @@ var roleHauler = {
 	harvestFromLink:function(creep,link) { 
 	   	/** @type {StructureLink} */
 	   	const controllerLink = Game.getObjectById(link);
+	   	
     	// Ελέγχουμε αν το Link υπάρχει και αν έχει τουλάχιστον 200 ενέργεια για να αξίζει το withdraw
 	   	if (controllerLink && controllerLink.store.getUsedCapacity(RESOURCE_ENERGY) >= 200) { 
 	       	creep.say("Link"); 
@@ -191,7 +196,7 @@ var roleHauler = {
         const target= creep.pos.findClosestByPath(FIND_CONSTRUCTION_SITES);
 		if (target.length) {
 			creep.say("🛠️ Build");
-		    if( creep.pos.inRangeTo(target,2) ) {
+		    if( creep.pos.inRangeTo(target,3) ) {
 		        creep.build(target);
 		    } else {
 		        creep.moveTo(target, { visualizePathStyle: { stroke: '#ffffff' } }); // Λευκή διαδρομή για κατασκευή
@@ -210,7 +215,7 @@ var roleHauler = {
 		//creep.say("⏫ Upgr");
 		// Αν είναι εντός εμβέλειας (range 3), κάνει upgrade
 		const controller=Game.rooms[creep.memory.homeRoom].controller;
-		if (controller) { 
+		if (controller ) { 
 		    
 		    if (creep.pos.inRangeTo(controller, 2)) {
 			    creep.upgradeController(controller);
@@ -233,7 +238,7 @@ var roleHauler = {
 	fillStorage: function(creep,percent) {
 		const storage = creep.room.storage;
         const needCap=storage.store.getCapacity() *percent;
-        console.log(creep.room.name+"|"+storage.store.getUsedCapacity(RESOURCE_ENERGY)+"/"+needCap);
+        //console.log(creep.room.name+"|"+storage.store.getUsedCapacity(RESOURCE_ENERGY)+"/"+needCap);
        
 		// Ελέγχουμε αν υπάρχει Storage και αν έχει ελεύθερο χώρο
 		if (storage && (storage.store.getUsedCapacity(RESOURCE_ENERGY) <needCap)) {

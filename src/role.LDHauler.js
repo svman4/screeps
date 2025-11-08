@@ -126,15 +126,16 @@ var LDHauler = {
 	} // end of gotoRemoteRoom()
 	,findAndCollect:function(creep) {
 	    
-			source = creep.pos.findClosestByPath(FIND_STRUCTURES, {
+			const source = creep.pos.findClosestByPath(FIND_STRUCTURES, {
                 filter: (structure) => {
                     // Ψάχνουμε δομές που έχουν αποθηκευμένη ενέργεια
-                    return (structure.structureType == STRUCTURE_CONTAINER ||
+                    return (structure.structureType === STRUCTURE_CONTAINER ||
                             
-                            structure.structureType == STRUCTURE_LINK) 
+                            structure.structureType === STRUCTURE_LINK) 
                            structure.store.getUsedCapacity(RESOURCE_ENERGY) >200;
                 }
             });
+            
             if(source) {
                 if ( creep.pos.inRangeTo(source,1)) {
                     creep.withdraw(source, RESOURCE_ENERGY);

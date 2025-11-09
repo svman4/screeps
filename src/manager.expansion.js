@@ -15,7 +15,7 @@ const expansionManager = {
             
          //   Example of how you might request a claimer from the spawn manager:
             //This requires coordination with the spawn manager to handle a 'claimer' request.
-            Game.spawns['Spawn1'].memory.spawnQueue.push('claimer');
+           // Game.spawns['Spawn1'].memory.spawnQueue.push('claimer');
         }        
     } // end of run
 }; // end of expasionManager

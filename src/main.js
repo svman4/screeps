@@ -5,9 +5,12 @@ var constructionManager = require('manager.construction');
 var expansionManager = require('manager.expansion');
 var logisticsManager = require('manager.logistics');
 var roleManager = require('manager.role');
-
+const debug=true;
 // Βοηθητική συνάρτηση για οπτική πληροφόρηση
 function showRoomInfo(room) {
+    if (!debug) {
+        return;
+    }
     const visual = new RoomVisual(room.name);
     const creeps = room.find(FIND_MY_CREEPS);
     
@@ -78,7 +81,7 @@ module.exports.loop = function () {
             }
             
              //Οπτική πληροφόρηση
-             if (Game.time % 5 === 0) {
+             if (Game.time % 1 === 0) {
                  showRoomInfo(room);
              }
         }

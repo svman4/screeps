@@ -25,7 +25,7 @@ const constructionManager = {
         const constructionSites = room.find(FIND_CONSTRUCTION_SITES);
         
         // Περιορισμός ταυτόχρονων construction sites
-        if (constructionSites.length >= 5) return;
+        if (constructionSites.length >= 2) return;
         
         // Κατασκευή ανά RCL level
         switch(rcl) {

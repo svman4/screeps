@@ -14,26 +14,25 @@
 // ΠΑΡΑΜΕΤΡΟΙ ΣΥΣΤΗΜΑΤΟΣ - ΕΔΩ ΑΛΛΑΖΟΥΜΕ ΤΙΣ ΡΥΘΜΙΣΕΙΣ
 // ===========================================
 
-// Μέγιστος αριθμός creeps ανά ρόλο
 const POPULATION_LIMITS = {
-    STATIC_HARVESTER: 2,    // 1 για κάθε πηγή (αυτόματος υπολογισμός)
-    SIMPLE_HARVESTER: 0,    // Για έκτακτη ανάγκη όταν λείπει ενέργεια
-    HAULER: 3,              // Μεταφέρουν ενέργεια από harvesters σε spawn & extensions
-    UPGRADER: 2,            // Αναβαθμίζουν τον controller
-    BUILDER: 3,             // Χτίζουν structures
-    LD_HAULER: 0,           // Long Distance Haulers (για μακρινά δωμάτια)
-    LD_HARVESTER: 0         // Long Distance Harvesters (για μακρινά δωμάτια)
+    STATIC_HARVESTER: 2,
+    SIMPLE_HARVESTER: 3,    // ΠΡΟΣΘΗΚΗ: Τουλάχιστον 1 simple harvester
+    HAULER: 2,
+    UPGRADER: 2,
+    BUILDER: 3,
+    LD_HAULER: 0,
+    LD_HARVESTER: 0
 };
 
 // Όλοι οι ρόλοι που υποστηρίζει το σύστημα
 const ROLES = {
-    STATIC_HARVESTER: 'staticHarvester',    // Σταθερά mining σε συγκεκριμένη πηγή
-    SIMPLE_HARVESTER: 'simpleHarvester',    // Απλός harvester για έκτακτη ανάγκη
-    HAULER: 'hauler',                 // Μεταφορά ενέργειας
-    UPGRADER: 'upgrader',             // Αναβάθμιση controller
-    BUILDER: 'staticBuilder',               // Χτίσιμο structures
-    LD_HARVESTER: 'LDHarvester',            // Mining σε μακρινά δωμάτια
-    LD_HAULER: 'LDHauler'                   // Μεταφορά από μακρινά δωμάτια
+    STATIC_HARVESTER: 'staticHarvester',
+    SIMPLE_HARVESTER: 'simpleHarvester',  // ΠΡΟΣΘΗΚΗ
+    HAULER: 'hauler',
+    UPGRADER: 'upgrader',
+    BUILDER: 'staticBuilder',
+    LD_HARVESTER: 'LDHarvester',
+    LD_HAULER: 'LDHauler'
 };
 
 // ===========================================
@@ -179,51 +178,56 @@ const respawController = {
     decideAndSpawnCreep: function(spawn, roomName, population) {
     const room = spawn.room;
     const rcl = room.controller ? room.controller.level : 1;
-
+    
     console.log(`🤔 Ελέγχω αν χρειάζεται νέο creep στο ${roomName} (RCL: ${rcl})`);
-
+    
     // ΝΕΑ ΣΕΙΡΑ ΠΡΟΤΕΡΑΙΟΤΗΤΑΣ:
-
-    // 1. STATIC HARVESTERS (αλλά μόνο αν δεν έχουμε ήδη πολλούς)
+    // 0. SIMPLE HARVESTERS (ΥΨΗΛΗ ΠΡΟΤΕΡΑΙΟΤΗΤΑ ΣΤΗΝ ΑΡΧΗ)
+    if (this.needSimpleHarvester(room, population)) {
+        console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 0: Χρειάζεται Simple Harvester`);
+       
+        return this.createSimpleHarvester(spawn, roomName);
+    }
+    
+    // 1. STATIC HARVESTERS
     if (this.needStaticHarvester(room, population)) {
-        // Εάν έχουμε ήδη τουλάχιστον 2 harvesters, ελέγχουμε αν χρειαζόμαστε haulers πρώτα
-        if (population[ROLES.STATIC_HARVESTER] >= 2 && this.needHauler(room, population)) {
-            console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 1.5: Χρειάζεται Hauler πριν από περισσότερους Harvesters`);
-            return this.createHauler(spawn, roomName, rcl);
+        
+        if (this.needBuilder(room, population)) {
+           console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 1.5: Χρειάζεται Builder`);
+           return this.createBuilder(spawn, roomName, rcl);
         }
+        
+        
         console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 1: Χρειάζεται Static Harvester`);
         return this.createStaticHarvester(spawn, roomName);
     }
-
-    // 2. HAULERS (ΜΕΤΑΦΟΡΑ ΕΝΕΡΓΕΙΑΣ) - ΥΨΗΛΗ ΠΡΟΤΕΡΑΙΟΤΗΤΑ
+    
+    // 2. HAULERS (ΜΕΤΑΦΟΡΑ ΕΝΕΡΓΕΙΑΣ)
     if (this.needHauler(room, population)) {
+        if (this.needBuilder(room, population)) {
+           console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 2.5: Χρειάζεται Builder`);
+           return this.createBuilder(spawn, roomName, rcl);
+        }
         console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 2: Χρειάζεται Hauler`);
         return this.createHauler(spawn, roomName, rcl);
     }
-
-    // 3. UPGRADERS (ΑΝΑΒΑΘΜΙΣΗ CONTROLLER)
+    
+    // 3. UPGRADERS
     if (this.needUpgrader(population)) {
+        if (this.needBuilder(room, population)) {
+           console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 3.5: Χρειάζεται Builder`);
+           return this.createBuilder(spawn, roomName, rcl);
+        }
         console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 3: Χρειάζεται Upgrader`);
         return this.createUpgrader(spawn, roomName, rcl);
     }
-
-    // 4. BUILDERS (ΧΤΙΣΙΜΟ)
+    
+    // 4. BUILDERS
     if (this.needBuilder(room, population)) {
         console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 4: Χρειάζεται Builder`);
         return this.createBuilder(spawn, roomName, rcl);
     }
-
-    // 5. LONG DISTANCE HAULERS/HARVESTERS (ΜΑΚΡΙΝΑ ΔΩΜΑΤΙΑ)
-    if (this.needLongDistanceTeam(population, rcl)) {
-        console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 5: Χρειάζεται Long Distance Team`);
-        // Πρώτα haulers, μετά harvesters
-        if (population[ROLES.LD_HAULER] < POPULATION_LIMITS.LD_HAULER) {
-            return this.createLongDistanceHauler(spawn, roomName);
-        } else {
-            return this.createLongDistanceHarvester(spawn, roomName);
-        }
-    }
-
+    
     console.log(`✅ Όλα τα creeps είναι σε καλή κατάσταση. Δεν χρειάζεται νέο creep.`);
 },
     
@@ -244,17 +248,33 @@ const respawController = {
         return current < maxNeeded;
     },
     
-    /**
-     * ΕΛΕΓΧΟΣ: Χρειαζόμαστε Simple Harvester (έκτακτη ανάγκη);
-     * Κανόνας: Μόνο αν έχουμε πολύ λίγη ενέργεια
-     */
-    needSimpleHarvester: function(population) {
-        const current = population[ROLES.SIMPLE_HARVESTER];
-        const maxAllowed = POPULATION_LIMITS.SIMPLE_HARVESTER;
-        
-        console.log(`   🔍 Simple Harvesters: ${current}/${maxAllowed}`);
-        return current < maxAllowed;
-    },
+   /**
+ * ΕΛΕΓΧΟΣ: Χρειαζόμαστε Simple Harvester (έκτακτη ανάγκη);
+ */
+needSimpleHarvester: function(room, population) {
+    const current = population[ROLES.SIMPLE_HARVESTER];
+    const maxAllowed = POPULATION_LIMITS.SIMPLE_HARVESTER;
+    
+    // Εάν έχουμε ήδη τον μέγιστο αριθμό, δεν χρειαζόμαστε άλλο
+    if (current >= maxAllowed) {
+        return false;
+    }
+    
+    // ΕΛΕΓΧΟΣ: Αν το spawn έχει πολύ λίγη ενέργεια (< 200) 
+    // και δεν υπάρχουν haulers ή static harvesters ακόμα
+    const roomEnergy = room.energyAvailable;
+    const hasEnoughEnergy = roomEnergy >= 200;
+    
+    // Αν έχουμε πολύ λίγη ενέργεια και δεν έχουμε haulers, χρειαζόμαστε simple harvester
+    const needsEmergencyEnergy = !hasEnoughEnergy && population[ROLES.HAULER] === 0;
+    
+    // Ή αν δεν έχουμε καθόλου harvesters ακόμα
+    const noHarvesters = population[ROLES.STATIC_HARVESTER] === 0 && current === 0;
+    
+    console.log(`   🔍 Simple Harvesters: ${current}/${maxAllowed}, Room Energy: ${roomEnergy}, Needs Emergency: ${needsEmergencyEnergy}, No Harvesters: ${noHarvesters}`);
+    
+    return needsEmergencyEnergy || noHarvesters;
+},
     
     /**
      * ΕΛΕΓΧΟΣ: Χρειαζόμαστε Hauler;
@@ -397,29 +417,30 @@ needHauler: function(room, population) {
     },
     
     /**
-     * ΔΗΜΙΟΥΡΓΙΑ SIMPLE HARVESTER
-     * Σκοπός: Έκτακτη ανάγκη, απλό mining
-     */
-    createSimpleHarvester: function(spawn, roomName) {
-        const body = [WORK, CARRY, MOVE]; // Βασικό body
-        const creepName = `SimpleHarvester_${Game.time}`;
-        const memory = {
-            role: ROLES.SIMPLE_HARVESTER,
-            homeRoom: roomName,
-            working: false
-        };
-        
-        console.log(`🛠️ Δημιουργία Simple Harvester: ${creepName}`);
-        const result = spawn.spawnCreep(body, creepName, { memory: memory });
-        
-        if (result === OK) {
-            console.log(`✅ Επιτυχής έναρξη δημιουργίας Simple Harvester: ${creepName}`);
-        } else {
-            console.log(`❌ Σφάλμα δημιουργίας Simple Harvester: ${result}`);
-        }
-        
-        return result === OK;
-    },
+ * ΔΗΜΙΟΥΡΓΙΑ SIMPLE HARVESTER
+ * Σκοπός: Έκτακτη ανάγκη, απλό mining και μεταφορά
+ */
+createSimpleHarvester: function(spawn, roomName) {
+    // Απλό body που μπορεί να μαζέψει και να μεταφέρει ενέργεια
+    const body = [WORK, CARRY, MOVE]; 
+    const creepName = `SimpleHarvester_${Game.time}`;
+    const memory = {
+        role: ROLES.SIMPLE_HARVESTER,
+        homeRoom: roomName,
+        working: false
+    };
+    
+    console.log(`🛠️ Δημιουργία Simple Harvester: ${creepName}`);
+    const result = spawn.spawnCreep(body, creepName, { memory: memory });
+    
+    if (result === OK) {
+        console.log(`✅ Επιτυχής έναρξη δημιουργίας Simple Harvester: ${creepName}`);
+    } else {
+        console.log(`❌ Σφάλμα δημιουργίας Simple Harvester: ${result}`);
+    }
+    
+    return result === OK;
+},
     
     /**
      * ΔΗΜΙΟΥΡΓΙΑ HAULER

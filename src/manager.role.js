@@ -6,6 +6,9 @@ const roleManager = {
                 case 'harvester':
                     this.runHarvester(creep);
                     break;
+                case "simpleHarvester":
+                    this.runSimpleHarvester(creep);
+                    break;
                 case 'upgrader':
                     this.runUpgrader(creep);
                     break;
@@ -143,6 +146,47 @@ const roleManager = {
         }
     }
     ,
+    runSimpleHarvester: function(creep) {
+    // State management
+    if (creep.memory.working && creep.store[RESOURCE_ENERGY] === 0) {
+        creep.memory.working = false;
+        creep.say('🔄 harvest');
+    }
+    if (!creep.memory.working && creep.store.getFreeCapacity() === 0) {
+        creep.memory.working = true;
+        creep.say('🚚 deliver');
+    }
+
+    if (creep.memory.working) {
+        // Παράδοση ενέργειας
+        const targets = creep.room.find(FIND_MY_STRUCTURES, {
+            filter: (structure) => {
+                return (structure.structureType === STRUCTURE_EXTENSION ||
+                        structure.structureType === STRUCTURE_SPAWN ||
+                        structure.structureType === STRUCTURE_TOWER) && 
+                        structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
+            }
+        });
+        
+        if (targets.length > 0) {
+            if (creep.transfer(targets[0], RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+                creep.moveTo(targets[0], {visualizePathStyle: {stroke: '#ffffff'}});
+            }
+        } else {
+            // Αν δεν υπάρχουν targets, πήγαινε κοντά στο spawn
+            const spawn = creep.room.find(FIND_MY_SPAWNS)[0];
+            if (spawn) {
+                creep.moveTo(spawn);
+            }
+        }
+    } else {
+        // Σύλληψη ενέργειας
+        const source = creep.pos.findClosestByPath(FIND_SOURCES_ACTIVE);
+        if (creep.harvest(source) === ERR_NOT_IN_RANGE) {
+            creep.moveTo(source, {visualizePathStyle: {stroke: '#ffaa00'}});
+        }
+    }
+},
     runUpgrader: function(creep) {
         if (creep.memory.working && creep.store[RESOURCE_ENERGY] === 0) {
             creep.memory.working = false;

@@ -333,12 +333,16 @@ const logisticsManager = {
                     this.completeTask(creep);
                     return;
                 }
-                if (creep.pickup(source) === ERR_NOT_IN_RANGE) {
-                    creep.moveTo(source, {
+                if (creep.pos.inRangeTo(source,1 )) {
+                    creep.pickup(source);
+                } else { 
+                        creep.moveTo(source, {
                         visualizePathStyle: { stroke: '#ffaa00' },
                         reusePath: 6
                     });
                 }
+                
+                
                 break;
 
             case 'container':
@@ -348,15 +352,18 @@ const logisticsManager = {
                     this.completeTask(creep);
                     return;
                 }
-                if (creep.withdraw(source, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+                if (creep.pos.inRangeTo(source,1)) {
+                    creep.withdraw(source, RESOURCE_ENERGY);
+                } else { 
                     creep.moveTo(source, {
                         visualizePathStyle: { stroke: '#ffaa00' },
                         reusePath: 6
                     });
                 }
+                
                 break;
         }
-    },
+    }, // collectFromAssignedSource
 
     /**
      * ΠΑΡΑΔΟΣΗ ΕΝΕΡΓΕΙΑΣ
@@ -403,12 +410,22 @@ const logisticsManager = {
         });
         targets.push(...spawns);
         
+         
+        
         // Προτεραιότητα 2: Extensions
         const extensions = room.find(FIND_MY_STRUCTURES, {
             filter: s => s.structureType === STRUCTURE_EXTENSION && 
                          s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
         });
         targets.push(...extensions);
+        // Προτεραιότητα 2: Controller Container (αν energy < 500)
+        if (room.memory.controllerContainerId) {
+            const controllerContainer = Game.getObjectById(room.memory.controllerContainerId);
+            if (controllerContainer && controllerContainer.store.getFreeCapacity(RESOURCE_ENERGY) > 0 && 
+                controllerContainer.store[RESOURCE_ENERGY] < 1500) {
+                targets.push(controllerContainer);
+            }
+        }
         
         // Προτεραιότητα 3: Towers
         const towers = room.find(FIND_MY_STRUCTURES, {

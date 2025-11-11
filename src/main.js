@@ -37,7 +37,8 @@ function showRoomInfo(room) {
         const controllerInfo = `RCL: ${room.controller.level} Progress: ${room.controller.progress}/${room.controller.progressTotal}`;
         visual.text(controllerInfo, 1, 3, { align: 'left', color: '#00ff00' });
     }
-
+    const constructionText=`construction sites :${room.find(FIND_CONSTRUCTION_SITES).length}`;
+    visual.text(constructionText,1,4,{ align: 'left', color: '#ffffff' });
     // Πληροφορίες ουράς logistics (αν υπάρχουν)
     if (Memory.energyQueue && Memory.energyQueue[room.name]) {
         logisticsManager.showQueueInfo(room);
@@ -45,13 +46,14 @@ function showRoomInfo(room) {
 }
 
 module.exports.loop = function () {
+     var startCpu = Game.cpu.getUsed();
     // Memory Cleanup
     for (const name in Memory.creeps) {
         if (!Game.creeps[name]) {
             delete Memory.creeps[name];
         }
     }
-    
+     try {
     // Αρχικοποίηση Memory
     if (!Memory.rooms) {
         Memory.rooms = {};
@@ -62,17 +64,17 @@ module.exports.loop = function () {
         const room = Game.rooms[roomName];
         
         if (room.controller && room.controller.my) {
-            console.log(`🏠 Επεξεργασία δωματίου: ${roomName} (RCL: ${room.controller.level})`);
+        //    console.log(`🏠 Επεξεργασία δωματίου: ${roomName} (RCL: ${room.controller.level})`);
             
             // HIGH PRIORITY - Πάντα τρέχουν
             defenceManager.run(roomName);
             spawnManager.run(roomName);
-            logisticsManager.run(roomName);
+            logisticsManager.run(roomName,debug);
             roleManager.run();
             
             // MEDIUM PRIORITY - Τρέχουν πιο σπάνια
-            if (Game.time % 10 === 0) {
-                constructionManager.run(roomName);
+            if (Game.time % 20 === 0) {
+                constructionManager.run(roomName,debug);
             }
             
             // LOW PRIORITY - Μόνο με υψηλό CPU
@@ -81,9 +83,19 @@ module.exports.loop = function () {
             }
             
              //Οπτική πληροφόρηση
-             if (Game.time % 1 === 0) {
+             if (debug===true && Game.time % 5 === 0 ) {
                  showRoomInfo(room);
              }
         }
+    }
+    if (Game.time % 10 === 0) {
+        var endCpu = Game.cpu.getUsed();
+    var cpuUsed = endCpu - startCpu;
+    
+        console.log(`CPU Bucket: ${Game.cpu.bucket} | Creeps: ${Object.keys(Game.creeps).length} |cpusUser: ${cpuUsed}`);
+    }
+     } catch (error) {
+        console.log(`🔴 ΣΦΑΛΜΑ: ${error.message}`);
+        console.log(`📋 Stack: ${error.stack}`);
     }
 };

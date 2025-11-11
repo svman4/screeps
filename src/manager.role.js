@@ -15,7 +15,7 @@ const roleManager = {
                 case 'staticHarvester':
                     this.runStaticHarvester(creep);
                     break;
-                case 'staticBuilder': // Add case for staticBuilder
+                case 'builder': // Add case for staticBuilder
                     this.runBuilder(creep);
                     break;
                 // Hauler, Builder, Repairer are handled by their respective managers
@@ -26,10 +26,13 @@ const roleManager = {
     runHarvester: function(creep) {
         // Simple harvester: harvest and drop energy for haulers
         const source = creep.pos.findClosestByPath(FIND_SOURCES_ACTIVE);
-        if (creep.harvest(source) === ERR_NOT_IN_RANGE) {
+        if (creep.pos.inRangeTo(source,1)) {
+            creep.harvest(source);
+        } else {
             creep.moveTo(source, { visualizePathStyle: { stroke: '#ffaa00' } });
         }
-    },
+        
+    }, // end of runHarvester
     runBuilder: function(creep) {
         // State management
         if (creep.memory.building && creep.store[RESOURCE_ENERGY] === 0) {
@@ -53,19 +56,43 @@ const roleManager = {
      */
     buildStructures: function(creep) {
         // Προτεραιότητα 1: Construction sites
-        const constructionSites = creep.room.find(FIND_CONSTRUCTION_SITES);
+        const constructionSites = creep.room.find(FIND_CONSTRUCTION_SITES,{
+            filter:structure=>(structure.structureType!==STRUCTURE_ROAD)
+        });
         
-        if (constructionSites.length > 0) {
+        if (constructionSites && constructionSites.length > 0) {
             const closestSite = creep.pos.findClosestByPath(constructionSites);
-            if (creep.build(closestSite) === ERR_NOT_IN_RANGE) {
+            
+            if (closestSite&&  creep.pos.inRangeTo(closestSite,3)) {
+                creep.build(closestSite);
+                
+            } else {
                 creep.moveTo(closestSite, {
                     visualizePathStyle: { stroke: '#ffffff' },
                     reusePath: 8
-                });
+                });                
             }
             return;
         }
 
+        // Αν δεν υπάρχουν κτίρια, προχωράει στην κατασκευή δρόμων
+        const constructionRoad = creep.room.find(FIND_CONSTRUCTION_SITES,{
+            filter:structure=>(structure)!==STRUCTURE_ROAD
+        });
+        
+        if (constructionRoad && constructionRoad.length > 0) {
+            const closestSiteRoad = creep.pos.findClosestByPath(constructionRoad);
+            if (creep.pos.inRangeTo(closestSiteRoad,3)) {
+                creep.build(closestSiteRoad)
+            } else {
+                creep.moveTo(closestSiteRoad, {
+                    visualizePathStyle: { stroke: '#ffffff' },
+                    reusePath: 8
+                });
+            }
+
+            return;
+        }
         // Προτεραιότητα 2: Επισκευή κατεστραμμένων δομών
         const damagedStructures = creep.room.find(FIND_STRUCTURES, {
             filter: structure => structure.hits < structure.hitsMax * 0.8 &&
@@ -75,27 +102,35 @@ const roleManager = {
 
         if (damagedStructures.length > 0) {
             const closestDamaged = creep.pos.findClosestByPath(damagedStructures);
-            if (creep.repair(closestDamaged) === ERR_NOT_IN_RANGE) {
+            
+            if (creep.pos.inRangeTo(closestDamaged,3)) { 
+                creep.repair(closestDamaged);
+            }else {
                 creep.moveTo(closestDamaged, {
                     visualizePathStyle: { stroke: '#ffaa00' },
                     reusePath: 8
                 });
+                
+                
             }
+            
             return;
         }
 
         // Προτεραιότητα 3: Αναβάθμιση controller αν δεν υπάρχει δουλειά
-        if (creep.upgradeController(creep.room.controller) === ERR_NOT_IN_RANGE) {
+        if (creep.pos.inRangeTo(creep.room.controller,3)) {
+            creep.upgradeController(creep.room.controller);
+        } else { 
             creep.moveTo(creep.room.controller, {
                 visualizePathStyle: { stroke: '#00ff00' },
                 reusePath: 8
             });
-        }
-    },
+            
+        }    
 
-    /**
-     * ΛΗΨΗ ΕΝΕΡΓΕΙΑΣ ΓΙΑ BUILDERS
-     */
+    }, // end of buildStructures
+
+    
     getEnergy: function(creep) {
         // Προτεραιότητα 1: Containers με ενέργεια
         const containers = creep.room.find(FIND_STRUCTURES, {
@@ -107,29 +142,36 @@ const roleManager = {
 
         if (containers.length > 0) {
             const closestContainer = creep.pos.findClosestByPath(containers);
-            if (creep.withdraw(closestContainer, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+            if (creep.pos.inRangeTo(closestContainer,1)) {
+                creep.withdraw(closestContainer, RESOURCE_ENERGY);
+            } else {
                 creep.moveTo(closestContainer, {
                     visualizePathStyle: { stroke: '#ffaa00' },
                     reusePath: 8
                 });
             }
+            
             return;
         }
 
         // Προτεραιότητα 2: Dropped energy
         const droppedEnergy = creep.room.find(FIND_DROPPED_RESOURCES, {
-            filter: resource => resource.resourceType === RESOURCE_ENERGY && resource.amount > 50
+            filter: resource => resource.resourceType === RESOURCE_ENERGY && resource.amount > 100
         });
 
         if (droppedEnergy.length > 0) {
             
             const closestEnergy = creep.pos.findClosestByPath(droppedEnergy);
-            if (creep.pickup(closestEnergy) === ERR_NOT_IN_RANGE) {
+            creep.say("Drop");
+            if (creep.pos.inRangeTo(closestEnergy,1)) {
+                creep.pickup(closestEnergy);
+            } else {
                 creep.moveTo(closestEnergy, {
                     visualizePathStyle: { stroke: '#ffaa00' },
                     reusePath: 8
-                });
+                });                
             }
+            
             return;
         }
         
@@ -137,11 +179,13 @@ const roleManager = {
         const sources = creep.room.find(FIND_SOURCES_ACTIVE);
         if (sources.length > 0) {
             const closestSource = creep.pos.findClosestByPath(sources);
-            if (creep.harvest(closestSource) === ERR_NOT_IN_RANGE) {
+            if (creep.pos.inRangeTo(closestSource,1) ) {
+                creep.harvest(closestSource);
+            } else {
                 creep.moveTo(closestSource, {
                     visualizePathStyle: { stroke: '#ffaa00' },
                     reusePath: 8
-                });
+                });                
             }
         }
     }
@@ -220,10 +264,11 @@ const roleManager = {
         const source=Game.getObjectById(creep.memory.sourceId);
         let containerId=creep.memory.containerId;
         if (!containerId) {
-            //creep.say("No container");
-            const containers=source.pos.findInRange(FIND_MY_STRUCTURES,2,{ 
+            creep.say("!Container");
+            const containers=source.pos.findInRange(FIND_STRUCTURES,2,{ 
                 filter: (s)=>(s.structureType===STRUCTURE_CONTAINER)
             });
+            
             if (containers && containers.length>0) {
                 creep.memory.containerId=containers[0].id;
             }
@@ -246,7 +291,7 @@ const roleManager = {
             }
         }
         creep.harvest(source);
-    }, // end of runStaticHarvester()
+    } // end of runStaticHarvester()
 
     
 };

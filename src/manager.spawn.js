@@ -15,22 +15,21 @@
 // ===========================================
 
 const POPULATION_LIMITS = {
-    STATIC_HARVESTER: 2,
-    SIMPLE_HARVESTER: 3,    // ΠΡΟΣΘΗΚΗ: Τουλάχιστον 1 simple harvester
-    HAULER: 2,
-    UPGRADER: 2,
-    BUILDER: 3,
-    LD_HAULER: 0,
-    LD_HARVESTER: 0
-};
-
+            STATIC_HARVESTER: 2,
+            SIMPLE_HARVESTER: 2,    // ΠΡΟΣΘΗΚΗ: Τουλάχιστον 1 simple harvester
+            HAULER: 4,
+            UPGRADER: 2,
+            BUILDER: 2,
+            LD_HAULER: 0,
+            LD_HARVESTER: 0
+        };
 // Όλοι οι ρόλοι που υποστηρίζει το σύστημα
 const ROLES = {
     STATIC_HARVESTER: 'staticHarvester',
     SIMPLE_HARVESTER: 'simpleHarvester',  // ΠΡΟΣΘΗΚΗ
     HAULER: 'hauler',
     UPGRADER: 'upgrader',
-    BUILDER: 'staticBuilder',
+    BUILDER: 'builder',
     LD_HARVESTER: 'LDHarvester',
     LD_HAULER: 'LDHauler'
 };
@@ -68,13 +67,35 @@ const respawController = {
             return;
         }
         
+        if (!Game.rooms[roomName].memory.populationLimits) {     
+            this.setPopulationLimits(roomName);
+        }
+        const populationMax=Game.rooms[roomName].memory.populationLimits;
+        
+        
         // ΒΗΜΑ 4: ΑΝΑΛΥΣΗ ΤΟΥ ΤΡΕΧΟΝΤΟΣ ΠΛΗΘΥΣΜΟΥ
-        const population = this.analyzePopulation(roomName);
+        const population = this.analyzePopulation(roomName,false);
         
         // ΒΗΜΑ 5: ΕΛΕΓΧΟΣ ΑΝΑΓΚΗΣ ΔΗΜΙΟΥΡΓΙΑΣ ΚΑΙ ΔΗΜΙΟΥΡΓΙΑ CREEP
-        this.decideAndSpawnCreep(spawn, roomName, population);
+        this.decideAndSpawnCreep(spawn, roomName, population,populationMax);
     }, // end of run
-    
+    setPopulationLimits:function(roomName) { 
+        console.log("Initialize population on Room "+roomName);
+        const room=Game.rooms[roomName];
+        var populationLimits={};
+        const sourceCount=room.find(FIND_SOURCES).length;
+        populationLimits['SIMPLE_HARVESTER']=2;
+        populationLimits['STATIC_HARVESTER']=sourceCount;
+        populationLimits['HAULER']=sourceCount;
+        populationLimits['UPGRADER']=3;
+        populationLimits['BUILDER']=3;
+        populationLimits['LD_HARVESTER']=0;
+        populationLimits['LD_HAULER']=0;
+        room.memory.populationLimits=populationLimits;
+        
+        
+    } //end of setPopulationLimits
+    ,
     /**
      * ΒΗΜΑ 2: ΚΑΘΑΡΙΣΜΟΣ ΜΝΗΜΗΣ ΝΕΚΡΩΝ CREEPS
      * Διαγράφει τη μνήμη creeps που έχουν πεθάνει
@@ -144,7 +165,7 @@ const respawController = {
      * ΒΗΜΑ 4: ΑΝΑΛΥΣΗ ΤΟΥ ΤΡΕΧΟΝΤΑ ΠΛΗΘΥΣΜΟΥ ΣΤΟ ΔΩΜΑΤΙΟ
      * Μετράει πόσα creeps υπάρχουν από κάθε ρόλο
      */
-    analyzePopulation: function(roomName) {
+    analyzePopulation: function(roomName,debug=false) {
         const room = Game.rooms[roomName];
         const allCreeps = room.find(FIND_MY_CREEPS);
         
@@ -159,15 +180,15 @@ const respawController = {
             [ROLES.LD_HAULER]: allCreeps.filter(c => c.memory.role === ROLES.LD_HAULER).length,
             total: allCreeps.length
         };
-        
-        console.log(`📊 Πληθυσμός ${roomName}: Σύνολο ${population.total} creeps`);
-        console.log(`   ├── Static Harvesters: ${population[ROLES.STATIC_HARVESTER]}`);
-        console.log(`   ├── Simple Harvesters: ${population[ROLES.SIMPLE_HARVESTER]}`);
-        console.log(`   ├── Haulers: ${population[ROLES.HAULER]}`);
-        console.log(`   ├── Upgraders: ${population[ROLES.UPGRADER]}`);
-        console.log(`   ├── Builders: ${population[ROLES.BUILDER]}`);
-        console.log(`   └── LD Harvesters/Haulers: ${population[ROLES.LD_HARVESTER]}/${population[ROLES.LD_HAULER]}`);
-        
+        if(debug===true) {
+            console.log(`📊 Πληθυσμός ${roomName}: Σύνολο ${population.total} creeps`);
+            console.log(`   ├── Static Harvesters: ${population[ROLES.STATIC_HARVESTER]}`);
+            console.log(`   ├── Simple Harvesters: ${population[ROLES.SIMPLE_HARVESTER]}`);
+            console.log(`   ├── Haulers: ${population[ROLES.HAULER]}`);
+            console.log(`   ├── Upgraders: ${population[ROLES.UPGRADER]}`);
+            console.log(`   ├── Builders: ${population[ROLES.BUILDER]}`);
+            console.log(`   └── LD Harvesters/Haulers: ${population[ROLES.LD_HARVESTER]}/${population[ROLES.LD_HAULER]}`);
+        }
         return population;
     },
     
@@ -175,16 +196,16 @@ const respawController = {
      * ΒΗΜΑ 5: ΛΗΨΗ ΑΠΟΦΑΣΗΣ ΚΑΙ ΔΗΜΙΟΥΡΓΙΑ CREEP
      * Ελέγχει ποιος ρόλος χρειάζεται και δημιουργεί αντίστοιχο creep
      */
-    decideAndSpawnCreep: function(spawn, roomName, population) {
+    decideAndSpawnCreep: function(spawn, roomName, population,populationLimit, debug=false) {
     const room = spawn.room;
     const rcl = room.controller ? room.controller.level : 1;
     
-    console.log(`🤔 Ελέγχω αν χρειάζεται νέο creep στο ${roomName} (RCL: ${rcl})`);
+    //console.log(`🤔 Ελέγχω αν χρειάζεται νέο creep στο ${roomName} (RCL: ${rcl})`);
     
     // ΝΕΑ ΣΕΙΡΑ ΠΡΟΤΕΡΑΙΟΤΗΤΑΣ:
     // 0. SIMPLE HARVESTERS (ΥΨΗΛΗ ΠΡΟΤΕΡΑΙΟΤΗΤΑ ΣΤΗΝ ΑΡΧΗ)
-    if (this.needSimpleHarvester(room, population)) {
-        console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 0: Χρειάζεται Simple Harvester`);
+    if (this.needSimpleHarvester(room, population,populationLimit)) {
+        if(debug===true) console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 0: Χρειάζεται Simple Harvester`);
        
         return this.createSimpleHarvester(spawn, roomName);
     }
@@ -193,42 +214,42 @@ const respawController = {
     if (this.needStaticHarvester(room, population)) {
         
         if (this.needBuilder(room, population)) {
-           console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 1.5: Χρειάζεται Builder`);
+           if(debug===true) console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 1.5: Χρειάζεται Builder`);
            return this.createBuilder(spawn, roomName, rcl);
         }
         
         
-        console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 1: Χρειάζεται Static Harvester`);
+        if(debug===true) console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 1: Χρειάζεται Static Harvester`);
         return this.createStaticHarvester(spawn, roomName);
     }
     
     // 2. HAULERS (ΜΕΤΑΦΟΡΑ ΕΝΕΡΓΕΙΑΣ)
     if (this.needHauler(room, population)) {
         if (this.needBuilder(room, population)) {
-           console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 2.5: Χρειάζεται Builder`);
+           if(debug===true) console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 2.5: Χρειάζεται Builder`);
            return this.createBuilder(spawn, roomName, rcl);
         }
-        console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 2: Χρειάζεται Hauler`);
+        if(debug===true) console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 2: Χρειάζεται Hauler`);
         return this.createHauler(spawn, roomName, rcl);
     }
     
     // 3. UPGRADERS
     if (this.needUpgrader(population)) {
         if (this.needBuilder(room, population)) {
-           console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 3.5: Χρειάζεται Builder`);
+           if(debug===true) console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 3.5: Χρειάζεται Builder`);
            return this.createBuilder(spawn, roomName, rcl);
         }
-        console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 3: Χρειάζεται Upgrader`);
+        if(debug===true) console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 3: Χρειάζεται Upgrader`);
         return this.createUpgrader(spawn, roomName, rcl);
     }
     
     // 4. BUILDERS
     if (this.needBuilder(room, population)) {
-        console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 4: Χρειάζεται Builder`);
+        if(debug===true) console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 4: Χρειάζεται Builder`);
         return this.createBuilder(spawn, roomName, rcl);
     }
     
-    console.log(`✅ Όλα τα creeps είναι σε καλή κατάσταση. Δεν χρειάζεται νέο creep.`);
+    if(debug===true) console.log(`✅ Όλα τα creeps είναι σε καλή κατάσταση. Δεν χρειάζεται νέο creep.`);
 },
     
     // ===========================================
@@ -244,7 +265,7 @@ const respawController = {
         const maxNeeded = sources.length;
         const current = population[ROLES.STATIC_HARVESTER];
         
-        console.log(`   🔍 Static Harvesters: ${current}/${maxNeeded} (${sources.length} πηγές)`);
+        //console.log(`   🔍 Static Harvesters: ${current}/${maxNeeded} (${sources.length} πηγές)`);
         return current < maxNeeded;
     },
     
@@ -263,7 +284,7 @@ needSimpleHarvester: function(room, population) {
     // ΕΛΕΓΧΟΣ: Αν το spawn έχει πολύ λίγη ενέργεια (< 200) 
     // και δεν υπάρχουν haulers ή static harvesters ακόμα
     const roomEnergy = room.energyAvailable;
-    const hasEnoughEnergy = roomEnergy >= 200;
+    const hasEnoughEnergy = roomEnergy >=250;
     
     // Αν έχουμε πολύ λίγη ενέργεια και δεν έχουμε haulers, χρειαζόμαστε simple harvester
     const needsEmergencyEnergy = !hasEnoughEnergy && population[ROLES.HAULER] === 0;
@@ -271,7 +292,7 @@ needSimpleHarvester: function(room, population) {
     // Ή αν δεν έχουμε καθόλου harvesters ακόμα
     const noHarvesters = population[ROLES.STATIC_HARVESTER] === 0 && current === 0;
     
-    console.log(`   🔍 Simple Harvesters: ${current}/${maxAllowed}, Room Energy: ${roomEnergy}, Needs Emergency: ${needsEmergencyEnergy}, No Harvesters: ${noHarvesters}`);
+    //console.log(`   🔍 Simple Harvesters: ${current}/${maxAllowed}, Room Energy: ${roomEnergy}, Needs Emergency: ${needsEmergencyEnergy}, No Harvesters: ${noHarvesters}`);
     
     return needsEmergencyEnergy || noHarvesters;
 },
@@ -300,7 +321,7 @@ needHauler: function(room, population) {
     // Εάν υπάρχει ενέργεια για μεταφορά ή έχουμε harvesters, χρειαζόμαστε haulers
     const needsHaulers = (droppedEnergy > 0 || containersWithEnergy > 0 || hasHarvesters) && current < maxAllowed;
 
-    console.log(`   🔍 Haulers: ${current}/${maxAllowed}, Dropped Energy: ${droppedEnergy}, Containers: ${containersWithEnergy}, Has Harvesters: ${hasHarvesters}`);
+    //console.log(`   🔍 Haulers: ${current}/${maxAllowed}, Dropped Energy: ${droppedEnergy}, Containers: ${containersWithEnergy}, Has Harvesters: ${hasHarvesters}`);
 
     return needsHaulers;
 },
@@ -312,7 +333,7 @@ needHauler: function(room, population) {
         const current = population[ROLES.UPGRADER];
         const maxAllowed = POPULATION_LIMITS.UPGRADER;
         
-        console.log(`   🔍 Upgraders: ${current}/${maxAllowed}`);
+      //  console.log(`   🔍 Upgraders: ${current}/${maxAllowed}`);
         return current < maxAllowed;
     },
     
@@ -329,7 +350,7 @@ needHauler: function(room, population) {
         const needHauler = population[ROLES.LD_HAULER] < POPULATION_LIMITS.LD_HAULER;
         const needHarvester = population[ROLES.LD_HARVESTER] < POPULATION_LIMITS.LD_HARVESTER;
         
-        console.log(`   🔍 Long Distance: Harvesters ${population[ROLES.LD_HARVESTER]}/${POPULATION_LIMITS.LD_HARVESTER}, Haulers ${population[ROLES.LD_HAULER]}/${POPULATION_LIMITS.LD_HAULER}`);
+        //console.log(`   🔍 Long Distance: Harvesters ${population[ROLES.LD_HARVESTER]}/${POPULATION_LIMITS.LD_HARVESTER}, Haulers ${population[ROLES.LD_HAULER]}/${POPULATION_LIMITS.LD_HAULER}`);
         
         return needHauler || needHarvester;
     },
@@ -346,7 +367,7 @@ needHauler: function(room, population) {
         const hasWork = constructionSites.length > 0;
         const underLimit = current < maxAllowed;
         
-        console.log(`   🔍 Builders: ${current}/${maxAllowed}, Construction Sites: ${constructionSites.length}`);
+        //console.log(`   🔍 Builders: ${current}/${maxAllowed}, Construction Sites: ${constructionSites.length}`);
         
         return underLimit && (hasWork || current === 0);
     },
@@ -446,26 +467,51 @@ createSimpleHarvester: function(spawn, roomName) {
      * ΔΗΜΙΟΥΡΓΙΑ HAULER
      * Σκοπός: Μεταφορά ενέργειας από harvesters σε spawn & extensions
      */
-    createHauler: function(spawn, roomName, rcl) {
-        let body;
-        const energy = spawn.room.energyCapacityAvailable;
+    createHauler: function(spawn, roomName, rcl,maxPreferredEnergy=1200) {
         
-        // Προσαρμογή body ανάλογα με RCL και διαθέσιμη ενέργεια
-        if (rcl === 1) {
-            body = [WORK, CARRY, CARRY, MOVE, MOVE]; // 250 energy
-            console.log(`   🔧 Body: 1xWORK, 2xCARRY, 2xMOVE (RCL 1)`);
-        } else if (rcl === 2) {
-            body = [WORK, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE]; // 450 energy
-            console.log(`   🔧 Body: 1xWORK, 4xCARRY, 4xMOVE (RCL 2)`);
-        } else if (rcl === 3) {
-            body = [CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE]; // 500 energy
-            console.log(`   🔧 Body: 5xCARRY, 5xMOVE (RCL 3)`);
-        } else {
-            // RCL 4 και πάνω - μεγαλύτερα bodies
-            body = [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, 
-                   MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE]; // 800 energy
-            console.log(`   🔧 Body: 8xCARRY, 8xMOVE (RCL 4+)`);
+        var energy = spawn.room.energyCapacityAvailable;
+        
+        
+        const costs={ WORK:100, CARRY:50, MOVE:50};
+        energy=Math.min(energy,maxPreferredEnergy);
+        
+        const CORE_BODY=[CARRY,MOVE];
+        const CORE_COST=costs.CARRY+costs.MOVE;
+        
+        if (energy<CORE_BODY) {
+            return ERROR_NOTENOUGH_ENERGY;
         }
+        let body=[];
+         let currentCost=0;
+         while((currentCost+CORE_COST)<=energy ) {
+             body.push(...CORE_BODY);
+             currentCost+=CORE_COST;
+         }
+        
+         while((currentCost+costs.MOVE)<=energy ) {
+             body.push(MOVE);
+             currentCost+=costs.MOVE;
+         }
+        
+        
+        
+        // if (energy<=300 ) {
+        //     body = [MOVE, CARRY, CARRY, MOVE, MOVE]; // 250 energy
+        //     console.log(`   🔧 Body: 1xWORK, 2xCARRY, 2xMOVE (RCL 1)`);
+        // } else if (energy<=550 ) {
+        //     body = [ CARRY, CARRY,CARRY,CARRY,CARRY,CARRY,MOVE,MOVE,MOVE, MOVE, MOVE]; // 450 energy
+        //     console.log(`   🔧 Body: 1xWORK, 2xCARRY, 3xMOVE (RCL 2)`);
+        // } else if (energy<=800) {
+        //     body = [CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE]; // 500 energy
+        //     console.log(`   🔧 Body: 5xCARRY, 5xMOVE (RCL 3)`);
+        // } else {
+        //     // RCL 4 και πάνω - μεγαλύτερα bodies
+        //     body = [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, 
+        //           MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE]; // 800 energy
+        //     console.log(`   🔧 Body: 8xCARRY, 8xMOVE (RCL 4+)`);
+        // }
+        
+        
         
         const creepName = `Hauler_${Game.time}`;
         const memory = {

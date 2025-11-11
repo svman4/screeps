@@ -1,144 +1,101 @@
-var roleHarvester = require('role.harvester');
-var roleUpgrader = require('role.upgrader');
-var roleBuilder = require('role.builder');
-var respawManager=require('respawController');
-var towerMonitor=require('towerController');
-var roomPlanner=require('RoomPlanner');
-var staticHarvester=require("role.staticHarvester");
-var staticBuilder=require("role.staticBuilder");
-var staticUpgrader=require("role.staticUpgrader");
-var staticHauler=require("role.Hauler");
-var LDHarvester=require("role.LDHarvester");
-var roleClaimer=require("role.claimer");
-var roleLDHauler=require("role.LDHauler");
+// main.js
+var spawnManager = require('manager.spawn');
+var defenceManager = require('manager.defense');
+var constructionManager = require('manager.construction');
+var expansionManager = require('manager.expansion');
+var logisticsManager = require('manager.logistics');
+var roleManager = require('manager.role');
+const debug=true;
+// Βοηθητική συνάρτηση για οπτική πληροφόρηση
+function showRoomInfo(room) {
+    if (!debug) {
+        return;
+    }
+    const visual = new RoomVisual(room.name);
+    const creeps = room.find(FIND_MY_CREEPS);
+    
+    // Πληροφορίες πληθυσμού
+    const roles = {};
+    creeps.forEach(creep => {
+        const role = creep.memory.role || 'unknown';
+        roles[role] = (roles[role] || 0) + 1;
+    });
+    
+    let infoText = `Pop: ${creeps.length}`;
+    for (const role in roles) {
+        infoText += ` ${role}:${roles[role]}`;
+    }
+    
+    // Πληροφορίες ενέργειας
+    const energyInfo = `Energy: ${room.energyAvailable}/${room.energyCapacityAvailable}`;
+    
+    visual.text(infoText, 1, 1, { align: 'left', color: '#ffffff' });
+    visual.text(energyInfo, 1, 2, { align: 'left', color: '#ffff00' });
+    
+    // Πληροφορίες controller
+    if (room.controller) {
+        const controllerInfo = `RCL: ${room.controller.level} Progress: ${room.controller.progress}/${room.controller.progressTotal}`;
+        visual.text(controllerInfo, 1, 3, { align: 'left', color: '#00ff00' });
+    }
+    const constructionText=`construction sites :${room.find(FIND_CONSTRUCTION_SITES).length}`;
+    visual.text(constructionText,1,4,{ align: 'left', color: '#ffffff' });
+    // Πληροφορίες ουράς logistics (αν υπάρχουν)
+    if (Memory.energyQueue && Memory.energyQueue[room.name]) {
+        logisticsManager.showQueueInfo(room);
+    }
+}
+
 module.exports.loop = function () {
-    
-        var startCpu = Game.cpu.getUsed();
-    
-    // 1. Έλεγχος και αρχικοποίηση Memory.rooms (αν λείπει)
+     var startCpu = Game.cpu.getUsed();
+    // Memory Cleanup
+    for (const name in Memory.creeps) {
+        if (!Game.creeps[name]) {
+            delete Memory.creeps[name];
+        }
+    }
+     try {
+    // Αρχικοποίηση Memory
     if (!Memory.rooms) {
         Memory.rooms = {};
-        console.log("Memory.rooms αρχικοποιήθηκε.");
-        
     }
-    if (!Memory.rooms.E25S7.controllerLink) {
-        
-        // Τοποθετεί το link που βρίσκεται δίπλα στο controller
-       Memory.rooms.E25S7.controllerLink="69050d532340f4c09a643cdd";
-    }
-    
-    // 2. Επανάληψη σε όλα τα Δωμάτια που ελέγχουμε
+
+    // Εκτέλεση ανά δωμάτιο
     for (const roomName in Game.rooms) {
-        // Εδώ το roomName θα είναι 'E25S7' (και όποιο άλλο δωμάτιο ελέγχετε)
+        const room = Game.rooms[roomName];
         
-        // Αρχικοποίηση Memory για το συγκεκριμένο δωμάτιο (Αν δεν γίνει ήδη στον Planner)
-        if (!Memory.rooms[roomName]) {
-             Memory.rooms[roomName] = {};
-             Memory.rooms.populationMax=respawManager.getDefaultPopulation();
-        }
-        if(Game.rooms[roomName].controller.my) {
-            // 3. Εκτέλεση Λογικής Δωματίου
-            towerMonitor.run(roomName);
-            roomPlanner.run(roomName);
-            checkLink(roomName);    
+        if (room.controller && room.controller.my) {
+        //    console.log(`🏠 Επεξεργασία δωματίου: ${roomName} (RCL: ${room.controller.level})`);
             
-            // 4. Εκτέλεση Respawn (Συνήθως εκτός βρόχου δωματίων)
-            respawManager.run(roomName);
+            // HIGH PRIORITY - Πάντα τρέχουν
+            defenceManager.run(roomName);
+            spawnManager.run(roomName);
+            logisticsManager.run(roomName,debug);
+            roleManager.run();
             
-        } else {
-            // Το δωμάτιο δεν είναι δικό μας.
-            // θα πρέπει να γίνεται έλεγχος αν υπάρχει αντίπαλος.
-            const maxRooms = Game.gcl.level;
-            const ownedRooms = Object.keys(Game.rooms).filter(roomName => Game.rooms[roomName].controller && Game.rooms[roomName].controller.my).length;
-            if (maxRooms>ownedRooms.length) { 
-                
-            } else {
-                // δε μπορώ να Κάνω claim το δωμάτιο.
+            // MEDIUM PRIORITY - Τρέχουν πιο σπάνια
+            if (Game.time % 20 === 0) {
+                constructionManager.run(roomName,debug);
             }
-                
+            
+            // LOW PRIORITY - Μόνο με υψηλό CPU
+            if (Game.cpu.bucket > 5000 && Game.time % 100 === 0) {
+                expansionManager.run();
+            }
+            
+             //Οπτική πληροφόρηση
+             if (debug===true && Game.time % 5 === 0 ) {
+                 showRoomInfo(room);
+             }
         }
     }
-    
-    
-    
-    // 5. Εκτέλεση Λογικής Creeps
-    for(var name in Game.creeps) {
-        var creep = Game.creeps[name];
-        
-        if(creep.memory.role == 'simpleHarvester') {
-            roleHarvester.run(creep);
-        } else if(creep.memory.role === 'upgrader') {
-            roleUpgrader.run(creep);
-        } else if(creep.memory.role === 'builder') {
-            roleBuilder.run(creep);
-        } else if( creep.memory.role==="staticHarvester") {
-            staticHarvester.run(creep);
-        } else if (creep.memory.role==="staticBuilder") {
-            staticBuilder.run(creep);
-        } else if (creep.memory.role==="staticUpgrader") {
-            staticUpgrader.run(creep);
-        } else if (creep.memory.role=== "staticHauler") {
-            staticHauler.run(creep);
-        }else if (creep.memory.role=== "LDHarvester") {
-            LDHarvester.run(creep);
-        }else if (creep.memory.role==="claimer") {
-            roleClaimer.run(creep);
-        } else if (creep.memory.role==="LDHauler") {
-            roleLDHauler.run(creep);
-        }
-        
-        
-    }  
-    
     if (Game.time % 10 === 0) {
         var endCpu = Game.cpu.getUsed();
     var cpuUsed = endCpu - startCpu;
     
         console.log(`CPU Bucket: ${Game.cpu.bucket} | Creeps: ${Object.keys(Game.creeps).length} |cpusUser: ${cpuUsed}`);
     }
-
-}; // end of loop()
-
-checkLink=function(roomName) {
-    
-    const room=Game.rooms[roomName];
-    
-    const links=room.find(FIND_MY_STRUCTURES, {
-        filter: { structureType: STRUCTURE_LINK }
-        }
-    );
-    //var controllerLink = Game.getObjectById("69050d532340f4c09a643cdd");
-    //console.log(Memory.rooms[roomName].controllerLink);
-    var controllerLink=Game.getObjectById(Memory.rooms["E25S7"].controllerLink);
-    if (!controllerLink ) { 
-        console.log("No controllerLinkFound)");
-        return;
-        
+     } catch (error) {
+        console.log(`🔴 ΣΦΑΛΜΑ: ${error.message}`);
+        console.log(`📋 Stack: ${error.stack}`);
     }
-    // Βρίσκουμε όλα τα άλλα Links (πιθανούς αποστολείς)
-    const senderLinks = links.filter(link => link.id !== controllerLink.id);
-    
-    if (controllerLink.store.getFreeCapacity(RESOURCE_ENERGY) <= 0) {
-        return;
-    }
-    for (const sender of senderLinks) {
-            // Έλεγχος Cooldown
-            if (sender.cooldown > 0) {
-                continue; // Πάμε στο επόμενο Link αν αυτό είναι σε cooldown
-            }
-            
-            if (sender.store.getUsedCapacity(RESOURCE_ENERGY) > 550) {
-                
-                // 3. Εκτέλεση της Μεταφοράς
-                const result = sender.transferEnergy(controllerLink);
-
-                if (result === OK) {
-                    console.log(`${roomName} - Link: Η μεταφορά ενέργειας από ${sender.id} προς Controller Link ήταν επιτυχής.`);
-                    return; // Σταματάμε μόλις γίνει μία επιτυχής μεταφορά (για να σώσουμε CPU)
-                } else if (result === ERR_NOT_IN_RANGE) {
-                    // Αυτό δεν πρέπει να συμβεί αν όλα τα Links είναι στο ίδιο δωμάτιο
-                    console.log("Link Error: Τα Links είναι πολύ μακριά! (Εκτός range)");
-                }
-            }
-        }
 };

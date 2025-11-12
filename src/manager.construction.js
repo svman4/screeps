@@ -1,13 +1,13 @@
 // manager.construction.js
 const constructionManager = {
     // Ρυθμίσεις
-    constructionSitesMax: 2,
+    constructionSitesMax:2,
     
-    run: function(roomName) {
-        this.visualizeBlueprint(roomName,8);
+    run: function(roomName,debug=false) {
+        if (debug) {this.visualizeBlueprint(roomName,8);}
         
         // // Εκτέλεση κάθε 10 ticks για εξοικονόμηση CPU
-        // if (Game.time % 10 !== 0) return;
+         if (Game.time % 10 !== 0) return;
         
         const room = Game.rooms[roomName];
         if (!room || !room.controller || !room.controller.my) return;
@@ -68,8 +68,8 @@ const constructionManager = {
         switch(rcl) {
             case 1:
                  structures.push(...this.getRoadsToSources(room, spawn));
-    structures.push(...this.getContainersAtSources(room));
-    structures.push(...this.getContainerAtController(room));
+                 structures.push(...this.getContainersAtSources(room));
+                structures.push(...this.getContainerAtController(room));
                 break;
             case 2:
                 structures.push(...this.getExtensions(room, spawn, 5));
@@ -310,8 +310,9 @@ getRoadToMineral: function(room, spawn) {
         
         // Υπολογισμός τρεχόντων construction sites
         const currentSites = room.find(FIND_CONSTRUCTION_SITES);
-        
+        console.log("CurrentSite : " +currentSites.length+"|"+this.constructionSitesMax);
         if (currentSites.length >= this.constructionSitesMax) {
+            
             return; // Έχουμε φτάσει το όριο
         }
         
@@ -328,11 +329,11 @@ getRoadToMineral: function(room, spawn) {
             );
             return !existingSite;
         });
-        
+        console.log("CurrentSite : " +currentSites.length+"|"+this.constructionSitesMax);
         // Κατασκευή δομών μέχρι να φτάσουμε το όριο
         for (let i = 0; i < availableStructures.length && currentSites.length + i < this.constructionSitesMax; i++) {
             const structure = availableStructures[i];
-            
+                
             if (this.canBuildAt(room, structure.x, structure.y, structure.type)) {
                 const result = room.createConstructionSite(structure.x, structure.y, structure.type);
                 if (result === OK) {
@@ -342,7 +343,8 @@ getRoadToMineral: function(room, spawn) {
         }
     },
     
-    updateBuiltStructures: function(room) {
+    // Αντικατάσταση της μεθόδου updateBuiltStructures
+updateBuiltStructures: function(room) {
     const constructionMemory = Memory.rooms[room.name].construction;
     if (!constructionMemory.builtStructures) {
         constructionMemory.builtStructures = {};
@@ -360,13 +362,12 @@ getRoadToMineral: function(room, spawn) {
         if (structure.structureType === STRUCTURE_CONTAINER) {
             const controller = room.controller;
             if (controller && structure.pos.getRangeTo(controller.pos) <= 3) {
-                // Αποθήκευση ID του container στο controller στη μνήμη
-                if (!Memory.rooms[room.name].controllerContainer) {
-                    Memory.rooms[room.name].controllerContainerId =structure.id;
+                // Αποθήκευση ID του container στο controller στη μνήμη ΜΟΝΟ αν έχει αλλάξει
+                const currentContainerId = Memory.rooms[room.name].controllerContainerId;
+                if (currentContainerId !== structure.id) {
+                    Memory.rooms[room.name].controllerContainerId = structure.id;
                     console.log(`Controller container ID stored: ${structure.id} in room ${room.name}`);
                 }
-                
-                
             }
         }
     });
@@ -384,9 +385,9 @@ getRoadToMineral: function(room, spawn) {
                 if (controller) {
                     const pos = new RoomPosition(x, y, room.name);
                     if (pos.getRangeTo(controller.pos) <= 2) {
-                        if (Memory.rooms[room.name].controllerContainer) {
-                            delete Memory.rooms[room.name].controllerContainer;
-                            console.log(`Controller container memory cleared in room ${room.name}`);
+                        if (Memory.rooms[room.name].controllerContainerId) {
+                            console.log(`Controller container destroyed: ${Memory.rooms[room.name].controllerContainerId} in room ${room.name}`);
+                            delete Memory.rooms[room.name].controllerContainerId;
                         }
                     }
                 }
@@ -636,6 +637,10 @@ getRoadToMineral: function(room, spawn) {
         if (!room) return;
         
         const constructionMemory = Memory.rooms[roomName].construction;
+        if (!constructionMemory) {
+            console.log("Cant find construtionMemory");
+            return;
+        }
         const blueprint = constructionMemory.blueprint || [];
         const builtStructures = constructionMemory.builtStructures || {};
         
@@ -652,6 +657,10 @@ getRoadToMineral: function(room, spawn) {
             [STRUCTURE_LAB]: '#008080',
             [STRUCTURE_FACTORY]: '#808080'
         };
+        if (!blueprint) {
+            console.log("Cant find blueprint");
+            return;
+        }
         
         // Οπτική αναπαράσταση
         blueprint.forEach(structure => {

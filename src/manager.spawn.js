@@ -17,9 +17,9 @@
 const POPULATION_LIMITS = {
             STATIC_HARVESTER: 2,
             SIMPLE_HARVESTER: 2,    // ΠΡΟΣΘΗΚΗ: Τουλάχιστον 1 simple harvester
-            HAULER: 4,
+            HAULER: 3,
             UPGRADER: 2,
-            BUILDER: 2,
+            BUILDER:2,
             LD_HAULER: 0,
             LD_HARVESTER: 0
         };

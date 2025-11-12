@@ -1,4 +1,4 @@
-// manager.logistics.js - ΠΛΗΡΩΣ ΒΕΛΤΙΩΜΕΝΟ ΜΕ ΟΥΡΑ ΠΡΟΤΕΡΑΙΟΤΗΤΑΣ
+// manager.logistics.js - ΒΕΛΤΙΩΜΕΝΟ ΜΕ RUINS SUPPORT
 const logisticsManager = {
     // Αρχικοποίηση μνήμης
     init: function() {
@@ -63,7 +63,25 @@ const logisticsManager = {
             currentSources.add(energy.id);
         });
 
-        // 2. ΠΡΟΣΘΗΚΗ CONTAINERS (ΜΕΣΑΙΑ ΠΡΟΤΕΡΑΙΟΤΗΤΑ)
+        // 2. ΠΡΟΣΘΗΚΗ RUINS (ΥΨΗΛΗ ΠΡΟΤΕΡΑΙΟΤΗΤΑ - ΣΥΝΗΘΩΣ ΠΕΡΙΣΣΟΤΕΡΗ ΕΝΕΡΓΕΙΑ)
+        const ruins = room.find(FIND_RUINS, {
+            filter: ruin => ruin.store[RESOURCE_ENERGY] > 20
+        });
+
+        ruins.forEach(ruin => {
+            const priority = this.calculateRuinPriority(ruin);
+            this.addToQueue(roomName, {
+                id: ruin.id,
+                type: 'ruin',
+                pos: { x: ruin.pos.x, y: ruin.pos.y },
+                amount: ruin.store[RESOURCE_ENERGY],
+                priority: priority,
+                timestamp: Game.time
+            });
+            currentSources.add(ruin.id);
+        });
+
+        // 3. ΠΡΟΣΘΗΚΗ CONTAINERS (ΜΕΣΑΙΑ ΠΡΟΤΕΡΑΙΟΤΗΤΑ)
         const containers = room.find(FIND_STRUCTURES, {
             filter: s => s.structureType === STRUCTURE_CONTAINER && 
                          s.store[RESOURCE_ENERGY] > 50
@@ -82,7 +100,7 @@ const logisticsManager = {
             currentSources.add(container.id);
         });
 
-        // 3. ΠΡΟΣΘΗΚΗ STORAGE (ΧΑΜΗΛΗ ΠΡΟΤΕΡΑΙΟΤΗΤΑ)
+        // 4. ΠΡΟΣΘΗΚΗ STORAGE (ΧΑΜΗΛΗ ΠΡΟΤΕΡΑΙΟΤΗΤΑ)
         if (room.storage && room.storage.store[RESOURCE_ENERGY] > 1000) {
             const priority = this.calculateStoragePriority(room.storage);
             this.addToQueue(roomName, {
@@ -119,6 +137,30 @@ const logisticsManager = {
         if (spawns.length > 0) priority += 15;
 
         const extensions = energy.pos.findInRange(FIND_MY_STRUCTURES, 5, {
+            filter: s => s.structureType === STRUCTURE_EXTENSION
+        });
+        if (extensions.length > 0) priority += 10;
+
+        return priority;
+    },
+
+    /**
+     * ΥΠΟΛΟΓΙΣΜΟΣ ΠΡΟΤΕΡΑΙΟΤΗΤΑΣ RUINS
+     */
+    calculateRuinPriority: function(ruin) {
+        let priority = 55; // Βασική προτεραιότητα (υψηλότερη από dropped energy)
+
+        // Βάση ποσότητας - τα ruins συνήθως έχουν περισσότερη ενέργεια
+        if (ruin.store[RESOURCE_ENERGY] > 1000) priority += 40;
+        else if (ruin.store[RESOURCE_ENERGY] > 500) priority += 30;
+        else if (ruin.store[RESOURCE_ENERGY] > 200) priority += 20;
+        else if (ruin.store[RESOURCE_ENERGY] > 100) priority += 10;
+
+        // Βάση τοποθεσίας - αν είναι κοντά σε spawn/extension = υψηλότερη προτεραιότητα
+        const spawns = ruin.pos.findInRange(FIND_MY_SPAWNS, 5);
+        if (spawns.length > 0) priority += 15;
+
+        const extensions = ruin.pos.findInRange(FIND_MY_STRUCTURES, 5, {
             filter: s => s.structureType === STRUCTURE_EXTENSION
         });
         if (extensions.length > 0) priority += 10;
@@ -333,16 +375,30 @@ const logisticsManager = {
                     this.completeTask(creep);
                     return;
                 }
-                if (creep.pos.inRangeTo(source,1 )) {
+                if (creep.pos.isNearTo(source)) {
                     creep.pickup(source);
-                } else { 
-                        creep.moveTo(source, {
+                } else {
+                    creep.moveTo(source, {
                         visualizePathStyle: { stroke: '#ffaa00' },
                         reusePath: 6
                     });
                 }
-                
-                
+                break;
+
+            case 'ruin':
+                source = Game.getObjectById(assignment.sourceId);
+                if (!source || source.store[RESOURCE_ENERGY] === 0) {
+                    this.completeTask(creep);
+                    return;
+                }
+                if (creep.pos.isNearTo(source)) {
+                    creep.withdraw(source, RESOURCE_ENERGY);
+                } else {
+                    creep.moveTo(source, {
+                        visualizePathStyle: { stroke: '#ff5500' },
+                        reusePath: 6
+                    });
+                }
                 break;
 
             case 'container':
@@ -352,18 +408,17 @@ const logisticsManager = {
                     this.completeTask(creep);
                     return;
                 }
-                if (creep.pos.inRangeTo(source,1)) {
+                if (creep.pos.isNearTo(source)) {
                     creep.withdraw(source, RESOURCE_ENERGY);
-                } else { 
+                } else {
                     creep.moveTo(source, {
                         visualizePathStyle: { stroke: '#ffaa00' },
                         reusePath: 6
                     });
                 }
-                
                 break;
         }
-    }, // collectFromAssignedSource
+    },
 
     /**
      * ΠΑΡΑΔΟΣΗ ΕΝΕΡΓΕΙΑΣ
@@ -410,15 +465,14 @@ const logisticsManager = {
         });
         targets.push(...spawns);
         
-         
-        
         // Προτεραιότητα 2: Extensions
         const extensions = room.find(FIND_MY_STRUCTURES, {
             filter: s => s.structureType === STRUCTURE_EXTENSION && 
                          s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
         });
         targets.push(...extensions);
-        // Προτεραιότητα 2: Controller Container (αν energy < 500)
+        
+        // Προτεραιότητα 3: Controller Container (αν energy < 500)
         if (room.memory.controllerContainerId) {
             const controllerContainer = Game.getObjectById(room.memory.controllerContainerId);
             if (controllerContainer && controllerContainer.store.getFreeCapacity(RESOURCE_ENERGY) > 0 && 
@@ -427,14 +481,14 @@ const logisticsManager = {
             }
         }
         
-        // Προτεραιότητα 3: Towers
+        // Προτεραιότητα 4: Towers
         const towers = room.find(FIND_MY_STRUCTURES, {
             filter: s => s.structureType === STRUCTURE_TOWER && 
                          s.store.getFreeCapacity(RESOURCE_ENERGY) > 300
         });
         targets.push(...towers);
         
-        // Προτεραιότητα 4: Storage
+        // Προτεραιότητα 5: Storage
         if (room.storage && room.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
             targets.push(room.storage);
         }

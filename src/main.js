@@ -5,7 +5,7 @@ var constructionManager = require('manager.construction');
 var expansionManager = require('manager.expansion');
 var logisticsManager = require('manager.logistics');
 var roleManager = require('manager.role');
-const debug=true;
+const debug=false;
 // Βοηθητική συνάρτηση για οπτική πληροφόρηση
 function showRoomInfo(room) {
     if (!debug) {
@@ -67,15 +67,15 @@ module.exports.loop = function () {
         //    console.log(`🏠 Επεξεργασία δωματίου: ${roomName} (RCL: ${room.controller.level})`);
             
             // HIGH PRIORITY - Πάντα τρέχουν
-            defenceManager.run(roomName);
-            spawnManager.run(roomName);
+            defenceManager.run(roomName,debug);
+            spawnManager.run(roomName,debug);
             logisticsManager.run(roomName,debug);
-            roleManager.run();
+            roleManager.run(roomName, debug);
             
             // MEDIUM PRIORITY - Τρέχουν πιο σπάνια
-            if (Game.time % 20 === 0) {
+            //if (Game.time % 20 === 0) {
                 constructionManager.run(roomName,debug);
-            }
+            //}
             
             // LOW PRIORITY - Μόνο με υψηλό CPU
             if (Game.cpu.bucket > 5000 && Game.time % 100 === 0) {

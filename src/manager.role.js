@@ -132,6 +132,9 @@ const roleManager = {
 
     
     getEnergy: function(creep) {
+       
+        
+        
         // Προτεραιότητα 1: Containers με ενέργεια
         const containers = creep.room.find(FIND_STRUCTURES, {
             filter: structure => 
@@ -142,7 +145,7 @@ const roleManager = {
 
         if (containers.length > 0) {
             const closestContainer = creep.pos.findClosestByPath(containers);
-            if (creep.pos.inRangeTo(closestContainer,1)) {
+            if (closestContainer && creep.pos.inRangeTo(closestContainer,1)) {
                 creep.withdraw(closestContainer, RESOURCE_ENERGY);
             } else {
                 creep.moveTo(closestContainer, {
@@ -156,14 +159,14 @@ const roleManager = {
 
         // Προτεραιότητα 2: Dropped energy
         const droppedEnergy = creep.room.find(FIND_DROPPED_RESOURCES, {
-            filter: resource => resource.resourceType === RESOURCE_ENERGY && resource.amount > 100
+            filter: resource => resource.resourceType === RESOURCE_ENERGY && resource.amount > 40
         });
 
         if (droppedEnergy.length > 0) {
             
             const closestEnergy = creep.pos.findClosestByPath(droppedEnergy);
             creep.say("Drop");
-            if (creep.pos.inRangeTo(closestEnergy,1)) {
+            if (closestEnergy && creep.pos.inRangeTo(closestEnergy,1)) {
                 creep.pickup(closestEnergy);
             } else {
                 creep.moveTo(closestEnergy, {
@@ -174,12 +177,28 @@ const roleManager = {
             
             return;
         }
+         const ruins=creep.room.find(FIND_RUINS,{
+           filter: structure=>structure.store[RESOURCE_ENERGY]>40 
+        });
+        if (ruins && ruins.length>0 ) {
+            const ruin=creep.pos.findClosestByPath(ruins);
+            if (ruin && creep.pos.inRangeTo(ruin,1)) {
+                creep.withdraw(ruin,RESOURCE_ENERGY);
+            } else {
+                creep.moveTo(ruin, {
+                    visualizePathStyle: { stroke: '#ffaa00' },
+                    reusePath: 8
+                });
+            }
+            return;
+        }
+        
         
         // Προτεραιότητα 3: Harvest από πηγές (τελευταία επιλογή)
         const sources = creep.room.find(FIND_SOURCES_ACTIVE);
         if (sources.length > 0) {
             const closestSource = creep.pos.findClosestByPath(sources);
-            if (creep.pos.inRangeTo(closestSource,1) ) {
+            if (closestSource && creep.pos.inRangeTo(closestSource,1) ) {
                 creep.harvest(closestSource);
             } else {
                 creep.moveTo(closestSource, {

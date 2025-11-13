@@ -18,8 +18,8 @@ const POPULATION_LIMITS = {
             STATIC_HARVESTER: 2,
             SIMPLE_HARVESTER: 2,    // ΠΡΟΣΘΗΚΗ: Τουλάχιστον 1 simple harvester
             HAULER: 3,
-            UPGRADER: 2,
-            BUILDER:2,
+            UPGRADER: 1,
+            BUILDER:1,
             LD_HAULER: 0,
             LD_HARVESTER: 0
         };
@@ -493,33 +493,13 @@ createSimpleHarvester: function(spawn, roomName) {
              currentCost+=costs.MOVE;
          }
         
-        
-        
-        // if (energy<=300 ) {
-        //     body = [MOVE, CARRY, CARRY, MOVE, MOVE]; // 250 energy
-        //     console.log(`   🔧 Body: 1xWORK, 2xCARRY, 2xMOVE (RCL 1)`);
-        // } else if (energy<=550 ) {
-        //     body = [ CARRY, CARRY,CARRY,CARRY,CARRY,CARRY,MOVE,MOVE,MOVE, MOVE, MOVE]; // 450 energy
-        //     console.log(`   🔧 Body: 1xWORK, 2xCARRY, 3xMOVE (RCL 2)`);
-        // } else if (energy<=800) {
-        //     body = [CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE]; // 500 energy
-        //     console.log(`   🔧 Body: 5xCARRY, 5xMOVE (RCL 3)`);
-        // } else {
-        //     // RCL 4 και πάνω - μεγαλύτερα bodies
-        //     body = [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, 
-        //           MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE]; // 800 energy
-        //     console.log(`   🔧 Body: 8xCARRY, 8xMOVE (RCL 4+)`);
-        // }
-        
-        
-        
         const creepName = `Hauler_${Game.time}`;
         const memory = {
             role: ROLES.HAULER,
             homeRoom: roomName,
             working: false
         };
-        
+        body.sort();
         console.log(`🛠️ Δημιουργία Hauler: ${creepName}`);
         const result = spawn.spawnCreep(body, creepName, { memory: memory });
         
@@ -536,24 +516,32 @@ createSimpleHarvester: function(spawn, roomName) {
      * ΔΗΜΙΟΥΡΓΙΑ UPGRADER
      * Σκοπός: Αναβάθμιση controller
      */
-    createUpgrader: function(spawn, roomName, rcl) {
-        let body;
-        const energy = spawn.room.energyCapacityAvailable;
+    createUpgrader: function(spawn, roomName, rcl,maxPreferredEnergy=1000) {
+         var energy = spawn.room.energyCapacityAvailable;
+        let body = [];
+         energy=Math.min(energy,maxPreferredEnergy);
+        // Βασικό body part κοστίζει 250 energy (WORK+CARRY+MOVE+MOVE)
+        const CORE_BODY = [WORK, CARRY, MOVE,MOVE];
+        const CORE_COST = 250;
         
-        if (energy >= 1000) {
-            body = [MOVE, MOVE, MOVE, MOVE, MOVE, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY];
-            console.log(`   🔧 Body: 5xMOVE, 5xWORK, 6xCARRY (1000 energy)`);
-        } else if (energy >= 600) {
-            body = [WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE];
-            console.log(`   🔧 Body: 3xWORK, 4xCARRY, 4xMOVE (600 energy)`);
-        } else if (energy >= 400) {
-            body = [WORK, WORK, WORK, CARRY, MOVE];
-            console.log(`   🔧 Body: 3xWORK, 1xCARRY, 1xMOVE (400 energy)`);
-        } else {
-            body = [WORK, CARRY, MOVE];
-            console.log(`   🔧 Body: 1xWORK, 1xCARRY, 1xMOVE (200 energy)`);
+        let currentCost = 0;
+        
+        // Προσθέτουμε όσο περισσότερα core bodies μπορούμε
+        while (currentCost + CORE_COST <= energy) {
+            body = body.concat(CORE_BODY);
+            currentCost += CORE_COST;
         }
         
+        // Προσθέτουμε επιπλέον CARRY+MOVE αν χωράει
+        while (currentCost + 100 <= energy) { // CARRY(50) + MOVE(50) = 100
+            body.push(CARRY, MOVE);
+            currentCost += 100;
+        }
+        
+        // Ταξινόμηση για καλύτερη οπτική
+        body.sort();
+        
+        console.log(`   🔧 Body: ${body.length} parts (${currentCost}/${energy} energy)`);
         const creepName = `Upgrader_${Game.time}`;
         const memory = {
             role: ROLES.UPGRADER,
@@ -577,13 +565,13 @@ createSimpleHarvester: function(spawn, roomName) {
      * ΔΗΜΙΟΥΡΓΙΑ BUILDER
      * Σκοπός: Χτίσιμο structures
      */
-    createBuilder: function(spawn, roomName, rcl) {
-        const energy = spawn.room.energyCapacityAvailable;
+    createBuilder: function(spawn, roomName, rcl,maxPreferredEnergy=1000) {
+        var energy = spawn.room.energyCapacityAvailable;
         let body = [];
-        
-        // Βασικό body part κοστίζει 200 energy (WORK+CARRY+MOVE)
-        const CORE_BODY = [WORK, CARRY, MOVE];
-        const CORE_COST = 200;
+        energy=Math.min(energy,maxPreferredEnergy)
+        // Βασικό body part κοστίζει 250 energy (WORK+CARRY+MOVE+MOVE)
+        const CORE_BODY = [WORK, CARRY, MOVE,MOVE];
+        const CORE_COST = 250;
         
         let currentCost = 0;
         

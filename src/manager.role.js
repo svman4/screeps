@@ -118,7 +118,7 @@ const roleManager = {
         }
 
         // Προτεραιότητα 3: Αναβάθμιση controller αν δεν υπάρχει δουλειά
-        if (creep.pos.inRangeTo(creep.room.controller,3)) {
+        if (creep.pos.inRangeTo(creep.room.controller,2)) {
             creep.upgradeController(creep.room.controller);
         } else { 
             creep.moveTo(creep.room.controller, {
@@ -261,7 +261,9 @@ const roleManager = {
         }
 
         if (creep.memory.working) {
-            if (creep.upgradeController(creep.room.controller) === ERR_NOT_IN_RANGE) {
+            if (creep.pos.inRangeTo(creep.room.controller,2) ) {
+                creep.upgradeController(creep.room.controller);
+            } else {
                 creep.moveTo(creep.room.controller, { visualizePathStyle: { stroke: '#ffffff' } });
             }
         } else {

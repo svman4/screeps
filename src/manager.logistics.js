@@ -84,7 +84,9 @@ const logisticsManager = {
         // 3. ΠΡΟΣΘΗΚΗ CONTAINERS (ΜΕΣΑΙΑ ΠΡΟΤΕΡΑΙΟΤΗΤΑ)
         const containers = room.find(FIND_STRUCTURES, {
             filter: s => s.structureType === STRUCTURE_CONTAINER && 
+                         s.id!=room.memory.controllerContainerId &&
                          s.store[RESOURCE_ENERGY] > 50
+                         
         });
 
         containers.forEach(container => {
@@ -452,49 +454,59 @@ const logisticsManager = {
         creep.say('✅ task done');
     },
 
-    /**
-     * ΠΡΟΟΡΙΣΜΟΙ ΠΑΡΑΔΟΣΗΣ
-     */
     getDeliveryTargets: function(creep) {
-        const room = creep.room;
-        const targets = [];
+    const room = creep.room;
+    const targets = [];
+    
+    // Προτεραιότητα 1: Spawns & Extensions
+    const spawns = room.find(FIND_MY_SPAWNS, {
+        filter: spawn => spawn.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+    });
+    targets.push(...spawns);
+    
+    const extensions = room.find(FIND_MY_STRUCTURES, {
+        filter: s => s.structureType === STRUCTURE_EXTENSION && 
+                     s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+    });
+    targets.push(...extensions);
+    
+    // Προτεραιότητα 2: Towers - ΕΞΥΠΝΗ ΛΟΓΙΚΗ
+    const towers = room.find(FIND_MY_STRUCTURES, {
+        filter: s => s.structureType === STRUCTURE_TOWER && 
+                     s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+    });
+    
+    const needyTowers = towers.filter(tower => {
+        // Αν το tower είναι σχεδόν άδειο (< 200) ή αν υπάρχει κίνδυνος επίθεσης
+        const hasHostiles = room.find(FIND_HOSTILE_CREEPS).length > 0;
+        const isVeryLow = tower.store[RESOURCE_ENERGY] < 200;
+        const isLowAndNoHostiles = tower.store[RESOURCE_ENERGY] < 400 && !hasHostiles;
         
-        // Προτεραιότητα 1: Spawns
-        const spawns = room.find(FIND_MY_SPAWNS, {
-            filter: spawn => spawn.store.getFreeCapacity(RESOURCE_ENERGY) > 0
-        });
-        targets.push(...spawns);
-        
-        // Προτεραιότητα 2: Extensions
-        const extensions = room.find(FIND_MY_STRUCTURES, {
-            filter: s => s.structureType === STRUCTURE_EXTENSION && 
-                         s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
-        });
-        targets.push(...extensions);
-        
-        // Προτεραιότητα 3: Controller Container (αν energy < 500)
-        if (room.memory.controllerContainerId) {
-            const controllerContainer = Game.getObjectById(room.memory.controllerContainerId);
-            if (controllerContainer && controllerContainer.store.getFreeCapacity(RESOURCE_ENERGY) > 0 && 
-                controllerContainer.store[RESOURCE_ENERGY] < 1500) {
-                targets.push(controllerContainer);
-            }
+        return isVeryLow || isLowAndNoHostiles;
+    });
+    
+    targets.push(...needyTowers);
+    
+    // Προτεραιότητα 3: Controller Container
+    if (room.memory.controllerContainerId) {
+        const controllerContainer = Game.getObjectById(room.memory.controllerContainerId);
+        if (controllerContainer && controllerContainer.store.getFreeCapacity(RESOURCE_ENERGY) > 0 && 
+            controllerContainer.store[RESOURCE_ENERGY] < 1500) {
+            targets.push(controllerContainer);
         }
-        
-        // Προτεραιότητα 4: Towers
-        const towers = room.find(FIND_MY_STRUCTURES, {
-            filter: s => s.structureType === STRUCTURE_TOWER && 
-                         s.store.getFreeCapacity(RESOURCE_ENERGY) > 300
-        });
-        targets.push(...towers);
-        
-        // Προτεραιότητα 5: Storage
-        if (room.storage && room.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
-            targets.push(room.storage);
-        }
-        
-        return targets;
-    },
+    }
+    
+    // Προτεραιότητα 4: Storage
+    if (room.storage && room.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+        targets.push(room.storage);
+    }
+    
+    // Προτεραιότητα 5: Όλα τα υπόλοιπα towers
+    const remainingTowers = towers.filter(tower => !needyTowers.includes(tower));
+    targets.push(...remainingTowers);
+    
+    return targets;
+},
 
     /**
      * ΚΑΘΑΡΙΣΜΟΣ ΟΥΡΑΣ ΑΠΟ ΠΑΛΑΙΑ TASKS

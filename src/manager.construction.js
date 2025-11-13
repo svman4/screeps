@@ -26,7 +26,7 @@ const constructionManager = {
         this.updateBlueprint(room, rcl);
         
         // Κατασκευή από blueprint
-        this.buildFromBlueprint(room, rcl);
+        //this.buildFromBlueprint(room, rcl);
         
         // Συντήρηση
         this.maintainStructures(room);
@@ -59,6 +59,58 @@ const constructionManager = {
     
     return blueprint;
 },
+findOptimalExtensionPositions: function(room, spawn, count) {
+    const terrain = room.getTerrain();
+    const positions = [];
+    
+    // Use BFS from spawn to find optimal positions
+    const queue = [{
+        x: spawn.pos.x, 
+        y: spawn.pos.y, 
+        distance: 0
+    }];
+    const visited = new Set();
+    
+    while (queue.length > 0 && positions.length < count) {
+        const current = queue.shift();
+        const posKey = `${current.x},${current.y}`;
+        
+        if (visited.has(posKey)) continue;
+        visited.add(posKey);
+        
+        // Check if position is valid for extension
+        if (this.canBuildAt(room, current.x, current.y, STRUCTURE_EXTENSION) &&
+            terrain.get(current.x, current.y) !== TERRAIN_MASK_WALL) {
+            positions.push({
+                x: current.x,
+                y: current.y,
+                distance: current.distance
+            });
+        }
+        
+        // Add adjacent positions
+        const directions = [[-1,0], [1,0], [0,-1], [0,1], [-1,-1], [-1,1], [1,-1], [1,1]];
+        for (const [dx, dy] of directions) {
+            const newX = current.x + dx;
+            const newY = current.y + dy;
+            const newKey = `${newX},${newY}`;
+            
+            if (!visited.has(newKey) && 
+                newX >= 0 && newX < 50 && 
+                newY >= 0 && newY < 50 &&
+                terrain.get(newX, newY) !== TERRAIN_MASK_WALL) {
+                queue.push({
+                    x: newX,
+                    y: newY,
+                    distance: current.distance + 1
+                });
+            }
+        }
+    }
+    
+    return positions.sort((a, b) => a.distance - b.distance);
+}
+,
     
     getStructuresForRCL: function(room, rcl) {
         const structures = [];
@@ -310,7 +362,7 @@ getRoadToMineral: function(room, spawn) {
         
         // Υπολογισμός τρεχόντων construction sites
         const currentSites = room.find(FIND_CONSTRUCTION_SITES);
-        console.log("CurrentSite : " +currentSites.length+"|"+this.constructionSitesMax);
+        
         if (currentSites.length >= this.constructionSitesMax) {
             
             return; // Έχουμε φτάσει το όριο

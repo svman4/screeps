@@ -4,6 +4,7 @@ var defenceManager = require('manager.defense');
 var constructionManager = require('manager.construction');
 var expansionManager = require('manager.expansion');
 var logisticsManager = require('manager.logistics');
+const militaryController = require('manager.military');
 var roleManager = require('manager.role');
 const debug=false;
 // Βοηθητική συνάρτηση για οπτική πληροφόρηση
@@ -67,6 +68,7 @@ module.exports.loop = function () {
         //    console.log(`🏠 Επεξεργασία δωματίου: ${roomName} (RCL: ${room.controller.level})`);
             
             // HIGH PRIORITY - Πάντα τρέχουν
+            militaryController.run(roomName);
             defenceManager.run(roomName,debug);
             spawnManager.run(roomName,debug);
             logisticsManager.run(roomName,debug);

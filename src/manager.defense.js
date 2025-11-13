@@ -13,19 +13,19 @@ var towerController = {
 
         if (towers.length === 0) return;
 
-        // Cache για αποδοτικότητα - μία φορά αναζήτηση ανά tick
+        // Βελτιωμένο cache για μεγαλύτερη αποδοτικότητα
         const hostiles = room.find(FIND_HOSTILE_CREEPS);
         const woundedCreeps = room.find(FIND_MY_CREEPS, {
             filter: creep => creep.hits < creep.hitsMax
         });
 
         for (const tower of towers) {
-            // Ελέγχουμε την ενέργεια πριν προχωρήσουμε
+            // Έξυπνος έλεγχος energy - αποφυγή σπατάλης
             if (tower.energy === 0) continue;
 
             // 1. ΠΡΟΤΕΡΑΙΟΤΗΤΑ: Επίθεση σε εχθρούς
             if (hostiles.length > 0) {
-                const target = this.findBestAttackTarget(tower, hostiles);
+                const target = this.findBestAttackTarget(tower, hostiles, room);
                 if (target) {
                     tower.attack(target);
                     continue;
@@ -41,10 +41,12 @@ var towerController = {
                 }
             }
 
-            // 3. Επισκευή δομών με έξυπνη προτεραιοποίηση
-            const repairTarget = this.findBestRepairTarget(tower, room);
-            if (repairTarget) {
-                tower.repair(repairTarget);
+            // 3. Έξυπνη επισκευή - μόνο όταν έχουμε αρκετή energy ή δεν υπάρχουν απειλές
+            if (this.shouldRepair(tower, hostiles)) {
+                const repairTarget = this.findBestRepairTarget(tower, room);
+                if (repairTarget) {
+                    tower.repair(repairTarget);
+                }
             }
         }
     },
@@ -52,7 +54,7 @@ var towerController = {
     /**
      * Βρίσκει τον καλύτερο στόχο για επίθεση
      */
-    findBestAttackTarget: function(tower, hostiles) {
+    findBestAttackTarget: function(tower, hostiles, room) {
         // Προτεραιότητα σε επικίνδυνους εχθρούς (με attack parts)
         const dangerous = hostiles.filter(creep => 
             creep.getActiveBodyparts(ATTACK) > 0 || 
@@ -63,6 +65,30 @@ var towerController = {
 
         const targets = dangerous.length > 0 ? dangerous : hostiles;
         
+        // Βελτιωμένη επιλογή: προτεραιότητα σε εχθρούς που επιτίθενται σε κρίσιμες δομές
+        const criticalStructures = room.find(FIND_MY_STRUCTURES, {
+            filter: structure => {
+                return [STRUCTURE_SPAWN, STRUCTURE_TOWER, STRUCTURE_STORAGE, STRUCTURE_TERMINAL].includes(structure.structureType);
+            }
+        });
+
+        // Βρες εχθρούς που απειλούν κρίσιμες δομές
+        const attackers = [];
+        for (const hostile of targets) {
+            for (const structure of criticalStructures) {
+                if (hostile.pos.getRangeTo(structure) <= 5) {
+                    attackers.push(hostile);
+                    break;
+                }
+            }
+        }
+
+        // Αν υπάρχουν εχθροί που απειλούν κρίσιμες δομές, επιλέγουμε από αυτούς
+        if (attackers.length > 0) {
+            return tower.pos.findClosestByRange(attackers);
+        }
+
+        // Αλλιώς, επιλέγουμε τον πιο κοντινό από τους targets
         return tower.pos.findClosestByRange(targets);
     },
 
@@ -99,10 +125,11 @@ var towerController = {
                     return true;
                 }
 
-                // Προστατευμένες δομές (τείχη/ramparts) - επισκευή μόνο αν χρειάζεται
+                // Προστατευμένες δομές (τείχη/ramparts) - δυναμικά όρια
                 if (structure.structureType === STRUCTURE_WALL || 
                     structure.structureType === STRUCTURE_RAMPART) {
-                    return structure.hits < 10000; // Προσαρμόστε το όριο όπως θέλετε
+                    const limit = this.calculateWallLimit(room.controller ? room.controller.level : 1);
+                    return structure.hits < limit;
                 }
 
                 // Άλλες δομές (roads, containers κλπ)
@@ -153,6 +180,29 @@ var towerController = {
         };
 
         return priorities[structure.structureType] || 5;
+    },
+
+    /**
+     * Υπολογίζει το όριο hits για τα τείχη/ramparts ανάλογα με το επίπεδο του controller
+     */
+    calculateWallLimit: function(controllerLevel) {
+        // Δυναμικό όριο που αυξάνεται με το επίπεδο
+        const baseLimit = 10000;
+        const multiplier = controllerLevel * 5000;
+        return Math.min(baseLimit + multiplier, 100000); // Μέγιστο όριο 100K για απόδοση
+    },
+
+    /**
+     * Καθορίζει αν πρέπει να γίνει επισκευή βάσει energy και απειλών
+     */
+    shouldRepair: function(tower, hostiles) {
+        // Αν υπάρχουν εχθροί, επισκευή μόνο με υψηλή energy
+        if (hostiles.length > 0) {
+            return tower.energy > tower.energyCapacity * 0.7; // 70% capacity
+        }
+        
+        // Χωρίς εχθρούς, επισκευή με οποιαδήποτε energy
+        return tower.energy > 0;
     }
 };
 

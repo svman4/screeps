@@ -18,8 +18,8 @@ const POPULATION_LIMITS = {
             STATIC_HARVESTER: 2,
             SIMPLE_HARVESTER: 2,    // ΠΡΟΣΘΗΚΗ: Τουλάχιστον 1 simple harvester
             HAULER: 3,
-            UPGRADER: 1,
-            BUILDER:1,
+            UPGRADER: 2,
+            BUILDER:2,
             LD_HAULER: 0,
             LD_HARVESTER: 0
         };
@@ -212,7 +212,7 @@ const respawController = {
     
     // 1. STATIC HARVESTERS
     if (this.needStaticHarvester(room, population)) {
-        
+        Game.notify('Προσοχή! Δημιουργία SimpleHarvester ' + room.name + '(rcl: '+room.controller.level+')',60*30/3);
         if (this.needBuilder(room, population)) {
            if(debug===true) console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 1.5: Χρειάζεται Builder`);
            return this.createBuilder(spawn, roomName, rcl);

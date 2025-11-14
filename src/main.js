@@ -75,9 +75,9 @@ module.exports.loop = function () {
             roleManager.run(roomName, debug);
             
             // MEDIUM PRIORITY - Τρέχουν πιο σπάνια
-            //if (Game.time % 20 === 0) {
+            if (Game.time % 20 === 0) {
                 constructionManager.run(roomName,debug);
-            //}
+            }
             
             // LOW PRIORITY - Μόνο με υψηλό CPU
             if (Game.cpu.bucket > 5000 && Game.time % 100 === 0) {

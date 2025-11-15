@@ -494,7 +494,7 @@ isContainerNearSource: function(container) {
         const target = this.findDeliveryTargetForHauler(creep);
         
         if (!target) {
-            // Αναζήτηση emergency targets χωρίς reservations
+        //    Αναζήτηση emergency targets χωρίς reservations
             const emergencyTargets = this.getEmergencyTargets(creep);
             if (emergencyTargets.length > 0) {
                 const emergencyTarget = creep.pos.findClosestByRange(emergencyTargets);
@@ -528,7 +528,7 @@ isContainerNearSource: function(container) {
     getEmergencyTargets: function(creep) {
         const room = creep.room;
         const targets = [];
-        
+       //return targets;
         // Προσθήκη όλων των πιθανών στόχων χωρίς reservations
         targets.push(...room.find(FIND_MY_SPAWNS, {
             filter: spawn => spawn.store.getFreeCapacity(RESOURCE_ENERGY) > 0

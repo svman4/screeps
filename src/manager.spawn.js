@@ -14,19 +14,11 @@
 // ΠΑΡΑΜΕΤΡΟΙ ΣΥΣΤΗΜΑΤΟΣ - ΕΔΩ ΑΛΛΑΖΟΥΜΕ ΤΙΣ ΡΥΘΜΙΣΕΙΣ
 // ===========================================
 
-const POPULATION_LIMITS = {
-            STATIC_HARVESTER: 2,
-            SIMPLE_HARVESTER: 2,    // ΠΡΟΣΘΗΚΗ: Τουλάχιστον 1 simple harvester
-            HAULER: 3,
-            UPGRADER: 2,
-            BUILDER:2,
-            LD_HAULER: 0,
-            LD_HARVESTER: 0
-        };
+
 // Όλοι οι ρόλοι που υποστηρίζει το σύστημα
 const ROLES = {
     STATIC_HARVESTER: 'staticHarvester',
-    SIMPLE_HARVESTER: 'simpleHarvester',  // ΠΡΟΣΘΗΚΗ
+    SIMPLE_HARVESTER: 'simpleHarvester',  
     HAULER: 'hauler',
     UPGRADER: 'upgrader',
     BUILDER: 'builder',
@@ -50,6 +42,11 @@ const respawController = {
         if (Game.time % 5 !== 0) {
             return;
         }
+        const roomMemory=Memory.rooms[roomName];
+        if ( !roomMemory.populationLimits) {
+            initPopulation(roomName);
+        }
+        
         
         // ΒΗΜΑ 2: ΚΑΘΑΡΙΣΜΟΣ ΜΝΗΜΗΣ - Διαγραφή νεκρών creeps
         this.cleanupDeadCreeps(roomName);
@@ -67,10 +64,7 @@ const respawController = {
             return;
         }
         
-        if (!Game.rooms[roomName].memory.populationLimits) {     
-            this.setPopulationLimits(roomName);
-        }
-        const populationMax=Game.rooms[roomName].memory.populationLimits;
+        const populationMax=roomMemory.populationLimits;
         
         
         // ΒΗΜΑ 4: ΑΝΑΛΥΣΗ ΤΟΥ ΤΡΕΧΟΝΤΟΣ ΠΛΗΘΥΣΜΟΥ
@@ -80,18 +74,7 @@ const respawController = {
         this.decideAndSpawnCreep(spawn, roomName, population,populationMax);
     }, // end of run
     setPopulationLimits:function(roomName) { 
-        console.log("Initialize population on Room "+roomName);
-        const room=Game.rooms[roomName];
-        var populationLimits={};
-        const sourceCount=room.find(FIND_SOURCES).length;
-        populationLimits['SIMPLE_HARVESTER']=2;
-        populationLimits['STATIC_HARVESTER']=sourceCount;
-        populationLimits['HAULER']=sourceCount;
-        populationLimits['UPGRADER']=3;
-        populationLimits['BUILDER']=3;
-        populationLimits['LD_HARVESTER']=0;
-        populationLimits['LD_HAULER']=0;
-        room.memory.populationLimits=populationLimits;
+        
         
         
     } //end of setPopulationLimits
@@ -211,9 +194,9 @@ const respawController = {
     }
     
     // 1. STATIC HARVESTERS
-    if (this.needStaticHarvester(room, population)) {
+    if (this.needStaticHarvester(room, population,populationLimit)) {
         Game.notify('Προσοχή! Δημιουργία SimpleHarvester ' + room.name + '(rcl: '+room.controller.level+')',60*30/3);
-        if (this.needBuilder(room, population)) {
+        if (this.needBuilder(room, population,populationLimit)) {
            if(debug===true) console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 1.5: Χρειάζεται Builder`);
            return this.createBuilder(spawn, roomName, rcl);
         }
@@ -224,8 +207,8 @@ const respawController = {
     }
     
     // 2. HAULERS (ΜΕΤΑΦΟΡΑ ΕΝΕΡΓΕΙΑΣ)
-    if (this.needHauler(room, population)) {
-        if (this.needBuilder(room, population)) {
+    if (this.needHauler(room, population,populationLimit)) {
+        if (this.needBuilder(room, population, populationLimit)) {
            if(debug===true) console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 2.5: Χρειάζεται Builder`);
            return this.createBuilder(spawn, roomName, rcl);
         }
@@ -234,8 +217,8 @@ const respawController = {
     }
     
     // 3. UPGRADERS
-    if (this.needUpgrader(population)) {
-        if (this.needBuilder(room, population)) {
+    if (this.needUpgrader(population,populationLimit)) {
+        if (this.needBuilder(room, population,populationLimit)) {
            if(debug===true) console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 3.5: Χρειάζεται Builder`);
            return this.createBuilder(spawn, roomName, rcl);
         }
@@ -244,7 +227,7 @@ const respawController = {
     }
     
     // 4. BUILDERS
-    if (this.needBuilder(room, population)) {
+    if (this.needBuilder(room, population,populationLimit)) {
         if(debug===true) console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 4: Χρειάζεται Builder`);
         return this.createBuilder(spawn, roomName, rcl);
     }
@@ -260,9 +243,9 @@ const respawController = {
      * ΕΛΕΓΧΟΣ: Χρειαζόμαστε Static Harvester;
      * Κανόνας: 1 Static Harvester για κάθε πηγή στο δωμάτιο
      */
-    needStaticHarvester: function(room, population) {
+    needStaticHarvester: function(room, population,populationMax) {
         const sources = room.find(FIND_SOURCES);
-        const maxNeeded = sources.length;
+        const maxNeeded =populationMax.STATIC_HARVESTER;
         const current = population[ROLES.STATIC_HARVESTER];
         
         //console.log(`   🔍 Static Harvesters: ${current}/${maxNeeded} (${sources.length} πηγές)`);
@@ -272,9 +255,9 @@ const respawController = {
    /**
  * ΕΛΕΓΧΟΣ: Χρειαζόμαστε Simple Harvester (έκτακτη ανάγκη);
  */
-needSimpleHarvester: function(room, population) {
+needSimpleHarvester: function(room, population,populationMax) {
     const current = population[ROLES.SIMPLE_HARVESTER];
-    const maxAllowed = POPULATION_LIMITS.SIMPLE_HARVESTER;
+    const maxAllowed = populationMax.SIMPLE_HARVESTER;
     
     // Εάν έχουμε ήδη τον μέγιστο αριθμό, δεν χρειαζόμαστε άλλο
     if (current >= maxAllowed) {
@@ -301,10 +284,10 @@ needSimpleHarvester: function(room, population) {
      * ΕΛΕΓΧΟΣ: Χρειαζόμαστε Hauler;
      */
     // Βελτιωμένη συνάρτηση needHauler
-needHauler: function(room, population) {
+needHauler: function(room, population,populationMax) {
     const current = population[ROLES.HAULER];
-    const maxAllowed = POPULATION_LIMITS.HAULER;
-
+    const maxAllowed = populationMax.HAULER;
+    
     // Ελέγχουμε αν υπάρχει ενέργεια που χρειάζεται μεταφορά
     const droppedEnergy = room.find(FIND_DROPPED_RESOURCES, {
         filter: (r) => r.resourceType === RESOURCE_ENERGY && r.amount > 100
@@ -329,9 +312,9 @@ needHauler: function(room, population) {
     /**
      * ΕΛΕΓΧΟΣ: Χρειαζόμαστε Upgrader;
      */
-    needUpgrader: function(population) {
+    needUpgrader: function(population,populationMax) {
         const current = population[ROLES.UPGRADER];
-        const maxAllowed = POPULATION_LIMITS.UPGRADER;
+        const maxAllowed = populationMax.UPGRADER;
         
       //  console.log(`   🔍 Upgraders: ${current}/${maxAllowed}`);
         return current < maxAllowed;
@@ -359,10 +342,10 @@ needHauler: function(room, population) {
      * ΕΛΕΓΧΟΣ: Χρειαζόμαστε Builder;
      * Κανόνας: Μόνο αν υπάρχουν construction sites ή έχουμε μόνο 1 builder
      */
-    needBuilder: function(room, population) {
+    needBuilder: function(room, population,populationMax) {
         const constructionSites = room.find(FIND_CONSTRUCTION_SITES);
         const current = population[ROLES.BUILDER];
-        const maxAllowed = POPULATION_LIMITS.BUILDER;
+        const maxAllowed = populationMax.BUILDER;
         
         const hasWork = constructionSites.length > 0;
         const underLimit = current < maxAllowed;
@@ -672,7 +655,21 @@ createSimpleHarvester: function(spawn, roomName) {
         return POPULATION_LIMITS;
     }
 };
-
+initPopulation=function(roomName) {
+    console.log("Initialize population on Room "+roomName);
+        const room=Game.rooms[roomName];
+        var populationLimits={};
+        const sourceCount=room.find(FIND_SOURCES).length;
+        populationLimits['SIMPLE_HARVESTER']=2;
+        populationLimits['STATIC_HARVESTER']=sourceCount;
+        populationLimits['HAULER']=sourceCount;
+        populationLimits['UPGRADER']=1;
+        populationLimits['BUILDER']=2;
+        populationLimits['LD_HARVESTER']=0;
+        populationLimits['LD_HAULER']=0;
+        room.memory.populationLimits=populationLimits;
+    
+};
 // ===========================================
 // ΕΞΑΓΩΓΗ ΤΟΥ MODULE
 // ===========================================

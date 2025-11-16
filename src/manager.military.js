@@ -118,10 +118,10 @@ var militaryController = {
     createEmergencyUnit: function(spawn, energy) {
         let body = [];
         
-        if (energy >= 560) {
-            body = [TOUGH, TOUGH, MOVE, MOVE, ATTACK, ATTACK, ATTACK, ATTACK]; // 560 energy
+        if (energy >= 580) {
+            body = [TOUGH,TOUGH,MOVE,MOVE,ATTACK,ATTACK,RANGED_ATTACK,RANGED_ATTACK]; // 560 energy
         } else if (energy >= 280) {
-            body = [TOUGH, MOVE, ATTACK, ATTACK]; // 280 energy
+            body = [TOUGH,MOVE,ATTACK,RANGED_ATTACK]; // 290 energy
         } else {
             body = [MOVE, ATTACK]; // 130 energy - ελάχιστη μονάδα
         }

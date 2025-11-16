@@ -1,3 +1,4 @@
+const minTickToLive=30;
 const roleManager = {
     run: function() {
         for (const name in Game.creeps) {
@@ -18,13 +19,19 @@ const roleManager = {
                 case 'builder': // Add case for staticBuilder
                     this.runBuilder(creep);
                     break;
-                // Hauler, Builder, Repairer are handled by their respective managers
+                case "to_be_recycled":
+                    runRecycleCreep(creep);
+                    break;
             }
         }
     },
 
     runHarvester: function(creep) {
-        // Simple harvester: harvest and drop energy for haulers
+        
+        if(creep.ticksToLive<minTickToLive && getRecoveryContainerId(creep)) {
+            creep.memory.role="to_be_recycled";
+            return;
+        }
         const source = creep.pos.findClosestByPath(FIND_SOURCES_ACTIVE);
         if (creep.pos.inRangeTo(source,1)) {
             creep.harvest(source);
@@ -34,6 +41,10 @@ const roleManager = {
         
     }, // end of runHarvester
     runBuilder: function(creep) {
+        if(creep.ticksToLive<minTickToLive && getRecoveryContainerId(creep)) {
+            creep.memory.role="to_be_recycled";
+            return;
+        }
         // State management
         if (creep.memory.building && creep.store[RESOURCE_ENERGY] === 0) {
             creep.memory.building = false;
@@ -51,9 +62,6 @@ const roleManager = {
         }
     },
 
-    /**
-     * ΧΤΙΣΙΜΟ ΔΟΜΩΝ
-     */
     buildStructures: function(creep) {
         // Προτεραιότητα 1: Construction sites
         const constructionSites = creep.room.find(FIND_CONSTRUCTION_SITES,{
@@ -251,6 +259,10 @@ const roleManager = {
     }
 },
     runUpgrader: function(creep) {
+              if(creep.ticksToLive<minTickToLive && getRecoveryContainerId(creep)) {
+            creep.memory.role="to_be_recycled";
+            return;
+        }
         if (creep.memory.working && creep.store[RESOURCE_ENERGY] === 0) {
             creep.memory.working = false;
             creep.say('🔄 harvest');
@@ -272,6 +284,10 @@ const roleManager = {
     }, // end of runUpgrader
 
     runStaticHarvester: function(creep) { 
+               if(creep.ticksToLive<minTickToLive && getRecoveryContainerId(creep)) {
+            creep.memory.role="to_be_recycled";
+            return;
+        }
         if(!creep.memory.sourceId) {
             console.log(creep.name + " No sourceId found in memory");
             const closestSource = creep.pos.findClosestByPath(FIND_SOURCES);
@@ -313,8 +329,30 @@ const roleManager = {
         }
         creep.harvest(source);
     } // end of runStaticHarvester()
-
     
+    
+}; // end of roleManager
+getRecoveryContainerId=function(creep) { 
+            return creep.room.memory.recoveryContainerId;
+  
 };
+runRecycleCreep=function(creep) { 
+    if (!creep.room.memory.recoveryContainerId) {
+        
+        creep.say("suicide");
+    }
+    const recycleContainer=Game.getObjectById(creep.room.memory.recoveryContainerId);
+    if (creep.pos.inRangeTo(recycleContainer,0)===false) {
+                creep.moveTo(recycleContainer, {
+                    visualizePathStyle: {stroke: '#ffaa00'},
+                    reusePath: 10
+                });
+                return;
+    }
+    const spawns = creep.room.find(FIND_MY_SPAWNS);
+    const closestSpawn=creep.pos.findClosestByRange(spawns);
+    closestSpawn.recycleCreep(creep);
+
+} // end of    runRecycleCreep 
 
 module.exports = roleManager;

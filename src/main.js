@@ -12,6 +12,7 @@ function showRoomInfo(room) {
     if (!debug) {
         return;
     }
+  
     const visual = new RoomVisual(room.name);
     const creeps = room.find(FIND_MY_CREEPS);
     

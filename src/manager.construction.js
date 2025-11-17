@@ -4,7 +4,9 @@ const constructionManager = {
     constructionSitesMax:2,
     
     run: function(roomName,debug=false) {
-        if (debug) {this.visualizeBlueprint(roomName,8);}
+        if (Memory.debug.construction) {
+            this.visualizeBlueprint(roomName,8);}
+        
         
         // // Εκτέλεση κάθε 10 ticks για εξοικονόμηση CPU
          if (Game.time % 10 !== 0) return;

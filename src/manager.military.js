@@ -371,12 +371,15 @@ var militaryController = {
      * Ανακύκλωση creep
      */
     recycleCreep: function(creep) {
-        const spawn = creep.pos.findClosestByRange(FIND_MY_SPAWNS);
-        if (spawn && creep.pos.isNearTo(spawn)) {
-            spawn.recycleCreep(creep);
-        } else if (spawn) {
-            creep.moveTo(spawn);
-        }
+        creep.memory.role="to_be_recycled";
+        
+        // const spawn = creep.pos.findClosestByRange(FIND_MY_SPAWNS);
+        
+        // if (spawn && creep.pos.isNearTo(spawn)) {
+        //     spawn.recycleCreep(creep);
+        // } else if (spawn) {
+        //     creep.moveTo(spawn);
+        // }
     },
 
     /**

@@ -476,42 +476,72 @@ const logisticsManager = {
                 assignedAt: Game.time
             };
             
-            hauler.say(`🎯 ${availableTask.taskType}`);
+            //hauler.say(`🎯 ${availableTask.taskType}`);
         }
     },
 
     /**
      * ΕΥΡΕΣΗ ΚΑΛΥΤΕΡΟΥ TASK ΓΙΑ HAULER
      */
-    findBestTaskForHauler: function(hauler, tasks, reservations) {
-        if (tasks.length === 0) return null;
+    /**
+ * ΕΥΡΕΣΗ ΚΑΛΥΤΕΡΟΥ TASK ΓΙΑ HAULER - ΒΕΛΤΙΩΜΕΝΗ ΜΕ ΑΠΟΣΤΑΣΗ
+ */
+findBestTaskForHauler: function(hauler, tasks, reservations) {
+    if (tasks.length === 0) return null;
 
-        // Φιλτράρισμα tasks που είναι διαθέσιμα (δεν έχουν reservation ή το reservation έχει λήξει)
-        const availableTasks = tasks.filter(task => {
-            const reservation = reservations[task.id];
-            
-            if (!reservation) return true;
-            
-            // Reservation έχει λήξει (25 ticks)
-            if (Game.time - reservation.reservedAt > 25) {
-                delete reservations[task.id];
-                return true;
-            }
-            
-            // Hauler του reservation δεν υπάρχει πλέον
-            if (!Game.creeps[reservation.haulerName]) {
-                delete reservations[task.id];
-                return true;
-            }
-            
-            return false;
-        });
+    // Φιλτράρισμα tasks που είναι διαθέσιμα (δεν έχουν reservation ή το reservation έχει λήξει)
+    const availableTasks = tasks.filter(task => {
+        const reservation = reservations[task.id];
+        
+        if (!reservation) return true;
+        
+        // Reservation έχει λήξει (25 ticks)
+        if (Game.time - reservation.reservedAt > 25) {
+            delete reservations[task.id];
+            return true;
+        }
+        
+        // Hauler του reservation δεν υπάρχει πλέον
+        if (!Game.creeps[reservation.haulerName]) {
+            delete reservations[task.id];
+            return true;
+        }
+        
+        return false;
+    });
 
-        if (availableTasks.length === 0) return null;
+    if (availableTasks.length === 0) return null;
 
-        // Επιστροφή task με την υψηλότερη προτεραιότητα
-        return availableTasks[0];
-    },
+    // ΒΕΛΤΙΩΜΕΝΗ ΛΟΓΙΚΗ: Επιλογή task βάσει προτεραιότητας ΚΑΙ απόστασης
+    let bestTask = null;
+    let bestScore = -Infinity;
+
+    availableTasks.forEach(task => {
+        // Βασική προτεραιότητα από το task
+        const basePriority = task.priority;
+        
+        // Υπολογισμός απόστασης από τον hauler προς τον στόχο
+        const target = Game.getObjectById(task.targetId);
+        if (!target) return;
+        
+        const distance = hauler.pos.getRangeTo(target);
+        
+        // ΥΠΟΛΟΓΙΣΜΟΣ SCORE: 
+        // - Βασική προτεραιότητα (60% βάρους)
+        // - Απόσταση (40% βάρους - μικρότερη απόσταση = υψηλότερο score)
+        const priorityScore = basePriority * 0.6;
+        const distanceScore = (50 - Math.min(distance, 50)) * 0.4; // Μέγιστη απόσταση 50, αντιστρέφουμε
+        
+        const totalScore = priorityScore + distanceScore;
+        
+        if (totalScore > bestScore) {
+            bestScore = totalScore;
+            bestTask = task;
+        }
+    });
+
+    return bestTask;
+},
 
     /**
      * ΕΛΕΓΧΟΣ ΕΓΚΥΡΟΤΗΤΑΣ TASK
@@ -703,26 +733,31 @@ const logisticsManager = {
         }
     },
 
-    /**
-     * ΟΛΟΚΛΗΡΩΣΗ TASK
-     */
-    completeTask: function(creep) {
-        const roomName = creep.memory.homeRoom;
-        const assignments = this.getHaulerAssignments(roomName);
-        const reservations = this.getTaskReservations(roomName);
+   completeTask: function(creep) {
+    const roomName = creep.memory.homeRoom;
+    const assignments = this.getHaulerAssignments(roomName);
+    const reservations = this.getTaskReservations(roomName);
+    
+    if (assignments[creep.name]) {
+        // Αφαίρεση reservation
+        delete reservations[assignments[creep.name].taskId];
+        // Αφαίρεση assignment
+        delete assignments[creep.name];
         
-        if (assignments[creep.name]) {
-            // Αφαίρεση reservation
-            delete reservations[assignments[creep.name].taskId];
-            // Αφαίρεση assignment
-            delete assignments[creep.name];
-            
-            this.setHaulerAssignments(roomName, assignments);
-            this.setTaskReservations(roomName, reservations);
-        }
+        this.setHaulerAssignments(roomName, assignments);
+        this.setTaskReservations(roomName, reservations);
         
-        //creep.say('✅ task done');
-    },
+        // 🔥 ΑΜΕΣΗ ΕΠΑΝΑΝΑΘΕΣΗ ΝΕΟΥ TASK
+        const tasks = this.getEnergyTasks(roomName);
+        this.assignTaskToHauler(creep, roomName, tasks, assignments, reservations);
+        
+        // Αποθήκευση των νέων assignments
+        this.setHaulerAssignments(roomName, assignments);
+        this.setTaskReservations(roomName, reservations);
+    }
+    
+    //creep.say('✅ task done');
+},
 
     /**
      * ΚΑΘΑΡΙΣΜΟΙ

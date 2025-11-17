@@ -8,44 +8,7 @@ const militaryController = require('manager.military');
 var roleManager = require('manager.role');
 const debug=false;
 // Βοηθητική συνάρτηση για οπτική πληροφόρηση
-function showRoomInfo(room) {
-    if (!debug) {
-        return;
-    }
-  
-    const visual = new RoomVisual(room.name);
-    const creeps = room.find(FIND_MY_CREEPS);
-    
-    // Πληροφορίες πληθυσμού
-    const roles = {};
-    creeps.forEach(creep => {
-        const role = creep.memory.role || 'unknown';
-        roles[role] = (roles[role] || 0) + 1;
-    });
-    
-    let infoText = `Pop: ${creeps.length}`;
-    for (const role in roles) {
-        infoText += ` ${role}:${roles[role]}`;
-    }
-    
-    // Πληροφορίες ενέργειας
-    const energyInfo = `Energy: ${room.energyAvailable}/${room.energyCapacityAvailable}`;
-    
-    visual.text(infoText, 1, 1, { align: 'left', color: '#ffffff' });
-    visual.text(energyInfo, 1, 2, { align: 'left', color: '#ffff00' });
-    
-    // Πληροφορίες controller
-    if (room.controller) {
-        const controllerInfo = `RCL: ${room.controller.level} Progress: ${room.controller.progress}/${room.controller.progressTotal}`;
-        visual.text(controllerInfo, 1, 3, { align: 'left', color: '#00ff00' });
-    }
-    const constructionText=`construction sites :${room.find(FIND_CONSTRUCTION_SITES).length}`;
-    visual.text(constructionText,1,4,{ align: 'left', color: '#ffffff' });
-    // Πληροφορίες ουράς logistics (αν υπάρχουν)
-    if (Memory.energyQueue && Memory.energyQueue[room.name]) {
-        logisticsManager.showQueueInfo(room);
-    }
-}
+
 
 module.exports.loop = function () {
      var startCpu = Game.cpu.getUsed();
@@ -86,7 +49,7 @@ module.exports.loop = function () {
             }
             
              //Οπτική πληροφόρηση
-             if (debug===true && Game.time % 5 === 0 ) {
+             if (Memory.debug.status && Game.time % 5 === 0 ) {
                  showRoomInfo(room);
              }
         }
@@ -102,3 +65,37 @@ module.exports.loop = function () {
         console.log(`📋 Stack: ${error.stack}`);
     }
 };
+function showRoomInfo(room) {
+    const visual = new RoomVisual(room.name);
+    const creeps = room.find(FIND_MY_CREEPS);
+    
+    // Πληροφορίες πληθυσμού
+    const roles = {};
+    creeps.forEach(creep => {
+        const role = creep.memory.role || 'unknown';
+        roles[role] = (roles[role] || 0) + 1;
+    });
+    
+    let infoText = `Pop: ${creeps.length}`;
+    for (const role in roles) {
+        infoText += ` ${role}:${roles[role]}`;
+    }
+    
+    // Πληροφορίες ενέργειας
+    const energyInfo = `Energy: ${room.energyAvailable}/${room.energyCapacityAvailable}`;
+    
+    visual.text(infoText, 1, 1, { align: 'left', color: '#ffffff' });
+    visual.text(energyInfo, 1, 2, { align: 'left', color: '#ffff00' });
+    
+    // Πληροφορίες controller
+    if (room.controller) {
+        const controllerInfo = `RCL: ${room.controller.level} Progress: ${room.controller.progress}/${room.controller.progressTotal}`;
+        visual.text(controllerInfo, 1, 3, { align: 'left', color: '#00ff00' });
+    }
+    const constructionText=`construction sites :${room.find(FIND_CONSTRUCTION_SITES).length}`;
+    visual.text(constructionText,1,4,{ align: 'left', color: '#ffffff' });
+    // Πληροφορίες ουράς logistics (αν υπάρχουν)
+    if (Memory.energyQueue && Memory.energyQueue[room.name]) {
+        logisticsManager.showQueueInfo(room);
+    }
+}

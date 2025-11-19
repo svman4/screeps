@@ -1,8 +1,5 @@
-`;
-
-// Εξάγετε το αντικείμενο για χρήση σε άλλα modules
-module.exports.BASE_LAYOUT_STRING = BASE_LAYOUT_STRING;{
-  "rcl": 6,
+module.exports = {
+  "rcl": 8,
   "buildings": {
     "constructedWall": [
       {"x":44,"y":32},
@@ -336,12 +333,13 @@ module.exports.BASE_LAYOUT_STRING = BASE_LAYOUT_STRING;{
     ],
     "rampart": [
       {"x":47,"y":24},
-      {"x":46,"y":24}
+      {"x":46,"y":24},
+      {"x":21,"y":11},
+      {"x":16,"y":9},
+      {"x":15,"y":8},
+      {"x":14,"y":8}
     ]
   },
   "name": "E11N38",
   "shard": "shard3"
-}`;
-
-// Εξάγετε το αντικείμενο για χρήση σε άλλα modules
-module.exports.BASE_LAYOUT_STRING = BASE_LAYOUT_STRING;
+}

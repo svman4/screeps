@@ -6,7 +6,12 @@ var expansionManager = require('manager.expansion');
 var logisticsManager = require('manager.logistics');
 const militaryController = require('manager.military');
 var roleManager = require('manager.role');
-const debug=false;
+
+ 
+global.roomBlueprints = {
+    E11N38: require('E11N38'),
+    E12N38: require('E12N38')
+};
 // Βοηθητική συνάρτηση για οπτική πληροφόρηση
 
 
@@ -33,15 +38,15 @@ module.exports.loop = function () {
             
             // HIGH PRIORITY - Πάντα τρέχουν
             militaryController.run(roomName);
-            defenceManager.run(roomName,debug);
-            spawnManager.run(roomName,debug);
-            logisticsManager.run(roomName,debug);
-            roleManager.run(roomName, debug);
+            defenceManager.run(roomName);
+            spawnManager.run(roomName);
+            logisticsManager.run(roomName);
+            roleManager.run(roomName);
             
             // MEDIUM PRIORITY - Τρέχουν πιο σπάνια
-            if (Game.time % 20 === 0) {
-                constructionManager.run(roomName,debug);
-            }
+            
+                constructionManager.run(roomName);
+            
             
             // LOW PRIORITY - Μόνο με υψηλό CPU
             if (Game.cpu.bucket > 5000 && Game.time % 100 === 0) {

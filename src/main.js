@@ -31,8 +31,9 @@ module.exports.loop = function () {
 
     // Εκτέλεση ανά δωμάτιο
     for (const roomName in Game.rooms) {
-        const room = Game.rooms[roomName];
         
+        const room = Game.rooms[roomName];
+            
         if (room.controller && room.controller.my) {
         //    console.log(`🏠 Επεξεργασία δωματίου: ${roomName} (RCL: ${room.controller.level})`);
             
@@ -44,13 +45,14 @@ module.exports.loop = function () {
             roleManager.run(roomName);
             
             // MEDIUM PRIORITY - Τρέχουν πιο σπάνια
-            
+            if (Game.time%10===0 ) {
                 constructionManager.run(roomName);
+            }
             
             
             // LOW PRIORITY - Μόνο με υψηλό CPU
-            if (Game.cpu.bucket > 5000 && Game.time % 100 === 0) {
-                expansionManager.run();
+            if (Game.cpu.bucket > 5000 ) {
+                expansionManager.run(roomName);
             }
             
              //Οπτική πληροφόρηση

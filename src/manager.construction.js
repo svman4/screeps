@@ -83,7 +83,7 @@ const constructionManager = {
             return;
         }
 
-        console.log(`🔨 Έλεγχος για construction sites στο ${room.name} (RCL: ${currentRCL}, Sites: ${currentSites.length}/${this.constructionSitesMax})`);
+        //console.log(`🔨 Έλεγχος για construction sites στο ${room.name} (RCL: ${currentRCL}, Sites: ${currentSites.length}/${this.constructionSitesMax})`);
 
         // Φιλτράρισμα δομών που μπορούν να χτιστούν
         const structuresToBuild = blueprint.filter(structure => {
@@ -122,7 +122,7 @@ const constructionManager = {
                 console.log(`🏗️ Δημιουργήθηκε construction site: ${structureType} at (${structure.x},${structure.y}) - Priority: ${structure.priorityScore.toFixed(2)}`);
                 sitesCreated++;
             } else if (result !== ERR_INVALID_TARGET && result !== ERR_FULL) {
-                console.log(`❌ Σφάλμα δημιουργίας construction site: ${structureType} at (${structure.x},${structure.y}) - ${result}`);
+                //console.log(`❌ Σφάλμα δημιουργίας construction site: ${structureType} at (${structure.x},${structure.y}) - ${result}`);
             }
         }
 

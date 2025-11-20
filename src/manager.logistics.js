@@ -19,6 +19,8 @@ const PRIORITIES = {
     SPAWN_EXTENSION: 100,
     TOWER: 80,
     CONTROLLER_CONTAINER: 70,
+    LAB:40,
+    TERMINAL:40,
     STORAGE: 10,
     
     // Προτεραιότητες Πηγών (για ανάκτηση)
@@ -191,6 +193,29 @@ const logisticsManager = {
             obj: tower
         })));
 
+        const labs = room.find(FIND_MY_STRUCTURES, {
+            filter: s => s.structureType === STRUCTURE_LAB && 
+                         s.store[RESOURCE_ENERGY] < s.store.getCapacity(RESOURCE_ENERGY) * 1
+        });
+        targets.push(...labs.map(lab => ({
+            id: lab.id,
+            type: 'lab',
+            priority: PRIORITIES.LAB,
+            obj: lab
+        })));
+
+
+        const terminal = room.find(FIND_MY_STRUCTURES, {
+            filter: s => s.structureType === STRUCTURE_TERMINAL && 
+                         s.store[RESOURCE_ENERGY] < s.store.getCapacity(RESOURCE_ENERGY) * 0.2
+        });
+        targets.push(...terminal.map(terminal => ({
+            id: terminal.id,
+            type: 'terminal',
+            priority: PRIORITIES.TERMINAL,
+            obj: terminal
+        })));
+        
         // 3. CONTROLLER CONTAINER (50% πλήρωση - ΜΕΣΑΙΑ ΠΡΟΤΕΡΑΙΟΤΗΤΑ)
         if (room.memory.controllerContainerId) {
             const controllerContainer = Game.getObjectById(room.memory.controllerContainerId);

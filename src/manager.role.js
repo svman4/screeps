@@ -284,10 +284,11 @@ const roleManager = {
     }, // end of runUpgrader
 
     runStaticHarvester: function(creep) { 
-               if(creep.ticksToLive<minTickToLive && getRecoveryContainerId(creep)) {
-            creep.memory.role="to_be_recycled";
-            return;
-        }
+        // Δε χρειάζεται μιας και πάντα πεθαίνει πάνω στο container. 
+        //if(creep.ticksToLive<minTickToLive && getRecoveryContainerId(creep)) {
+        //     creep.memory.role="to_be_recycled";
+        //     return;
+        // }
         if(!creep.memory.sourceId) {
             console.log(creep.name + " No sourceId found in memory");
             const closestSource = creep.pos.findClosestByPath(FIND_SOURCES);

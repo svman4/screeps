@@ -150,7 +150,9 @@ const respawController = {
      */
     analyzePopulation: function(roomName,debug=false) {
         const room = Game.rooms[roomName];
-        const allCreeps = room.find(FIND_MY_CREEPS);
+        //const allCreeps = room.find(FIND_MY_CREEPS);
+        
+        const allCreeps=_.filter(Game.creeps,(creep)=>creep.memory.homeRoom===roomName);
         
         // Κατηγοριοποίηση creeps ανά ρόλο
         const population = {

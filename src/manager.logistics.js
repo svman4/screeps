@@ -33,7 +33,7 @@ const PRIORITIES = {
     STORAGE_SOURCE: 5
 };
 
-const MIN_LIFE_TO_LIVE = 545;
+const MIN_LIFE_TO_LIVE = 50;
 
 const logisticsManager = {
     /**
@@ -41,9 +41,15 @@ const logisticsManager = {
      */
     init: function(roomName) {
         if (!Memory.rooms[roomName]) {
-            Memory.rooms[roomName] = {};
+                Memory.rooms[roomName] = {logistics:{}};
         }
-        const roomMemory = Memory.rooms[roomName];
+
+        
+        if (!Memory.rooms[roomName].logistics) {
+            Memory.rooms[roomName].logistics={};
+        
+        }
+        const roomMemory = Memory.rooms[roomName].logistics;
         
         if (!roomMemory.energyTasks) {
             roomMemory.energyTasks = [];
@@ -86,7 +92,7 @@ const logisticsManager = {
      * ΒΟΗΘΗΤΙΚΕΣ ΣΥΝΑΡΤΗΣΕΙΣ ΠΡΟΣΒΑΣΗΣ ΜΝΗΜΗΣ
      */
     getRoomMemory: function(roomName) {
-        return Memory.rooms[roomName] || {};
+        return Memory.rooms[roomName].logistics || {};
     },
 
     getEnergyTasks: function(roomName) {
@@ -95,7 +101,7 @@ const logisticsManager = {
 
     setEnergyTasks: function(roomName, tasks) {
         if (!Memory.rooms[roomName]) Memory.rooms[roomName] = {};
-        Memory.rooms[roomName].energyTasks = tasks;
+        Memory.rooms[roomName].logistics.energyTasks = tasks;
     },
 
     getHaulerAssignments: function(roomName) {
@@ -104,7 +110,7 @@ const logisticsManager = {
 
     setHaulerAssignments: function(roomName, assignments) {
         if (!Memory.rooms[roomName]) Memory.rooms[roomName] = {};
-        Memory.rooms[roomName].haulerAssignments = assignments;
+        Memory.rooms[roomName].logistics.haulerAssignments = assignments;
     },
 
     getTaskReservations: function(roomName) {
@@ -113,7 +119,7 @@ const logisticsManager = {
 
     setTaskReservations: function(roomName, reservations) {
         if (!Memory.rooms[roomName]) Memory.rooms[roomName] = {};
-        Memory.rooms[roomName].taskReservations = reservations;
+        Memory.rooms[roomName].logistics.taskReservations = reservations;
     },
 
     /**

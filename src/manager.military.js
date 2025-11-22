@@ -118,8 +118,8 @@ var militaryController = {
     createEmergencyUnit: function(spawn, energy) {
         let body = [];
         
-        if (energy >= 580) {
-            body = [TOUGH,TOUGH,MOVE,MOVE,ATTACK,ATTACK,RANGED_ATTACK,RANGED_ATTACK]; // 560 energy
+        if (energy >= 770) {
+            body = [TOUGH,TOUGH,MOVE,MOVE,MOVE,RANGED_ATTACK,RANGED_ATTACK,RANGED_ATTACK,RANGED_ATTACK]; // 770 energy
         } else if (energy >= 280) {
             body = [TOUGH,MOVE,ATTACK,RANGED_ATTACK]; // 290 energy
         } else {

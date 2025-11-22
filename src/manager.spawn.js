@@ -1,19 +1,6 @@
 /*
- * respawController.js - Ελέγχει την ανάγκη και εκτελεί την αναπαραγωγή creeps.
- * 
- * ΣΕΙΡΑ ΠΡΟΤΕΡΑΙΟΤΗΤΑΣ:
- * 1. Static Harvesters (1 για κάθε πηγή) → ΥΨΗΛΟΤΕΡΗ ΠΡΟΤΕΡΑΙΟΤΗΤΑ
- * 2. Simple Harvesters (για έκτακτη ανάγκη)
- * 3. Haulers (μεταφορά ενέργειας)
- * 4. Upgraders (αναβάθμιση controller)
- * 5. Long Distance Haulers/Harvesters (για μακρινά δωμάτια)
- * 6. Builders (χτίσιμο) → ΧΑΜΗΛΟΤΕΡΗ ΠΡΟΤΕΡΑΙΟΤΗΤΑ
+ * manager.spawn.js
  */
-
-// ===========================================
-// ΠΑΡΑΜΕΤΡΟΙ ΣΥΣΤΗΜΑΤΟΣ - ΕΔΩ ΑΛΛΑΖΟΥΜΕ ΤΙΣ ΡΥΘΜΙΣΕΙΣ
-// ===========================================
-
 
 // Όλοι οι ρόλοι που υποστηρίζει το σύστημα
 const ROLES = {
@@ -23,138 +10,78 @@ const ROLES = {
     UPGRADER: 'upgrader',
     BUILDER: 'builder',
     LD_HARVESTER: 'LDHarvester',
-    LD_HAULER: 'LDHauler'
+    LD_HAULER: 'LDHauler',
+    CLAIMER: 'claimer', // <--- ΝΕΟΣ ΡΟΛΟΣ
+    SCOUT: 'scout' // <--- ΝΕΟ
 };
-
-// ===========================================
-// ΚΥΡΙΟ ΑΝΤΙΚΕΙΜΕΝΟ CONTROLLER
-// ===========================================
 
 const respawController = {
     
-    /**
-     * ΚΥΡΙΑ ΣΥΝΑΡΤΗΣΗ - Τρέχει κάθε 5 ticks για εξοικονόμηση CPU
-     */
     run: function(roomName) {
-       // console.log(`🔧 RespawController εκτελείται για δωμάτιο: ${roomName}`);
-        
         // ΒΗΜΑ 1: ΕΞΟΙΚΟΝΟΜΗΣΗ CPU - Τρέχουμε μόνο κάθε 5 ticks
         if (Game.time % 5 !== 0) {
             return;
         }
-        const roomMemory=Memory.rooms[roomName];
-        if ( !roomMemory.populationLimits) {
+        const roomMemory = Memory.rooms[roomName];
+        if (!roomMemory || !roomMemory.populationLimits) {
             initPopulation(roomName);
         }
         
-        
-        // ΒΗΜΑ 2: ΚΑΘΑΡΙΣΜΟΣ ΜΝΗΜΗΣ - Διαγραφή νεκρών creeps
+        // ΒΗΜΑ 2: ΚΑΘΑΡΙΣΜΟΣ ΜΝΗΜΗΣ
         this.cleanupDeadCreeps(roomName);
         
-        // ΒΗΜΑ 3: ΕΥΡΕΣΗ SPAWN - Χρειαζόμαστε spawn για να δημιουργήσουμε creeps
+        // ΒΗΜΑ 3: ΕΥΡΕΣΗ SPAWN
         const spawn = this.findAvailableSpawn(roomName);
-        if (!spawn) {
-            console.log(`❌ Δεν βρέθηκε διαθέσιμο spawn στο δωμάτιο ${roomName}`);
-            return;
-        }
+        if (!spawn) return;
         
-        // Εάν το spawn είναι απασχολημένο, εμφανίζουμε πληροφορίες και σταματάμε
         if (spawn.spawning) {
             this.showSpawningInfo(spawn);
             return;
         }
         
-        const populationMax=roomMemory.populationLimits;
+        const populationMax = Memory.rooms[roomName].populationLimits;
         
+        // ΒΗΜΑ 4: ΑΝΑΛΥΣΗ ΠΛΗΘΥΣΜΟΥ
+        const population = this.analyzePopulation(roomName, false);
         
-        // ΒΗΜΑ 4: ΑΝΑΛΥΣΗ ΤΟΥ ΤΡΕΧΟΝΤΟΣ ΠΛΗΘΥΣΜΟΥ
-        const population = this.analyzePopulation(roomName,false);
-        
-        // ΒΗΜΑ 5: ΕΛΕΓΧΟΣ ΑΝΑΓΚΗΣ ΔΗΜΙΟΥΡΓΙΑΣ ΚΑΙ ΔΗΜΙΟΥΡΓΙΑ CREEP
-        this.decideAndSpawnCreep(spawn, roomName, population,populationMax);
-    }, // end of run
-    setPopulationLimits:function(roomName) { 
-        
-        
-        
-    } //end of setPopulationLimits
-    ,
-    /**
-     * ΒΗΜΑ 2: ΚΑΘΑΡΙΣΜΟΣ ΜΝΗΜΗΣ ΝΕΚΡΩΝ CREEPS
-     * Διαγράφει τη μνήμη creeps που έχουν πεθάνει
-     */
+        // ΒΗΜΑ 5: ΛΗΨΗ ΑΠΟΦΑΣΗΣ
+        this.decideAndSpawnCreep(spawn, roomName, population, populationMax);
+    },
+
     cleanupDeadCreeps: function(roomName) {
-        let cleanedCount = 0;
-        
         for (let creepName in Memory.creeps) {
             if (!Game.creeps[creepName]) {
                 const creepMemory = Memory.creeps[creepName];
-                
-                // Ειδική περίπτωση: Αν ήταν static harvester, απελευθερώνουμε την πηγή
                 if (creepMemory.role === ROLES.STATIC_HARVESTER && creepMemory.sourceId) {
                     console.log(`🔌 Απελευθερώθηκε πηγή: ${creepMemory.sourceId} από νεκρό creep: ${creepName}`);
                 }
-                
                 delete Memory.creeps[creepName];
-                cleanedCount++;
-                console.log(`🚮 Διαγράφηκε μνήμη για νεκρό creep: ${creepName}`);
             }
         }
-        
-        if (cleanedCount > 0) {
-            console.log(`🧹 Καθαρίστηκαν ${cleanedCount} νεκρά creeps από τη μνήμη`);
-        }
     },
     
-    /**
-     * ΒΗΜΑ 3: ΕΥΡΕΣΗ ΔΙΑΘΕΣΙΜΟΥ SPAWN
-     * Βρίσκει το πρώτο διαθέσιμο spawn στο δωμάτιο
-     */
     findAvailableSpawn: function(roomName) {
         const room = Game.rooms[roomName];
-        if (!room) {
-            console.log(`❌ Δεν βρέθηκε δωμάτιο: ${roomName}`);
-            return null;
-        }
-        
+        if (!room) return null;
         const spawns = room.find(FIND_MY_SPAWNS);
-        if (spawns.length === 0) {
-            console.log(`❌ Δεν βρέθηκαν spawns στο δωμάτιο: ${roomName}`);
-            return null;
-        }
-        
-        // Επιστρέφουμε το πρώτο spawn (μπορείς να αλλάξεις λογική για πολλά spawns)
-        return spawns[0];
+        return spawns.length > 0 ? spawns[0] : null;
     },
     
-    /**
-     * ΕΜΦΑΝΙΣΗ ΠΛΗΡΟΦΟΡΙΩΝ ΓΙΑ CREEP ΠΟΥ ΔΗΜΙΟΥΡΓΕΙΤΑΙ
-     */
     showSpawningInfo: function(spawn) {
         const spawningCreep = Game.creeps[spawn.spawning.name];
         if (spawningCreep) {
-            // Εμφάνιση οπτικού μηνύματος πάνω από το spawn
             spawn.room.visual.text(
                 `🛠️ ${spawningCreep.memory.role}`,
                 spawn.pos.x + 1,
                 spawn.pos.y,
                 { align: 'left', opacity: 0.8 }
             );
-            console.log(`⚡ Το spawn ${spawn.name} δημιουργεί: ${spawningCreep.memory.role}`);
         }
     },
     
-    /**
-     * ΒΗΜΑ 4: ΑΝΑΛΥΣΗ ΤΟΥ ΤΡΕΧΟΝΤΑ ΠΛΗΘΥΣΜΟΥ ΣΤΟ ΔΩΜΑΤΙΟ
-     * Μετράει πόσα creeps υπάρχουν από κάθε ρόλο
-     */
-    analyzePopulation: function(roomName,debug=false) {
-        const room = Game.rooms[roomName];
-        //const allCreeps = room.find(FIND_MY_CREEPS);
+    analyzePopulation: function(roomName, debug=false) {
+        const allCreeps = _.filter(Game.creeps, (creep) => creep.memory.homeRoom === roomName);
         
-        const allCreeps=_.filter(Game.creeps,(creep)=>creep.memory.homeRoom===roomName);
-        
-        // Κατηγοριοποίηση creeps ανά ρόλο
         const population = {
             [ROLES.STATIC_HARVESTER]: allCreeps.filter(c => c.memory.role === ROLES.STATIC_HARVESTER).length,
             [ROLES.SIMPLE_HARVESTER]: allCreeps.filter(c => c.memory.role === ROLES.SIMPLE_HARVESTER).length,
@@ -163,188 +90,151 @@ const respawController = {
             [ROLES.BUILDER]: allCreeps.filter(c => c.memory.role === ROLES.BUILDER).length,
             [ROLES.LD_HARVESTER]: allCreeps.filter(c => c.memory.role === ROLES.LD_HARVESTER).length,
             [ROLES.LD_HAULER]: allCreeps.filter(c => c.memory.role === ROLES.LD_HAULER).length,
+            [ROLES.CLAIMER]: allCreeps.filter(c => c.memory.role === ROLES.CLAIMER).length,
             total: allCreeps.length
         };
-        if(debug===true) {
-            console.log(`📊 Πληθυσμός ${roomName}: Σύνολο ${population.total} creeps`);
-            console.log(`   ├── Static Harvesters: ${population[ROLES.STATIC_HARVESTER]}`);
-            console.log(`   ├── Simple Harvesters: ${population[ROLES.SIMPLE_HARVESTER]}`);
-            console.log(`   ├── Haulers: ${population[ROLES.HAULER]}`);
-            console.log(`   ├── Upgraders: ${population[ROLES.UPGRADER]}`);
-            console.log(`   ├── Builders: ${population[ROLES.BUILDER]}`);
-            console.log(`   └── LD Harvesters/Haulers: ${population[ROLES.LD_HARVESTER]}/${population[ROLES.LD_HAULER]}`);
-        }
         return population;
     },
     
-    /**
-     * ΒΗΜΑ 5: ΛΗΨΗ ΑΠΟΦΑΣΗΣ ΚΑΙ ΔΗΜΙΟΥΡΓΙΑ CREEP
-     * Ελέγχει ποιος ρόλος χρειάζεται και δημιουργεί αντίστοιχο creep
-     */
-    decideAndSpawnCreep: function(spawn, roomName, population,populationLimit, debug=false) {
-    const room = spawn.room;
-    const rcl = room.controller ? room.controller.level : 1;
-    
-    //console.log(`🤔 Ελέγχω αν χρειάζεται νέο creep στο ${roomName} (RCL: ${rcl})`);
-    
-    // ΝΕΑ ΣΕΙΡΑ ΠΡΟΤΕΡΑΙΟΤΗΤΑΣ:
-    // 0. SIMPLE HARVESTERS (ΥΨΗΛΗ ΠΡΟΤΕΡΑΙΟΤΗΤΑ ΣΤΗΝ ΑΡΧΗ)
-    if (this.needSimpleHarvester(room, population,populationLimit)) {
-        if(debug===true) console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 0: Χρειάζεται Simple Harvester`);
-       
-        return this.createSimpleHarvester(spawn, roomName);
-    }
-    
-    // 1. STATIC HARVESTERS
-    if (this.needStaticHarvester(room, population,populationLimit)) {
-        Game.notify('Προσοχή! Δημιουργία SimpleHarvester ' + room.name + '(rcl: '+room.controller.level+')',60*30/3);
-        if (this.needBuilder(room, population,populationLimit)) {
-           if(debug===true) console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 1.5: Χρειάζεται Builder`);
-           return this.createBuilder(spawn, roomName, rcl);
+    decideAndSpawnCreep: function(spawn, roomName, population, populationLimit, debug=false) {
+        const room = spawn.room;
+        const rcl = room.controller ? room.controller.level : 1;
+        
+        // 0. SIMPLE HARVESTERS
+        if (this.needSimpleHarvester(room, population, populationLimit)) {
+            return this.createSimpleHarvester(spawn, roomName);
         }
         
+        // 1. STATIC HARVESTERS
+        if (this.needStaticHarvester(room, population, populationLimit)) {
+            if (this.needBuilder(room, population, populationLimit)) {
+               return this.createBuilder(spawn, roomName, rcl);
+            }
+            return this.createStaticHarvester(spawn, roomName);
+        }
         
-        if(debug===true) console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 1: Χρειάζεται Static Harvester`);
-        return this.createStaticHarvester(spawn, roomName);
-    }
-    
-    // 2. HAULERS (ΜΕΤΑΦΟΡΑ ΕΝΕΡΓΕΙΑΣ)
-    if (this.needHauler(room, population,populationLimit)) {
+        // 2. HAULERS
+        if (this.needHauler(room, population, populationLimit)) {
+            if (this.needBuilder(room, population, populationLimit)) {
+               return this.createBuilder(spawn, roomName, rcl);
+            }
+            return this.createHauler(spawn, roomName, rcl);
+        }
+const scoutTarget = _.findKey(Memory.rooms, (r) => r.scoutNeeded === true);
+        
+        if (scoutTarget) {
+             // Έλεγχος αν υπάρχει ήδη ζωντανός scout για αυτό το δωμάτιο
+             const existingScout = _.find(Game.creeps, c => c.memory.role === ROLES.SCOUT && c.memory.targetRoom === scoutTarget);
+             
+             if (!existingScout) {
+                 console.log(`🔭 Spawning Scout για ${scoutTarget}`);
+                 return this.createScout(spawn, roomName, scoutTarget);
+             }
+        }
+        // --- ΕΛΕΓΧΟΣ ΓΙΑ EXPANSION / CLAIMER ---
+        // Ψάχνουμε αν υπάρχει δωμάτιο στη μνήμη που θέλει CLAIM
+        const claimTarget = _.findKey(Memory.rooms, (r) => r.type === 'claim_target');
+        
+        if (claimTarget) {
+            // Ελέγχουμε αν έχουμε ήδη claimer για αυτό το δωμάτιο
+            // Ψάχνουμε σε ΟΛΑ τα creeps (όχι μόνο του δωματίου) για να μην φτιάχνουν όλα τα rooms claimers
+            const existingClaimer = _.find(Game.creeps, c => c.memory.role === ROLES.CLAIMER && c.memory.targetRoom === claimTarget);
+            
+            if (!existingClaimer) {
+                console.log(`🎯 EXPANSION: Δημιουργία Claimer για το ${claimTarget} από το δωμάτιο ${roomName}`);
+                // Προσπαθούμε να τον φτιάξουμε
+                const result = this.createClaimer(spawn, roomName, claimTarget);
+                if (result) return; // Αν πέτυχε ή προσπάθησε, σταματάμε εδώ
+            }
+        }
+        // ---------------------------------------
+        const setupRoomName = _.findKey(Memory.rooms, (r) => r.type === 'initial_setup');
+        
+        if (setupRoomName) {
+            const setupRoom = Game.rooms[setupRoomName];
+            
+            // Έλεγχος τερματισμού: Αν το δωμάτιο έφτασε RCL 2
+            if (setupRoom && setupRoom.controller && setupRoom.controller.level >= 2) {
+                console.log(`🎉 Room ${setupRoomName} reached RCL 2! Initial setup complete. Stopping remote spawning.`);
+                delete Memory.rooms[setupRoomName].type;
+                return;
+            }
+            
+            // Ανάλυση πληθυσμού που στέλνουμε στο νέο δωμάτιο
+            const setupRoomCreeps = _.filter(Game.creeps, c => c.memory.homeRoom === setupRoomName);
+            
+            const builders = setupRoomCreeps.filter(c => c.memory.role === ROLES.BUILDER).length;
+
+            const HARVESTER_LIMIT = 2; // Χρειάζεται ενέργεια
+            const BUILDER_LIMIT = 4;   // Χρειάζεται γρήγορο χτίσιμο Spawn/Extensions
+            
+            
+            
+            // 2. Προτεραιότητα: Builder
+            if (builders < BUILDER_LIMIT) {
+                 console.log(`🚧 Spawning Builder for setup room ${setupRoomName}`);
+                 // Χρησιμοποιούμε τη συνάρτηση createBuilder, περνώντας το όνομα του νέου δωματίου ως homeRoom
+                 return this.createBuilder(spawn, setupRoomName, 1); 
+            }
+        }
+        // 3. UPGRADERS
+        if (this.needUpgrader(population, populationLimit)) {
+            if (this.needBuilder(room, population, populationLimit)) {
+               return this.createBuilder(spawn, roomName, rcl);
+            }
+            return this.createUpgrader(spawn, roomName, rcl);
+        }
+        
+        // 4. BUILDERS
         if (this.needBuilder(room, population, populationLimit)) {
-           if(debug===true) console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 2.5: Χρειάζεται Builder`);
-           return this.createBuilder(spawn, roomName, rcl);
+            return this.createBuilder(spawn, roomName, rcl);
         }
-        if(debug===true) console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 2: Χρειάζεται Hauler`);
-        return this.createHauler(spawn, roomName, rcl);
-    }
+    },
     
-    // 3. UPGRADERS
-    if (this.needUpgrader(population,populationLimit)) {
-        if (this.needBuilder(room, population,populationLimit)) {
-           if(debug===true) console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 3.5: Χρειάζεται Builder`);
-           return this.createBuilder(spawn, roomName, rcl);
-        }
-        if(debug===true) console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 3: Χρειάζεται Upgrader`);
-        return this.createUpgrader(spawn, roomName, rcl);
-    }
-    
-    // 4. BUILDERS
-    if (this.needBuilder(room, population,populationLimit)) {
-        if(debug===true) console.log(`🎯 ΠΡΟΤΕΡΑΙΟΤΗΤΑ 4: Χρειάζεται Builder`);
-        return this.createBuilder(spawn, roomName, rcl);
-    }
-    
-    if(debug===true) console.log(`✅ Όλα τα creeps είναι σε καλή κατάσταση. Δεν χρειάζεται νέο creep.`);
-},
-    
-    // ===========================================
-    // ΣΥΝΑΡΤΗΣΕΙΣ ΕΛΕΓΧΟΥ ΑΝΑΓΚΗΣ
-    // ===========================================
-    
-    /**
-     * ΕΛΕΓΧΟΣ: Χρειαζόμαστε Static Harvester;
-     * Κανόνας: 1 Static Harvester για κάθε πηγή στο δωμάτιο
-     */
-    needStaticHarvester: function(room, population,populationMax) {
-        const sources = room.find(FIND_SOURCES);
-        const maxNeeded =populationMax.STATIC_HARVESTER;
+    // --- Checks ---
+
+    needStaticHarvester: function(room, population, populationMax) {
+        const maxNeeded = populationMax.STATIC_HARVESTER;
         const current = population[ROLES.STATIC_HARVESTER];
-        
-        //console.log(`   🔍 Static Harvesters: ${current}/${maxNeeded} (${sources.length} πηγές)`);
         return current < maxNeeded;
     },
     
-   /**
- * ΕΛΕΓΧΟΣ: Χρειαζόμαστε Simple Harvester (έκτακτη ανάγκη);
- */
-needSimpleHarvester: function(room, population,populationMax) {
-    const current = population[ROLES.SIMPLE_HARVESTER];
-    const maxAllowed = populationMax.SIMPLE_HARVESTER;
-    
-    // Εάν έχουμε ήδη τον μέγιστο αριθμό, δεν χρειαζόμαστε άλλο
-    if (current >= maxAllowed) {
-        return false;
-    }
-    
-    // ΕΛΕΓΧΟΣ: Αν το spawn έχει πολύ λίγη ενέργεια (< 200) 
-    // και δεν υπάρχουν haulers ή static harvesters ακόμα
-    const roomEnergy = room.energyAvailable;
-    const hasEnoughEnergy = roomEnergy >=250;
-    
-    // Αν έχουμε πολύ λίγη ενέργεια και δεν έχουμε haulers, χρειαζόμαστε simple harvester
-    const needsEmergencyEnergy = !hasEnoughEnergy && population[ROLES.HAULER] === 0;
-    
-    // Ή αν δεν έχουμε καθόλου harvesters ακόμα
-    const noHarvesters = population[ROLES.STATIC_HARVESTER] === 0 && current === 0;
-    
-    //console.log(`   🔍 Simple Harvesters: ${current}/${maxAllowed}, Room Energy: ${roomEnergy}, Needs Emergency: ${needsEmergencyEnergy}, No Harvesters: ${noHarvesters}`);
-    
-    return needsEmergencyEnergy || noHarvesters;
-},
-    
-    /**
-     * ΕΛΕΓΧΟΣ: Χρειαζόμαστε Hauler;
-     */
-    // Βελτιωμένη συνάρτηση needHauler
-needHauler: function(room, population,populationMax) {
-    const current = population[ROLES.HAULER];
-    const maxAllowed = populationMax.HAULER;
-    
-    // Ελέγχουμε αν υπάρχει ενέργεια που χρειάζεται μεταφορά
-    const droppedEnergy = room.find(FIND_DROPPED_RESOURCES, {
-        filter: (r) => r.resourceType === RESOURCE_ENERGY && r.amount > 100
-    }).length;
-
-    const containersWithEnergy = room.find(FIND_STRUCTURES, {
-        filter: (s) => s.structureType === STRUCTURE_CONTAINER && 
-                       s.store[RESOURCE_ENERGY] > 100
-    }).length;
-
-    // Εάν υπάρχει τουλάχιστον ένας harvester, χρειαζόμαστε και hauler
-    const hasHarvesters = population[ROLES.STATIC_HARVESTER] > 0;
-
-    // Εάν υπάρχει ενέργεια για μεταφορά ή έχουμε harvesters, χρειαζόμαστε haulers
-    const needsHaulers = (droppedEnergy > 0 || containersWithEnergy > 0 || hasHarvesters) && current < maxAllowed;
-
-    //console.log(`   🔍 Haulers: ${current}/${maxAllowed}, Dropped Energy: ${droppedEnergy}, Containers: ${containersWithEnergy}, Has Harvesters: ${hasHarvesters}`);
-
-    return needsHaulers;
-},
-    
-    /**
-     * ΕΛΕΓΧΟΣ: Χρειαζόμαστε Upgrader;
-     */
-    needUpgrader: function(population,populationMax) {
-        const current = population[ROLES.UPGRADER];
-        const maxAllowed = populationMax.UPGRADER;
+    needSimpleHarvester: function(room, population, populationMax) {
+        const current = population[ROLES.SIMPLE_HARVESTER];
+        const maxAllowed = populationMax.SIMPLE_HARVESTER;
+        if (current >= maxAllowed) return false;
         
-      //  console.log(`   🔍 Upgraders: ${current}/${maxAllowed}`);
-        return current < maxAllowed;
+        const roomEnergy = room.energyAvailable;
+        const hasEnoughEnergy = roomEnergy >= 250;
+        const needsEmergencyEnergy = !hasEnoughEnergy && population[ROLES.HAULER] === 0;
+        const noHarvesters = population[ROLES.STATIC_HARVESTER] === 0 && current === 0;
+        
+        return needsEmergencyEnergy || noHarvesters;
     },
     
-    /**
-     * ΕΛΕΓΧΟΣ: Χρειαζόμαστε Long Distance Team;
-     * Κανόνας: Μόνο για RCL >= 4
-     */
-    needLongDistanceTeam: function(population, rcl) {
-        if (rcl < 4) {
-            console.log(`   🔍 Long Distance: Απενεργοποιημένο (RCL < 4)`);
-            return false;
-        }
+    needHauler: function(room, population, populationMax) {
+        const current = population[ROLES.HAULER];
+        const maxAllowed = populationMax.HAULER;
         
-        const needHauler = population[ROLES.LD_HAULER] < POPULATION_LIMITS.LD_HAULER;
-        const needHarvester = population[ROLES.LD_HARVESTER] < POPULATION_LIMITS.LD_HARVESTER;
-        
-        //console.log(`   🔍 Long Distance: Harvesters ${population[ROLES.LD_HARVESTER]}/${POPULATION_LIMITS.LD_HARVESTER}, Haulers ${population[ROLES.LD_HAULER]}/${POPULATION_LIMITS.LD_HAULER}`);
-        
-        return needHauler || needHarvester;
+        const droppedEnergy = room.find(FIND_DROPPED_RESOURCES, {
+            filter: (r) => r.resourceType === RESOURCE_ENERGY && r.amount > 100
+        }).length;
+
+        const containersWithEnergy = room.find(FIND_STRUCTURES, {
+            filter: (s) => s.structureType === STRUCTURE_CONTAINER && s.store[RESOURCE_ENERGY] > 100
+        }).length;
+
+        const hasHarvesters = population[ROLES.STATIC_HARVESTER] > 0;
+        const needsHaulers = (droppedEnergy > 0 || containersWithEnergy > 0 || hasHarvesters) && current < maxAllowed;
+
+        return needsHaulers;
     },
     
-    /**
-     * ΕΛΕΓΧΟΣ: Χρειαζόμαστε Builder;
-     * Κανόνας: Μόνο αν υπάρχουν construction sites ή έχουμε μόνο 1 builder
-     */
-    needBuilder: function(room, population,populationMax) {
+    needUpgrader: function(population, populationMax) {
+        return population[ROLES.UPGRADER] < populationMax.UPGRADER;
+    },
+    
+    needBuilder: function(room, population, populationMax) {
         const constructionSites = room.find(FIND_CONSTRUCTION_SITES);
         const current = population[ROLES.BUILDER];
         const maxAllowed = populationMax.BUILDER;
@@ -352,24 +242,14 @@ needHauler: function(room, population,populationMax) {
         const hasWork = constructionSites.length > 0;
         const underLimit = current < maxAllowed;
         
-        //console.log(`   🔍 Builders: ${current}/${maxAllowed}, Construction Sites: ${constructionSites.length}`);
-        
         return underLimit && (hasWork || current === 0);
     },
     
-    // ===========================================
-    // ΣΥΝΑΡΤΗΣΕΙΣ ΔΗΜΙΟΥΡΓΙΑΣ CREEPS
-    // ===========================================
-    
-    /**
-     * ΔΗΜΙΟΥΡΓΙΑ STATIC HARVESTER
-     * Σκοπός: Mining σε συγκεκριμένη πηγή
-     */
+    // --- Spawns ---
+
     createStaticHarvester: function(spawn, roomName) {
         const room = spawn.room;
         const sources = room.find(FIND_SOURCES);
-        
-        // Βρίσκουμε ελεύθερη πηγή (που δεν έχει harvester)
         const existingHarvesters = _.filter(Game.creeps, creep => 
             creep.memory.role === ROLES.STATIC_HARVESTER && creep.memory.homeRoom === roomName
         );
@@ -377,303 +257,185 @@ needHauler: function(room, population,populationMax) {
         const assignedSources = existingHarvesters.map(creep => creep.memory.sourceId);
         const freeSource = sources.find(source => !assignedSources.includes(source.id));
         
-        if (!freeSource) {
-            console.log(`❌ Δεν βρέθηκε ελεύθερη πηγή για Static Harvester`);
-            return false;
-        }
+        if (!freeSource) return false;
         
-        console.log(`✅ Βρέθηκε ελεύθερη πηγή: ${freeSource.id}`);
-        
-        // Ορισμός body parts ανάλογα με την διαθέσιμη ενέργεια
         const energy = spawn.room.energyCapacityAvailable;
         let body;
         
-        if (energy >= 600) {
-            body = [WORK, WORK, WORK, WORK, WORK, CARRY, MOVE]; // 600 energy
-            console.log(`   🔧 Body: 5xWORK, 1xCARRY, 1xMOVE (600 energy)`);
-        } else if (energy >= 500) {
-            body = [WORK, WORK, WORK, WORK, CARRY, MOVE]; // 500 energy
-            console.log(`   🔧 Body: 4xWORK, 1xCARRY, 1xMOVE (500 energy)`);
-        } else if (energy >= 300) {
-            body = [WORK, WORK, CARRY, MOVE]; // 300 energy
-            console.log(`   🔧 Body: 2xWORK, 1xCARRY, 1xMOVE (300 energy)`);
-        } else {
-            body = [WORK, CARRY, MOVE]; // 200 energy
-            console.log(`   🔧 Body: 1xWORK, 1xCARRY, 1xMOVE (200 energy)`);
-        }
+        if (energy >= 600) body = [WORK, WORK, WORK, WORK, WORK, CARRY, MOVE];
+        else if (energy >= 500) body = [WORK, WORK, WORK, WORK, CARRY, MOVE];
+        else if (energy >= 300) body = [WORK, WORK, CARRY, MOVE];
+        else body = [WORK, CARRY, MOVE];
         
         const creepName = `StaticHarvester_${Game.time}`;
-        const memory = {
-            role: ROLES.STATIC_HARVESTER,
-            sourceId: freeSource.id,
-            homeRoom: roomName,
-            working: false
-        };
-        
-        console.log(`🛠️ Δημιουργία Static Harvester: ${creepName} για πηγή ${freeSource.id}`);
-        const result = spawn.spawnCreep(body, creepName, { memory: memory });
-        
-        if (result === OK) {
-            console.log(`✅ Επιτυχής έναρξη δημιουργίας Static Harvester: ${creepName}`);
-        } else {
-            console.log(`❌ Σφάλμα δημιουργίας Static Harvester: ${result}`);
-        }
-        
-        return result === OK;
+        return spawn.spawnCreep(body, creepName, { 
+            memory: { role: ROLES.STATIC_HARVESTER, sourceId: freeSource.id, homeRoom: roomName, working: false } 
+        }) === OK;
     },
     
-    /**
- * ΔΗΜΙΟΥΡΓΙΑ SIMPLE HARVESTER
- * Σκοπός: Έκτακτη ανάγκη, απλό mining και μεταφορά
- */
-createSimpleHarvester: function(spawn, roomName) {
-    // Απλό body που μπορεί να μαζέψει και να μεταφέρει ενέργεια
-    const body = [WORK, CARRY, MOVE]; 
-    const creepName = `SimpleHarvester_${Game.time}`;
-    const memory = {
-        role: ROLES.SIMPLE_HARVESTER,
-        homeRoom: roomName,
-        working: false
-    };
-    
-    console.log(`🛠️ Δημιουργία Simple Harvester: ${creepName}`);
-    const result = spawn.spawnCreep(body, creepName, { memory: memory });
-    
-    if (result === OK) {
-        console.log(`✅ Επιτυχής έναρξη δημιουργίας Simple Harvester: ${creepName}`);
-    } else {
-        console.log(`❌ Σφάλμα δημιουργίας Simple Harvester: ${result}`);
-    }
-    
-    return result === OK;
-},
-    
-    /**
-     * ΔΗΜΙΟΥΡΓΙΑ HAULER
-     * Σκοπός: Μεταφορά ενέργειας από harvesters σε spawn & extensions
-     */
-    createHauler: function(spawn, roomName, rcl,maxPreferredEnergy=1200) {
+    createSimpleHarvester: function(spawn, roomName) {
+        const body = [WORK, CARRY, MOVE]; 
+        const creepName = `SimpleHarvester_${Game.time}`;
+        return spawn.spawnCreep(body, creepName, { 
+            memory: { role: ROLES.SIMPLE_HARVESTER, homeRoom: roomName, working: false } 
+        }) === OK;
+    },
+    createScout: function(spawn, homeRoom, targetRoom) {
+        // Το πιο φθηνό creep: Μόνο 1 MOVE (50 energy)
+        const body = [MOVE];
+        const creepName = `Scout_${targetRoom}_${Game.time}`;
         
-        var energy = spawn.room.energyCapacityAvailable;
+        return spawn.spawnCreep(body, creepName, { 
+            memory: { 
+                role: ROLES.SCOUT, 
+                homeRoom: homeRoom, 
+                targetRoom: targetRoom 
+            } 
+        }) === OK;
+    },
+    createHauler: function(spawn, roomName, rcl, maxPreferredEnergy=1200) {
+        let energy = spawn.room.energyCapacityAvailable;
+        energy = Math.min(energy, maxPreferredEnergy);
+        const CORE_BODY = [CARRY, MOVE];
+        const CORE_COST = 100;
         
+        if (energy < CORE_COST) return ERR_NOT_ENOUGH_ENERGY;
         
-        const costs={ WORK:100, CARRY:50, MOVE:50};
-        energy=Math.min(energy,maxPreferredEnergy);
-        
-        const CORE_BODY=[CARRY,MOVE];
-        const CORE_COST=costs.CARRY+costs.MOVE;
-        
-        if (energy<CORE_BODY) {
-            return ERROR_NOTENOUGH_ENERGY;
+        let body = [];
+        let currentCost = 0;
+        while((currentCost + CORE_COST) <= energy) {
+            body.push(...CORE_BODY);
+            currentCost += CORE_COST;
         }
-        let body=[];
-         let currentCost=0;
-         while((currentCost+CORE_COST)<=energy ) {
-             body.push(...CORE_BODY);
-             currentCost+=CORE_COST;
-         }
-        
-         while((currentCost+costs.MOVE)<=energy ) {
-             body.push(MOVE);
-             currentCost+=costs.MOVE;
-         }
         
         const creepName = `Hauler_${Game.time}`;
-        const memory = {
-            role: ROLES.HAULER,
-            homeRoom: roomName,
-            working: false
-        };
         body.sort();
-        console.log(`🛠️ Δημιουργία Hauler: ${creepName}`);
-        const result = spawn.spawnCreep(body, creepName, { memory: memory });
-        
-        if (result === OK) {
-            console.log(`✅ Επιτυχής έναρξη δημιουργίας Hauler: ${creepName}`);
-        } else {
-            console.log(`❌ Σφάλμα δημιουργίας Hauler: ${result}`);
-        }
-        
-        return result === OK;
+        return spawn.spawnCreep(body, creepName, { 
+            memory: { role: ROLES.HAULER, homeRoom: roomName, working: false } 
+        }) === OK;
     },
     
-    /**
-     * ΔΗΜΙΟΥΡΓΙΑ UPGRADER
-     * Σκοπός: Αναβάθμιση controller
-     */
-    createUpgrader: function(spawn, roomName, rcl,maxPreferredEnergy=1000) {
-         var energy = spawn.room.energyCapacityAvailable;
-        let body = [];
-         energy=Math.min(energy,maxPreferredEnergy);
-        // Βασικό body part κοστίζει 250 energy (WORK+CARRY+MOVE+MOVE)
-        const CORE_BODY = [WORK, CARRY, MOVE,MOVE];
+    createUpgrader: function(spawn, roomName, rcl, maxPreferredEnergy=1000) {
+        let energy = spawn.room.energyCapacityAvailable;
+        energy = Math.min(energy, maxPreferredEnergy);
+        const CORE_BODY = [WORK, CARRY, MOVE, MOVE]; // 250
         const CORE_COST = 250;
         
+        let body = [];
         let currentCost = 0;
         
-        // Προσθέτουμε όσο περισσότερα core bodies μπορούμε
         while (currentCost + CORE_COST <= energy) {
             body = body.concat(CORE_BODY);
             currentCost += CORE_COST;
         }
-        
-        // Προσθέτουμε επιπλέον CARRY+MOVE αν χωράει
-        while (currentCost + 100 <= energy) { // CARRY(50) + MOVE(50) = 100
+        while (currentCost + 100 <= energy) {
             body.push(CARRY, MOVE);
             currentCost += 100;
         }
         
-        // Ταξινόμηση για καλύτερη οπτική
         body.sort();
-        
-        console.log(`   🔧 Body: ${body.length} parts (${currentCost}/${energy} energy)`);
         const creepName = `Upgrader_${Game.time}`;
-        const memory = {
-            role: ROLES.UPGRADER,
-            homeRoom: roomName,
-            working: false
-        };
-        
-        console.log(`🛠️ Δημιουργία Upgrader: ${creepName}`);
-        const result = spawn.spawnCreep(body, creepName, { memory: memory });
-        
-        if (result === OK) {
-            console.log(`✅ Επιτυχής έναρξη δημιουργίας Upgrader: ${creepName}`);
-        } else {
-            console.log(`❌ Σφάλμα δημιουργίας Upgrader: ${result}`);
-        }
-        
-        return result === OK;
+        return spawn.spawnCreep(body, creepName, { 
+            memory: { role: ROLES.UPGRADER, homeRoom: roomName, working: false } 
+        }) === OK;
     },
     
-    /**
-     * ΔΗΜΙΟΥΡΓΙΑ BUILDER
-     * Σκοπός: Χτίσιμο structures
-     */
-    createBuilder: function(spawn, roomName, rcl,maxPreferredEnergy=1000) {
-        var energy = spawn.room.energyCapacityAvailable;
-        let body = [];
-        energy=Math.min(energy,maxPreferredEnergy)
-        // Βασικό body part κοστίζει 250 energy (WORK+CARRY+MOVE+MOVE)
-        const CORE_BODY = [WORK, CARRY, MOVE,MOVE];
+    createBuilder: function(spawn, roomName, rcl, maxPreferredEnergy=1000) {
+        let energy = spawn.room.energyCapacityAvailable;
+        energy = Math.min(energy, maxPreferredEnergy);
+        const CORE_BODY = [WORK, CARRY, MOVE, MOVE];
         const CORE_COST = 250;
         
+        let body = [];
         let currentCost = 0;
         
-        // Προσθέτουμε όσο περισσότερα core bodies μπορούμε
         while (currentCost + CORE_COST <= energy) {
             body = body.concat(CORE_BODY);
             currentCost += CORE_COST;
         }
-        
-        // Προσθέτουμε επιπλέον CARRY+MOVE αν χωράει
-        while (currentCost + 100 <= energy) { // CARRY(50) + MOVE(50) = 100
+        while (currentCost + 100 <= energy) {
             body.push(CARRY, MOVE);
             currentCost += 100;
         }
         
-        // Ταξινόμηση για καλύτερη οπτική
         body.sort();
-        
-        console.log(`   🔧 Body: ${body.length} parts (${currentCost}/${energy} energy)`);
-        
         const creepName = `Builder_${Game.time}`;
+        return spawn.spawnCreep(body, creepName, { 
+            memory: { role: ROLES.BUILDER, homeRoom: roomName, working: false } 
+        }) === OK;
+    },
+
+    /**
+     * ΔΗΜΙΟΥΡΓΙΑ CLAIMER
+     * Απαιτείται RCL 3 (Energy Capacity >= 650)
+     */
+   createClaimer: function(spawn, homeRoom, targetRoom) {
+        const energy = spawn.room.energyCapacityAvailable;
+        
+        // Έλεγχος για υβριδικό Claimer/Builder
+        if (energy < 800) {
+            // Fallback σε απλό Claimer (αν έχει τουλάχιστον 650 energy)
+            if (energy >= 650) {
+                 const creepName = `Claimer_${targetRoom}_${Game.time}`;
+                 const memory = { role: ROLES.CLAIMER, homeRoom: homeRoom, targetRoom: targetRoom, isBuilder: false };
+                 const body = (energy >= 700) ? [CLAIM, MOVE, MOVE] : [CLAIM, MOVE];
+                 console.log(`🚩 Spawning minimal Claimer for ${targetRoom} (Cost: ${body.reduce((c,p)=>c+BODYPART_COST[p],0)})`);
+                 return spawn.spawnCreep(body, creepName, { memory: memory }) === OK;
+            }
+            console.log(`⚠️ Cannot spawn Claimer/Builder. Needs 800 energy. Has ${energy}.`);
+            return false;
+        }
+
+        // Στόχευση σε καλό Claimer/Builder (π.χ. μέχρι 1500 energy)
+        let maxEnergy = Math.min(energy, 1500); 
+        
+        let body = [CLAIM, MOVE]; // 650 cost (το CLAIM είναι το πιο σημαντικό)
+        let currentCost = 650;
+        
+        // Προσθήκη WORK/CARRY/MOVE τριπλέτας για building
+        const BUILDER_PART = [WORK, CARRY, MOVE]; // 200 cost
+        const BUILDER_COST = 200;
+
+        while (currentCost + BUILDER_COST <= maxEnergy) {
+            body = body.concat(BUILDER_PART);
+            currentCost += BUILDER_COST;
+        }
+
+        const creepName = `ClaimerBuilder_${targetRoom}_${Game.time}`;
         const memory = {
-            role: ROLES.BUILDER,
-            homeRoom: roomName,
-            working: false
+            role: ROLES.CLAIMER,
+            homeRoom: homeRoom,
+            targetRoom: targetRoom,
+            isBuilder: true, // ΝΕΟ Flag: Έχει builder parts
+            building: false // State για τη λογική building/refilling
         };
         
-        console.log(`🛠️ Δημιουργία Builder: ${creepName}`);
-        const result = spawn.spawnCreep(body, creepName, { memory: memory });
-        
-        if (result === OK) {
-            console.log(`✅ Επιτυχής έναρξη δημιουργίας Builder: ${creepName}`);
-        } else {
-            console.log(`❌ Σφάλμα δημιουργίας Builder: ${result}`);
-        }
-        
-        return result === OK;
+        body.sort();
+        console.log(`🚩 Spawning Claimer/Builder for ${targetRoom} (Cost: ${currentCost})`);
+        return spawn.spawnCreep(body, creepName, { memory: memory }) === OK;
     },
+};
+
+function initPopulation(roomName) {
+    console.log("Initialize population on Room " + roomName);
+    const room = Game.rooms[roomName];
+    if (!room) return;
     
-    /**
-     * ΔΗΜΙΟΥΡΓΙΑ LONG DISTANCE HAULER
-     * Σκοπός: Μεταφορά από μακρινά δωμάτια
-     */
-    createLongDistanceHauler: function(spawn, roomName) {
-        const body = [WORK, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, 
-                     MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE];
-        
-        const creepName = `LDHauler_${Game.time}`;
-        const memory = {
-            role: ROLES.LD_HAULER,
-            homeRoom: roomName,
-            working: false
-        };
-        
-        console.log(`🛠️ Δημιουργία Long Distance Hauler: ${creepName}`);
-        const result = spawn.spawnCreep(body, creepName, { memory: memory });
-        
-        if (result === OK) {
-            console.log(`✅ Επιτυχής έναρξη δημιουργίας LD Hauler: ${creepName}`);
-        } else {
-            console.log(`❌ Σφάλμα δημιουργίας LD Hauler: ${result}`);
-        }
-        
-        return result === OK;
-    },
+    var populationLimits = {};
+    const sourceCount = room.find(FIND_SOURCES).length;
     
-    /**
-     * ΔΗΜΙΟΥΡΓΙΑ LONG DISTANCE HARVESTER
-     * Σκοπός: Mining σε μακρινά δωμάτια
-     */
-    createLongDistanceHarvester: function(spawn, roomName) {
-        const body = [WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, 
-                     MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE];
-        
-        const creepName = `LDHarvester_${Game.time}`;
-        const memory = {
-            role: ROLES.LD_HARVESTER,
-            homeRoom: roomName,
-            working: false
-        };
-        
-        console.log(`🛠️ Δημιουργία Long Distance Harvester: ${creepName}`);
-        const result = spawn.spawnCreep(body, creepName, { memory: memory });
-        
-        if (result === OK) {
-            console.log(`✅ Επιτυχής έναρξη δημιουργίας LD Harvester: ${creepName}`);
-        } else {
-            console.log(`❌ Σφάλμα δημιουργίας LD Harvester: ${result}`);
-        }
-        
-        return result === OK;
-    },
+    populationLimits['SIMPLE_HARVESTER'] = 2;
+    populationLimits['STATIC_HARVESTER'] = sourceCount;
+    populationLimits['HAULER'] = sourceCount;
+    populationLimits['UPGRADER'] = 1;
+    populationLimits['BUILDER'] = 2;
+    populationLimits['LD_HARVESTER'] = 0;
+    populationLimits['LD_HAULER'] = 0;
+    populationLimits['CLAIMER'] = 0; // Δυναμικός έλεγχος, δεν χρειάζεται όριο εδώ
     
-    /**
-     * ΒΟΗΘΗΤΙΚΗ: Επιστρέφει τα default population settings
-     */
-    getDefaultPopulation: function() {
-        return POPULATION_LIMITS;
+    if (!room.memory.populationLimits) {
+        room.memory.populationLimits = populationLimits;
     }
 };
-initPopulation=function(roomName) {
-    console.log("Initialize population on Room "+roomName);
-        const room=Game.rooms[roomName];
-        var populationLimits={};
-        const sourceCount=room.find(FIND_SOURCES).length;
-        populationLimits['SIMPLE_HARVESTER']=2;
-        populationLimits['STATIC_HARVESTER']=sourceCount;
-        populationLimits['HAULER']=sourceCount;
-        populationLimits['UPGRADER']=1;
-        populationLimits['BUILDER']=2;
-        populationLimits['LD_HARVESTER']=0;
-        populationLimits['LD_HAULER']=0;
-        room.memory.populationLimits=populationLimits;
-    
-};
-// ===========================================
-// ΕΞΑΓΩΓΗ ΤΟΥ MODULE
-// ===========================================
 
 module.exports = respawController;

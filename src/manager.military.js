@@ -29,6 +29,7 @@ var militaryController = {
                 this.peaceTimeMaintenance(room);
                 break;
         }
+        this.manageMilitaryCreeps(room);
     },
 
     /**
@@ -296,7 +297,7 @@ var militaryController = {
     runGuard: function(creep, hostiles) {
         if (hostiles.length > 0) {
             const target = creep.pos.findClosestByRange(hostiles);
-            if (creep.attack(target) === ERR_NOT_IN_RANGE) {
+            if (creep.rangedAttack(target) === ERR_NOT_IN_RANGE) {
                 creep.moveTo(target, {visualizePathStyle: {stroke: '#ff0000'}});
             }
         } else {

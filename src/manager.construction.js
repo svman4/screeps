@@ -7,7 +7,7 @@ const constructionManager = {
     PRIORITIES: {
         SPAWN: 10,
         EXTENSION: 20,
-        ROAD: 30,
+        ROAD: 50,
         CONTAINER: 40,
         TOWER: 50,
         STORAGE: 60,
@@ -18,7 +18,7 @@ const constructionManager = {
         POWER_SPAWN: 110,
         NUKER: 120,
         OBSERVER: 130,
-        RAMPART: 140,
+        RAMPART: 100,
         WALL: 150
     },
 

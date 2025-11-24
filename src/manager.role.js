@@ -257,23 +257,23 @@ const roleManager = {
         }
         
         // 3. Επισκευές
-        const damagedStructures = creep.room.find(FIND_STRUCTURES, {
-            filter: s => s.hits < s.hitsMax * 0.8 &&
-                         s.structureType !== STRUCTURE_WALL &&
-                         s.structureType !== STRUCTURE_RAMPART
-        });
+        // const damagedStructures = creep.room.find(FIND_STRUCTURES, {
+        //     filter: s => s.hits < s.hitsMax * 0.8 &&
+        //                  s.structureType !== STRUCTURE_WALL &&
+        //                  s.structureType !== STRUCTURE_RAMPART
+        // });
 
-        if (damagedStructures.length > 0) {
-            const closestDamaged = creep.pos.findClosestByPath(damagedStructures);
-            if (closestDamaged) {
-                if (creep.pos.inRangeTo(closestDamaged, 3)) { 
-                    creep.repair(closestDamaged);
-                } else {
-                    creep.moveTo(closestDamaged, { visualizePathStyle: { stroke: '#ffaa00' }, reusePath: 8 });
-                }
-            }
-            return;
-        }
+        // if (damagedStructures.length > 0) {
+        //     const closestDamaged = creep.pos.findClosestByPath(damagedStructures);
+        //     if (closestDamaged) {
+        //         if (creep.pos.inRangeTo(closestDamaged, 3)) { 
+        //             creep.repair(closestDamaged);
+        //         } else {
+        //             creep.moveTo(closestDamaged, { visualizePathStyle: { stroke: '#ffaa00' }, reusePath: 8 });
+        //         }
+        //     }
+        //     return;
+        // }
 
         // 4. Upgrade αν δεν υπάρχει τίποτα άλλο
         if (creep.pos.inRangeTo(creep.room.controller, 2)) {
@@ -373,8 +373,7 @@ const roleManager = {
             const targets = creep.room.find(FIND_MY_STRUCTURES, {
                 filter: (s) => {
                     return (s.structureType === STRUCTURE_EXTENSION ||
-                            s.structureType === STRUCTURE_SPAWN ||
-                            s.structureType === STRUCTURE_TOWER) && 
+                            s.structureType === STRUCTURE_SPAWN ) && 
                             s.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
                 }
             });

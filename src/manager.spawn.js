@@ -154,7 +154,7 @@ const scoutTarget = _.findKey(Memory.rooms, (r) => r.scoutNeeded === true);
             const setupRoom = Game.rooms[setupRoomName];
             
             // Έλεγχος τερματισμού: Αν το δωμάτιο έφτασε RCL 2
-            if (setupRoom && setupRoom.controller && setupRoom.controller.level >= 2) {
+            if (setupRoom && setupRoom.controller && setupRoom.controller.level >= 3) {
                 console.log(`🎉 Room ${setupRoomName} reached RCL 2! Initial setup complete. Stopping remote spawning.`);
                 delete Memory.rooms[setupRoomName].type;
                 return;

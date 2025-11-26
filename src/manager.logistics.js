@@ -1,26 +1,12 @@
-// manager.logistics.js - ΒΕΛΤΙΩΜΕΝΗ ΛΟΓΙΚΗ ΜΕ PRIORITY-BASED ENERGY DISTRIBUTION
-//
-// ΒΑΣΙΚΗ ΛΟΓΙΚΗ:
-// 1. ΠΡΩΤΑ ελέγχουμε ποιοί στόχοι χρειάζονται ενέργεια (spawn, extensions, towers, controller container)
-// 2. Για την πλήρωση τους, χρησιμοποιούμε πηγές με την ακόλουθη ΠΡΟΤΕΡΑΙΟΤΗΤΑ:
-//    - Δropped Energy (ΥΨΗΛΗ ΠΡΟΤΕΡΑΙΟΤΗΤΑ)
-//    - Containers στα Sources
-//    - Recovery Container  
-//    - Ruins
-//    - Terminal
-//    - Storage Link
-//    - Storage (ΧΑΜΗΛΗ ΠΡΟΤΕΡΑΙΟΤΗΤΑ)
-// 3. Αν ΔΕΝ υπάρχουν στόχοι που χρειάζονται ενέργεια, τότε μεταφέρουμε ενέργεια από διάφορες πηγές στο Storage
-// 4. Κάθε μεταφορά (transfer) ολοκληρώνει το task - ΔΕΝ χρειάζεται να γεμίσει ο στόχος ή να αδειάσει η πηγή
-// 5. ΑΠΟΦΥΓΗ storage->storage μεταφορών
+// manager.logistics.js - ΒΕΛΤΙΩΜΕΝΗ ΛΟΓΙΚΗ ΜΕ PRIORITY-BASED ENERGY DISTRIBUTION & CPU OPTIMIZATION
 
 const PRIORITIES = {
     // Προτεραιότητες Στόχων
     SPAWN_EXTENSION: 100,
     TOWER: 80,
     CONTROLLER_CONTAINER: 70,
-    LAB:40,
-    TERMINAL:40,
+    LAB: 40,
+    TERMINAL: 40,
     STORAGE: 10,
     
     // Προτεραιότητες Πηγών (για ανάκτηση)
@@ -34,31 +20,25 @@ const PRIORITIES = {
 };
 
 const MIN_LIFE_TO_LIVE = 50;
+const UPDATE_TASKS_INTERVAL = 10; // Αύξηση του διαστήματος από 5 σε 10 ticks για μείωση CPU
 
 const logisticsManager = {
+    
     /**
      * ΑΡΧΙΚΟΠΟΙΗΣΗ ΜΝΗΜΗΣ ΔΩΜΑΤΙΟΥ
      */
     init: function(roomName) {
         if (!Memory.rooms[roomName]) {
-                Memory.rooms[roomName] = {logistics:{}};
+            Memory.rooms[roomName] = {};
         }
 
-        
-        if (!Memory.rooms[roomName].logistics) {
-            Memory.rooms[roomName].logistics={};
-        
-        }
-        const roomMemory = Memory.rooms[roomName].logistics;
-        
-        if (!roomMemory.energyTasks) {
-            roomMemory.energyTasks = [];
-        }
-        if (!roomMemory.haulerAssignments) {
-            roomMemory.haulerAssignments = {};
-        }
-        if (!roomMemory.taskReservations) {
-            roomMemory.taskReservations = {};
+        const roomMemory = Memory.rooms[roomName];
+        if (!roomMemory.logistics) {
+            roomMemory.logistics = {
+                energyTasks: [],
+                haulerAssignments: {},
+                taskReservations: {}
+            };
         }
     },
 
@@ -70,62 +50,30 @@ const logisticsManager = {
         
         const room = Game.rooms[roomName];
         if (!room) return;
+        
+        const roomMemory = room.memory.logistics; // Απευθείας πρόσβαση στη μνήμη
 
-        // Ενημέρωση tasks κάθε 5 ticks
-        if (Game.time % 5 === 0) {
-            this.updateEnergyTasks(room);
+        // Ενημέρωση tasks κάθε 10 ticks (μείωση CPU)
+        if (Game.time % UPDATE_TASKS_INTERVAL === 0) {
+            this.updateEnergyTasks(room, roomMemory);
         }
 
         // Διαχείριση haulers κάθε tick
-        if (Game.time % 1 === 0) {
-            this.manageHaulers(room);
-        }
+        this.manageHaulers(room, roomMemory);
 
-        // Καθαρισμός tasks και reservations κάθε 50 ticks
+        // Καθαρισμός tasks και reservations κάθε 30 ticks
         if (Game.time % 30 === 0) {
-            this.cleanupTasks(room);
-            this.cleanupReservations(room);
+            this.cleanupReservations(roomMemory);
+            this.cleanupTasks(roomMemory);
         }
     },
-
-    /**
-     * ΒΟΗΘΗΤΙΚΕΣ ΣΥΝΑΡΤΗΣΕΙΣ ΠΡΟΣΒΑΣΗΣ ΜΝΗΜΗΣ
-     */
-    getRoomMemory: function(roomName) {
-        return Memory.rooms[roomName].logistics || {};
-    },
-
-    getEnergyTasks: function(roomName) {
-        return this.getRoomMemory(roomName).energyTasks || [];
-    },
-
-    setEnergyTasks: function(roomName, tasks) {
-        if (!Memory.rooms[roomName]) Memory.rooms[roomName] = {};
-        Memory.rooms[roomName].logistics.energyTasks = tasks;
-    },
-
-    getHaulerAssignments: function(roomName) {
-        return this.getRoomMemory(roomName).haulerAssignments || {};
-    },
-
-    setHaulerAssignments: function(roomName, assignments) {
-        if (!Memory.rooms[roomName]) Memory.rooms[roomName] = {};
-        Memory.rooms[roomName].logistics.haulerAssignments = assignments;
-    },
-
-    getTaskReservations: function(roomName) {
-        return this.getRoomMemory(roomName).taskReservations || {};
-    },
-
-    setTaskReservations: function(roomName, reservations) {
-        if (!Memory.rooms[roomName]) Memory.rooms[roomName] = {};
-        Memory.rooms[roomName].logistics.taskReservations = reservations;
-    },
-
+    
+    // ********* ΕΝΗΜΕΡΩΣΗ ENERGY TASKS *********
+    
     /**
      * ΕΝΗΜΕΡΩΣΗ ENERGY TASKS - ΚΕΝΤΡΙΚΗ ΛΟΓΙΚΗ
      */ 
-    updateEnergyTasks: function(room) {
+    updateEnergyTasks: function(room, roomMemory) {
         const roomName = room.name;
         const tasks = [];
         
@@ -133,105 +81,89 @@ const logisticsManager = {
         const deliveryTargets = this.findDeliveryTargets(room);
         
         if (deliveryTargets.length > 0) {
-            // ΛΕΙΤΟΥΡΓΙΑ ΠΛΗΡΩΣΗΣ: Υπάρχουν στόχοι που χρειάζονται ενέργεια
+            // ΛΕΙΤΟΥΡΓΙΑ ΠΛΗΡΩΣΗΣ
             deliveryTargets.forEach(target => {
                 const sources = this.findSourcesForTarget(room, target);
                 sources.forEach(source => {
-                    // Δημιουργία task για κάθε πηγή που μπορεί να τροφοδοτήσει τον στόχο
                     tasks.push(this.createTask(roomName, source, target, 'deliver'));
                 });
             });
         } else {
-            // ΛΕΙΤΟΥΡΓΙΑ CLEANUP: Μεταφορά ενέργειας από διάφορες πηγές στο Storage
+            // ΛΕΙΤΟΥΡΓΙΑ CLEANUP
             const cleanupSources = this.findCleanupSources(room);
             const storage = room.storage;
             
             if (storage && cleanupSources.length > 0) {
+                const storageTarget = {
+                    id: storage.id,
+                    type: 'storage',
+                    priority: PRIORITIES.STORAGE,
+                    obj: storage
+                };
+                
                 cleanupSources.forEach(source => {
-                    // Δημιουργία task για μεταφορά από πηγή στο storage
-                    tasks.push(this.createTask(roomName, source, storage, 'cleanup'));
+                    // ΑΠΟΦΥΓΗ storage->storage μεταφορών (ελέγχεται στην πηγή cleanupSources)
+                    if (source.id !== storage.id) {
+                        tasks.push(this.createTask(roomName, source, storageTarget, 'cleanup'));
+                    }
                 });
             }
         }
         
-        // Ταξινόμηση tasks βάσει προτεραιότητας
         tasks.sort((a, b) => b.priority - a.priority);
-        this.setEnergyTasks(roomName, tasks);
+        roomMemory.energyTasks = tasks;
     },
 
     /**
-     * ΕΥΡΕΣΗ ΣΤΟΧΩΝ ΠΟΥ ΧΡΕΙΑΖΟΝΤΑΙ ΕΝΕΡΓΕΙΑ
+     * ΕΥΡΕΣΗ ΣΤΟΧΩΝ ΠΟΥ ΧΡΕΙΑΖΟΝΤΑΙ ΕΝΕΡΓΕΙΑ - CPU Optimized
      */
     findDeliveryTargets: function(room) {
         const targets = [];
         
-        // 1. SPAWNS & EXTENSIONS (100% πλήρωση - ΥΨΗΛΗ ΠΡΟΤΕΡΑΙΟΤΗΤΑ)
-        const spawns = room.find(FIND_MY_SPAWNS, {
-            filter: spawn => spawn.store.getFreeCapacity(RESOURCE_ENERGY) > 0
-        });
-        targets.push(...spawns.map(spawn => ({
-            id: spawn.id,
-            type: 'spawn',
-            priority: PRIORITIES.SPAWN_EXTENSION,
-            obj: spawn
-        })));
-        
-        const extensions = room.find(FIND_MY_STRUCTURES, {
-            filter: s => s.structureType === STRUCTURE_EXTENSION && 
-                         s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
-        });
-        targets.push(...extensions.map(ext => ({
-            id: ext.id,
-            type: 'extension', 
-            priority: PRIORITIES.SPAWN_EXTENSION,
-            obj: ext
-        })));
+        // Χρήση ενός ενιαίου find για δομές
+        const allStructures = room.find(FIND_MY_STRUCTURES);
 
-        // 2. TOWERS (80% πλήρωση - ΜΕΣΑΙΑ ΠΡΟΤΕΡΑΙΟΤΗΤΑ)
-        const towers = room.find(FIND_MY_STRUCTURES, {
-            filter: s => s.structureType === STRUCTURE_TOWER && 
-                         s.store[RESOURCE_ENERGY] < s.store.getCapacity(RESOURCE_ENERGY) * 0.8
-        });
-        targets.push(...towers.map(tower => ({
-            id: tower.id,
-            type: 'tower',
-            priority: PRIORITIES.TOWER,
-            obj: tower
-        })));
+        allStructures.forEach(s => {
+            const freeCapacity = s.store ? s.store.getFreeCapacity(RESOURCE_ENERGY) : 0;
+            const energyAmount = s.store ? s.store[RESOURCE_ENERGY] : 0;
+            const capacity = s.store ? s.store.getCapacity(RESOURCE_ENERGY) : 0;
 
-        const labs = room.find(FIND_MY_STRUCTURES, {
-            filter: s => s.structureType === STRUCTURE_LAB && 
-                         s.store[RESOURCE_ENERGY] < s.store.getCapacity(RESOURCE_ENERGY) * 1
-        });
-        targets.push(...labs.map(lab => ({
-            id: lab.id,
-            type: 'lab',
-            priority: PRIORITIES.LAB,
-            obj: lab
-        })));
+            let priority = 0;
+            let condition = false;
 
+            switch (s.structureType) {
+                case STRUCTURE_SPAWN:
+                case STRUCTURE_EXTENSION:
+                    priority = PRIORITIES.SPAWN_EXTENSION;
+                    condition = freeCapacity > 0;
+                    break;
+                case STRUCTURE_TOWER:
+                    priority = PRIORITIES.TOWER;
+                    condition = energyAmount < capacity * 0.8;
+                    break;
+                case STRUCTURE_LAB:
+                    priority = PRIORITIES.LAB;
+                    condition = energyAmount < capacity * 1;
+                    break;
+                case STRUCTURE_TERMINAL:
+                    priority = PRIORITIES.TERMINAL;
+                    condition = energyAmount < capacity * 0.2;
+                    break;
+                default:
+                    return;
+            }
 
-        const terminal = room.find(FIND_MY_STRUCTURES, {
-            filter: s => s.structureType === STRUCTURE_TERMINAL && 
-                         s.store[RESOURCE_ENERGY] < s.store.getCapacity(RESOURCE_ENERGY) * 0.2
+            if (condition) {
+                targets.push({ id: s.id, type: s.structureType, priority: priority, obj: s });
+            }
         });
-        targets.push(...terminal.map(terminal => ({
-            id: terminal.id,
-            type: 'terminal',
-            priority: PRIORITIES.TERMINAL,
-            obj: terminal
-        })));
-        
-        // 3. CONTROLLER CONTAINER (50% πλήρωση - ΜΕΣΑΙΑ ΠΡΟΤΕΡΑΙΟΤΗΤΑ)
+
+        // Controller Container
         if (room.memory.controllerContainerId) {
-            const controllerContainer = Game.getObjectById(room.memory.controllerContainerId);
-            if (controllerContainer && 
-                controllerContainer.store[RESOURCE_ENERGY] < controllerContainer.store.getCapacity(RESOURCE_ENERGY) * 0.5) {
+            const cc = Game.getObjectById(room.memory.controllerContainerId);
+            if (cc && cc.store && cc.store[RESOURCE_ENERGY] < cc.store.getCapacity(RESOURCE_ENERGY) * 0.5) {
                 targets.push({
-                    id: controllerContainer.id,
-                    type: 'controllerContainer',
-                    priority: PRIORITIES.CONTROLLER_CONTAINER,
-                    obj: controllerContainer
+                    id: cc.id, type: 'controllerContainer', priority: PRIORITIES.CONTROLLER_CONTAINER, obj: cc
                 });
             }
         }
@@ -246,174 +178,124 @@ const logisticsManager = {
         const sources = [];
         
         // 1. DROPPED ENERGY (ΥΨΗΛΗ ΠΡΟΤΕΡΑΙΟΤΗΤΑ)
-        const droppedEnergy = room.find(FIND_DROPPED_RESOURCES, {
+        room.find(FIND_DROPPED_RESOURCES, {
             filter: r => r.resourceType === RESOURCE_ENERGY && r.amount > 50
-        });
-        sources.push(...droppedEnergy.map(energy => ({
-            id: energy.id,
-            type: 'dropped',
-            priority: PRIORITIES.DROP_ENERGY,
-            obj: energy
-        })));
+        }).forEach(energy => sources.push({
+            id: energy.id, type: 'dropped', priority: PRIORITIES.DROP_ENERGY, obj: energy
+        }));
 
-        // 2. CONTAINERS ΣΤΑ SOURCES
-        const sourceContainers = room.find(FIND_STRUCTURES, {
-            filter: s => s.structureType === STRUCTURE_CONTAINER && 
-                         s.store[RESOURCE_ENERGY] > 100 &&
-                         this.isContainerNearSource(s)
-        });
-        sources.push(...sourceContainers.map(container => ({
-            id: container.id,
-            type: 'sourceContainer',
-            priority: PRIORITIES.SOURCE_CONTAINER,
-            obj: container
-        })));
+        // 2. STRUCTURES (Containers, Terminal, Links, Storage)
+        room.find(FIND_STRUCTURES).forEach(s => {
+            let priority = 0;
+            let condition = false;
 
-        // 3. RECOVERY CONTAINER
-        if (room.memory.recoveryContainerId) {
-            const recoveryContainer = Game.getObjectById(room.memory.recoveryContainerId);
-            if (recoveryContainer && recoveryContainer.store[RESOURCE_ENERGY] > 100) {
-                sources.push({
-                    id: recoveryContainer.id,
-                    type: 'recoveryContainer',
-                    priority: PRIORITIES.RECOVERY_CONTAINER,
-                    obj: recoveryContainer
-                });
+            switch (s.structureType) {
+                case STRUCTURE_CONTAINER:
+                    if (s.store[RESOURCE_ENERGY] > 100 && this.isContainerNearSource(s)) {
+                        priority = PRIORITIES.SOURCE_CONTAINER;
+                        condition = true;
+                    }
+                    else if (room.memory.recoveryContainerId === s.id && s.store[RESOURCE_ENERGY] > 100) {
+                        priority = PRIORITIES.RECOVERY_CONTAINER;
+                        condition = true;
+                    }
+                    break;
+                case STRUCTURE_TERMINAL:
+                    if (s.my && s.store[RESOURCE_ENERGY] > 1000) {
+                        priority = PRIORITIES.TERMINAL;
+                        condition = true;
+                    }
+                    break;
+                case STRUCTURE_LINK:
+                    if (room.memory.storageLinkId === s.id && s.store[RESOURCE_ENERGY] > 100) {
+                        priority = PRIORITIES.STORAGE_LINK;
+                        condition = true;
+                    }
+                    break;
+                case STRUCTURE_STORAGE:
+                    if (s.my && s.store[RESOURCE_ENERGY] > 1000) {
+                        priority = PRIORITIES.STORAGE_SOURCE;
+                        condition = true;
+                    }
+                    break;
+                default:
+                    return;
             }
-        }
+            
+            if (condition) {
+                sources.push({ id: s.id, type: s.structureType.toLowerCase(), priority: priority, obj: s });
+            }
+        });
 
-        // 4. RUINS
-        const ruins = room.find(FIND_RUINS, {
+        // 3. RUINS
+        room.find(FIND_RUINS, {
             filter: ruin => ruin.store[RESOURCE_ENERGY] > 50
-        });
-        sources.push(...ruins.map(ruin => ({
-            id: ruin.id,
-            type: 'ruin',
-            priority: PRIORITIES.RUIN,
-            obj: ruin
-        })));
-
-        // 5. TERMINAL
-        if (room.terminal && room.terminal.store[RESOURCE_ENERGY] > 1000) {
-            sources.push({
-                id: room.terminal.id,
-                type: 'terminal',
-                priority: PRIORITIES.TERMINAL,
-                obj: room.terminal
-            });
-        }
-
-        // 6. STORAGE LINK
-        if (room.memory.storageLinkId) {
-            const storageLink = Game.getObjectById(room.memory.storageLinkId);
-            if (storageLink && storageLink.store[RESOURCE_ENERGY] > 100) {
-                sources.push({
-                    id: storageLink.id,
-                    type: 'storageLink',
-                    priority: PRIORITIES.STORAGE_LINK,
-                    obj: storageLink
-                });
-            }
-        }
-
-        // 7. STORAGE (ΧΑΜΗΛΗ ΠΡΟΤΕΡΑΙΟΤΗΤΑ - ΜΟΝΟ ΑΝ ΑΠΟΤΕΛΕΣΜΑΤΙΚΑ ΧΡΕΙΑΖΕΤΑΙ)
-        if (room.storage && room.storage.store[RESOURCE_ENERGY] > 1000) {
-            sources.push({
-                id: room.storage.id,
-                type: 'storage',
-                priority: PRIORITIES.STORAGE_SOURCE,
-                obj: room.storage
-            });
-        }
+        }).forEach(ruin => sources.push({
+            id: ruin.id, type: 'ruin', priority: PRIORITIES.RUIN, obj: ruin
+        }));
 
         return sources.sort((a, b) => b.priority - a.priority);
     },
 
     /**
-     * ΕΥΡΕΣΗ ΠΗΓΩΝ ΓΙΑ CLEANUP (ΜΕΤΑΦΟΡΑ ΣΤΟ STORAGE)
+     * ΕΥΡΕΣΗ ΠΗΓΩΝ ΓΙΑ CLEANUP (ΜΕΤΑΦΟΡΑ ΣΤΟ STORAGE) - ΑΠΟΦΥΓΗ Terminal/Storage ως πηγής
      */
     findCleanupSources: function(room) {
         const sources = [];
         
-        // 1. DROPPED ENERGY (ΥΨΗΛΗ ΠΡΟΤΕΡΑΙΟΤΗΤΑ)
-        const droppedEnergy = room.find(FIND_DROPPED_RESOURCES, {
-            filter: r => r.resourceType === RESOURCE_ENERGY && r.amount > 50
-        });
-        sources.push(...droppedEnergy.map(energy => ({
-            id: energy.id,
-            type: 'dropped',
-            priority: PRIORITIES.DROP_ENERGY,
-            obj: energy
-        })));
-
-        // 2. CONTAINERS ΣΤΑ SOURCES
-        const sourceContainers = room.find(FIND_STRUCTURES, {
-            filter: s => s.structureType === STRUCTURE_CONTAINER && 
-                         s.store[RESOURCE_ENERGY] > 100 &&
-                         this.isContainerNearSource(s)
-        });
-        sources.push(...sourceContainers.map(container => ({
-            id: container.id,
-            type: 'sourceContainer',
-            priority: PRIORITIES.SOURCE_CONTAINER,
-            obj: container
-        })));
-
-        // 3. RECOVERY CONTAINER
-        if (room.memory.recoveryContainerId) {
-            const recoveryContainer = Game.getObjectById(room.memory.recoveryContainerId);
-            if (recoveryContainer && recoveryContainer.store[RESOURCE_ENERGY] > 100) {
-                sources.push({
-                    id: recoveryContainer.id,
-                    type: 'recoveryContainer',
-                    priority: PRIORITIES.RECOVERY_CONTAINER,
-                    obj: recoveryContainer
-                });
+        // 1. DROPPED ENERGY, RUINS
+        this.findSourcesForTarget(room, null).forEach(source => {
+            if (source.type === 'dropped' || source.type === 'ruin') {
+                sources.push(source);
             }
-        }
-
-        // 4. RUINS
-        const ruins = room.find(FIND_RUINS, {
-            filter: ruin => ruin.store[RESOURCE_ENERGY] > 50
         });
-        sources.push(...ruins.map(ruin => ({
-            id: ruin.id,
-            type: 'ruin',
-            priority: PRIORITIES.RUIN,
-            obj: ruin
-        })));
 
-        // 5. STORAGE LINK
-        if (room.memory.storageLinkId) {
-            const storageLink = Game.getObjectById(room.memory.storageLinkId);
-            if (storageLink && storageLink.store[RESOURCE_ENERGY] > 100) {
-                sources.push({
-                    id: storageLink.id,
-                    type: 'storageLink',
-                    priority: PRIORITIES.STORAGE_LINK,
-                    obj: storageLink
-                });
+        // 2. CONTAINERS, STORAGE LINK
+        room.find(FIND_STRUCTURES).forEach(s => {
+            let priority = 0;
+            let condition = false;
+
+            switch (s.structureType) {
+                case STRUCTURE_CONTAINER:
+                    if (s.store[RESOURCE_ENERGY] > 100 && this.isContainerNearSource(s)) {
+                        priority = PRIORITIES.SOURCE_CONTAINER;
+                        condition = true;
+                    }
+                    else if (room.memory.recoveryContainerId === s.id && s.store[RESOURCE_ENERGY] > 100) {
+                        priority = PRIORITIES.RECOVERY_CONTAINER;
+                        condition = true;
+                    }
+                    break;
+                case STRUCTURE_LINK:
+                    if (room.memory.storageLinkId === s.id && s.store[RESOURCE_ENERGY] > 100) {
+                        priority = PRIORITIES.STORAGE_LINK;
+                        condition = true;
+                    }
+                    break;
+                // ΑΠΟΦΕΥΓΟΥΜΕ Terminal/Storage για cleanup
+                default:
+                    return;
             }
-        }
+            
+            if (condition) {
+                sources.push({ id: s.id, type: s.structureType.toLowerCase(), priority: priority, obj: s });
+            }
+        });
 
         return sources.sort((a, b) => b.priority - a.priority);
     },
-
+    
     /**
-     * ΔΗΜΙΟΥΡΓΙΑ TASK
+     * ΔΗΜΙΟΥΡΓΙΑ TASK (Χρήση μόνο ID)
      */
     createTask: function(roomName, source, target, taskType) {
-        const taskId = `${source.id}-${target.id}-${Game.time}`;
-        
         return {
-            id: taskId,
+            id: `${source.id}-${target.id}-${Game.time}`,
             room: roomName,
             sourceId: source.id,
             sourceType: source.type,
-            sourceObj: source.obj,
             targetId: target.id,
             targetType: target.type,
-            targetObj: target.obj,
             taskType: taskType,
             priority: source.priority + target.priority,
             created: Game.time
@@ -424,14 +306,15 @@ const logisticsManager = {
      * ΕΛΕΓΧΟΣ AN TO CONTAINER ΕΙΝΑΙ ΔΙΠΛΑ ΣΕ SOURCE
      */
     isContainerNearSource: function(container) {
-        const nearbySources = container.pos.findInRange(FIND_SOURCES, 2);
-        return nearbySources.length > 0;
+        return container.pos.findInRange(FIND_SOURCES, 2).length > 0;
     },
+    
+    // ********* ΔΙΑΧΕΙΡΙΣΗ HAULERS *********
 
     /**
      * ΔΙΑΧΕΙΡΙΣΗ HAULERS ΚΑΙ ΑΝΑΘΕΣΗ TASKS
      */
-    manageHaulers: function(room) {
+    manageHaulers: function(room, roomMemory) {
         const roomName = room.name;
         const haulers = _.filter(Game.creeps, creep => 
             creep.memory.role === 'hauler' && 
@@ -439,28 +322,23 @@ const logisticsManager = {
             !creep.spawning
         );
 
-        const assignments = this.getHaulerAssignments(roomName);
-        const reservations = this.getTaskReservations(roomName);
-        const tasks = this.getEnergyTasks(roomName);
+        const assignments = roomMemory.haulerAssignments;
+        const reservations = roomMemory.taskReservations;
+        const tasks = roomMemory.energyTasks;
 
         // Καθαρισμός assignments για νεκρούς haulers
         for (const haulerName in assignments) {
             if (!Game.creeps[haulerName]) {
+                const assignedTask = assignments[haulerName];
+                delete reservations[assignedTask.taskId];
                 delete assignments[haulerName];
             }
         }
 
-        // Καθαρισμός παλιών reservations
-        this.cleanupReservations(room);
-
         // Ανάθεση tasks σε haulers
         haulers.forEach(hauler => {
-            this.assignTaskToHauler(hauler, roomName, tasks, assignments, reservations);
+            this.assignTaskToHauler(hauler, tasks, assignments, reservations);
         });
-
-        // Αποθήκευση των assignments και reservations
-        this.setHaulerAssignments(roomName, assignments);
-        this.setTaskReservations(roomName, reservations);
 
         // Εκτέλεση tasks από haulers
         haulers.forEach(hauler => {
@@ -471,32 +349,29 @@ const logisticsManager = {
     /**
      * ΑΝΑΘΕΣΗ TASK ΣΕ HAULER
      */
-    assignTaskToHauler: function(hauler, roomName, tasks, assignments, reservations) {
+    assignTaskToHauler: function(hauler, tasks, assignments, reservations) {
         const currentAssignment = assignments[hauler.name];
 
-        // Αν ο hauler έχει ήδη task, ελέγχουμε αν είναι έγκυρο
+        // 1. Έλεγχος τρέχοντος assignment
         if (currentAssignment) {
             const taskStillValid = this.validateTask(currentAssignment);
             if (taskStillValid) {
-                return; // Ο hauler συνεχίζει με το τρέχον task
+                return;
             } else {
-                // Task δεν είναι έγκυρο - απελευθέρωση
-                delete assignments[hauler.name];
                 delete reservations[currentAssignment.taskId];
+                delete assignments[hauler.name];
             }
         }
 
-        // Εύρεση νέου task για τον hauler
+        // 2. Εύρεση νέου task
         const availableTask = this.findBestTaskForHauler(hauler, tasks, reservations);
 
         if (availableTask) {
-            // Κράτηση task
             reservations[availableTask.id] = {
                 haulerName: hauler.name,
                 reservedAt: Game.time
             };
 
-            // Ανάθεση task στον hauler
             assignments[hauler.name] = {
                 taskId: availableTask.id,
                 sourceId: availableTask.sourceId,
@@ -506,73 +381,45 @@ const logisticsManager = {
                 taskType: availableTask.taskType,
                 assignedAt: Game.time
             };
-            
-            //hauler.say(`🎯 ${availableTask.taskType}`);
         }
     },
 
     /**
-     * ΕΥΡΕΣΗ ΚΑΛΥΤΕΡΟΥ TASK ΓΙΑ HAULER
+     * ΕΥΡΕΣΗ ΚΑΛΥΤΕΡΟΥ TASK ΓΙΑ HAULER - ΒΕΛΤΙΩΜΕΝΗ ΜΕ ΑΠΟΣΤΑΣΗ (CPU Optimized)
      */
-    /**
- * ΕΥΡΕΣΗ ΚΑΛΥΤΕΡΟΥ TASK ΓΙΑ HAULER - ΒΕΛΤΙΩΜΕΝΗ ΜΕ ΑΠΟΣΤΑΣΗ
- */
-findBestTaskForHauler: function(hauler, tasks, reservations) {
-    if (tasks.length === 0) return null;
+    findBestTaskForHauler: function(hauler, tasks, reservations) {
+        if (tasks.length === 0) return null;
 
-    // Φιλτράρισμα tasks που είναι διαθέσιμα (δεν έχουν reservation ή το reservation έχει λήξει)
-    const availableTasks = tasks.filter(task => {
-        const reservation = reservations[task.id];
-        
-        if (!reservation) return true;
-        
-        // Reservation έχει λήξει (25 ticks)
-        if (Game.time - reservation.reservedAt > 25) {
-            delete reservations[task.id];
-            return true;
+        let bestTask = null;
+        let bestScore = -Infinity;
+
+        // Ελέγχουμε μόνο τα 10 κορυφαία tasks (μείωση CPU)
+        const topTasks = tasks.slice(0, 10); 
+
+        for (const task of topTasks) {
+            const reservation = reservations[task.id];
+            
+            if (reservation && reservation.haulerName !== hauler.name) {
+                continue;
+            }
+            
+            const target = Game.getObjectById(task.targetId);
+            if (!target) continue;
+            
+            const distance = hauler.pos.getRangeTo(target);
+            
+            // Score = Προτεραιότητα - Ποινή Απόστασης (μικρότερη απόσταση = μικρότερη ποινή)
+            const distancePenalty = distance * 0.1; 
+            const totalScore = task.priority - distancePenalty;
+            
+            if (totalScore > bestScore) {
+                bestScore = totalScore;
+                bestTask = task;
+            }
         }
-        
-        // Hauler του reservation δεν υπάρχει πλέον
-        if (!Game.creeps[reservation.haulerName]) {
-            delete reservations[task.id];
-            return true;
-        }
-        
-        return false;
-    });
 
-    if (availableTasks.length === 0) return null;
-
-    // ΒΕΛΤΙΩΜΕΝΗ ΛΟΓΙΚΗ: Επιλογή task βάσει προτεραιότητας ΚΑΙ απόστασης
-    let bestTask = null;
-    let bestScore = -Infinity;
-
-    availableTasks.forEach(task => {
-        // Βασική προτεραιότητα από το task
-        const basePriority = task.priority;
-        
-        // Υπολογισμός απόστασης από τον hauler προς τον στόχο
-        const target = Game.getObjectById(task.targetId);
-        if (!target) return;
-        
-        const distance = hauler.pos.getRangeTo(target);
-        
-        // ΥΠΟΛΟΓΙΣΜΟΣ SCORE: 
-        // - Βασική προτεραιότητα (60% βάρους)
-        // - Απόσταση (40% βάρους - μικρότερη απόσταση = υψηλότερο score)
-        const priorityScore = basePriority * 0.6;
-        const distanceScore = (50 - Math.min(distance, 50)) * 0.4; // Μέγιστη απόσταση 50, αντιστρέφουμε
-        
-        const totalScore = priorityScore + distanceScore;
-        
-        if (totalScore > bestScore) {
-            bestScore = totalScore;
-            bestTask = task;
-        }
-    });
-
-    return bestTask;
-},
+        return bestTask;
+    },
 
     /**
      * ΕΛΕΓΧΟΣ ΕΓΚΥΡΟΤΗΤΑΣ TASK
@@ -583,41 +430,8 @@ findBestTaskForHauler: function(hauler, tasks, reservations) {
         
         if (!source || !target) return false;
 
-        // Ελέγχουμε αν η πηγή έχει ενέργεια
-        let hasEnergy = false;
-        switch (task.sourceType) {
-            case 'dropped':
-                hasEnergy = source.amount > 20;
-                break;
-            case 'ruin':
-                hasEnergy = source.store[RESOURCE_ENERGY] > 20;
-                break;
-            case 'sourceContainer':
-            case 'recoveryContainer':
-            case 'terminal':
-            case 'storageLink':
-            case 'storage':
-                hasEnergy = source.store[RESOURCE_ENERGY] > 50;
-                break;
-            default:
-                hasEnergy = false;
-        }
-
-        // Ελέγχουμε αν ο στόχος μπορεί να δεχτεί ενέργεια
-        let canAcceptEnergy = false;
-        switch (task.targetType) {
-            case 'spawn':
-            case 'extension':
-            case 'tower':
-            case 'controllerContainer':
-                canAcceptEnergy = target.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
-                break;
-            case 'storage':
-                canAcceptEnergy = target.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
-                break;
-            default:
-                canAcceptEnergy = false;
-        }
+        const hasEnergy = this.checkSourceHasEnergy(source, task.sourceType);
+        const canAcceptEnergy = target.store && target.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
 
         return hasEnergy && canAcceptEnergy;
     },
@@ -626,27 +440,21 @@ findBestTaskForHauler: function(hauler, tasks, reservations) {
      * ΕΚΤΕΛΕΣΗ HAULER ΜΕ TASK
      */
     runHaulerWithTask: function(creep, assignment) {
-        // Έλεγχος αν ο hauler είναι πολύ παλιός για recycling
+        // Λογική recycling
         if (creep.ticksToLive < MIN_LIFE_TO_LIVE && creep.room.memory.recoveryContainerId) {
             creep.memory.role = "to_be_recycled";
             return;
         }
 
         if (!assignment) {
-            //creep.say('😴 no task');
             return;
         }
+        
+        const isCarrying = creep.store[RESOURCE_ENERGY] > 0;
 
-        // Λογική μεταφοράς: 
-        // - Αν ο hauler ΔΕΝ έχει ενέργεια, πάει στην πηγή
-        // - Αν ο hauler έχει ενέργεια, πάει στον στόχο
-        // - Μετά από κάθε επιτυχημένη μεταφορά, το task ολοκληρώνεται
-
-        if (creep.store[RESOURCE_ENERGY] === 0) {
-            // ΦΑΣΗ ΣΥΛΛΟΓΗΣ: Ο hauler δεν έχει ενέργεια, πάει στην πηγή
+        if (!isCarrying) {
             this.collectFromSource(creep, assignment);
         } else {
-            // ΦΑΣΗ ΠΑΡΑΔΟΣΗΣ: Ο hauler έχει ενέργεια, πάει στον στόχο
             this.deliverToTarget(creep, assignment);
         }
     },
@@ -662,7 +470,6 @@ findBestTaskForHauler: function(hauler, tasks, reservations) {
             return;
         }
 
-        // Έλεγχος αν η πηγή έχει ενέργεια
         const hasEnergy = this.checkSourceHasEnergy(source, assignment.sourceType);
         if (!hasEnergy) {
             this.completeTask(creep);
@@ -670,19 +477,12 @@ findBestTaskForHauler: function(hauler, tasks, reservations) {
         }
 
         if (creep.pos.isNearTo(source)) {
-            // Σύλληξη ενέργειας από την πηγή
             const result = this.withdrawFromSource(creep, source, assignment.sourceType);
-            if (result === OK) {
-                //creep.say('📥 collected');
-            } else {
+            if (result !== OK) {
                 this.completeTask(creep);
             }
         } else {
-            // Μετακίνηση προς την πηγή
-            creep.moveTo(source, {
-                visualizePathStyle: { stroke: '#ffaa00' },
-                reusePath: 6
-            });
+            creep.moveTo(source, { visualizePathStyle: { stroke: '#ffaa00' }, reusePath: 6 });
         }
     },
 
@@ -697,7 +497,6 @@ findBestTaskForHauler: function(hauler, tasks, reservations) {
             return;
         }
 
-        // Έλεγχος αν ο στόχος μπορεί να δεχτεί ενέργεια
         const canAccept = target.store && target.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
         if (!canAccept) {
             this.completeTask(creep);
@@ -705,23 +504,15 @@ findBestTaskForHauler: function(hauler, tasks, reservations) {
         }
 
         if (creep.pos.isNearTo(target)) {
-            // Παράδοση ενέργειας στον στόχο
             const result = creep.transfer(target, RESOURCE_ENERGY);
             
-            if (result === OK) {
-                //creep.say('📤 delivered');
-                this.completeTask(creep); // ΟΛΟΚΛΗΡΩΣΗ TASK ΜΕΤΑ ΑΠΟ ΕΠΙΤΥΧΗΜΕΝΗ ΜΕΤΑΦΟΡΑ
-            } else if (result === ERR_FULL) {
-                this.completeTask(creep); // Στόχος γεμάτος - ολοκλήρωση task
+            if (result === OK || result === ERR_FULL) {
+                this.completeTask(creep); // ΟΛΟΚΛΗΡΩΣΗ TASK
             } else {
-                this.completeTask(creep); // Σφάλμα - ολοκλήρωση task
+                this.completeTask(creep);
             }
         } else {
-            // Μετακίνηση προς τον στόχο
-            creep.moveTo(target, {
-                visualizePathStyle: { stroke: '#ffffff' },
-                reusePath: 6
-            });
+            creep.moveTo(target, { visualizePathStyle: { stroke: '#ffffff' }, reusePath: 6 });
         }
     },
 
@@ -730,18 +521,14 @@ findBestTaskForHauler: function(hauler, tasks, reservations) {
      */
     checkSourceHasEnergy: function(source, sourceType) {
         switch (sourceType) {
-            case 'dropped':
-                return source.amount > 20;
-            case 'ruin':
-                return source.store[RESOURCE_ENERGY] > 20;
+            case 'dropped': return source.amount > 20;
+            case 'ruin': return source.store[RESOURCE_ENERGY] > 20;
             case 'sourceContainer':
             case 'recoveryContainer':
             case 'terminal':
             case 'storageLink':
-            case 'storage':
-                return source.store[RESOURCE_ENERGY] > 50;
-            default:
-                return false;
+            case 'storage': return source.store[RESOURCE_ENERGY] > 50;
+            default: return false;
         }
     },
 
@@ -750,79 +537,59 @@ findBestTaskForHauler: function(hauler, tasks, reservations) {
      */
     withdrawFromSource: function(creep, source, sourceType) {
         switch (sourceType) {
-            case 'dropped':
-                return creep.pickup(source);
+            case 'dropped': return creep.pickup(source);
             case 'ruin':
             case 'sourceContainer':
             case 'recoveryContainer':
             case 'terminal':
             case 'storageLink':
-            case 'storage':
-                return creep.withdraw(source, RESOURCE_ENERGY);
-            default:
-                return ERR_INVALID_ARGS;
+            case 'storage': return creep.withdraw(source, RESOURCE_ENERGY);
+            default: return ERR_INVALID_ARGS;
         }
     },
 
+   /**
+    * ΟΛΟΚΛΗΡΩΣΗ TASK - Άμεση Επαναναναθεση
+    */
    completeTask: function(creep) {
-    const roomName = creep.memory.homeRoom;
-    const assignments = this.getHaulerAssignments(roomName);
-    const reservations = this.getTaskReservations(roomName);
-    
-    if (assignments[creep.name]) {
-        // Αφαίρεση reservation
-        delete reservations[assignments[creep.name].taskId];
-        // Αφαίρεση assignment
-        delete assignments[creep.name];
+        const roomName = creep.memory.homeRoom;
+        const roomMemory = Memory.rooms[roomName].logistics;
+        const assignments = roomMemory.haulerAssignments;
+        const reservations = roomMemory.taskReservations;
         
-        this.setHaulerAssignments(roomName, assignments);
-        this.setTaskReservations(roomName, reservations);
-        
-        // 🔥 ΑΜΕΣΗ ΕΠΑΝΑΝΑΘΕΣΗ ΝΕΟΥ TASK
-        const tasks = this.getEnergyTasks(roomName);
-        this.assignTaskToHauler(creep, roomName, tasks, assignments, reservations);
-        
-        // Αποθήκευση των νέων assignments
-        this.setHaulerAssignments(roomName, assignments);
-        this.setTaskReservations(roomName, reservations);
-    }
-    
-    //creep.say('✅ task done');
-},
-
-    /**
-     * ΚΑΘΑΡΙΣΜΟΙ
-     */
-    cleanupTasks: function(room) {
-        const roomName = room.name;
-        const tasks = this.getEnergyTasks(roomName);
-        const now = Game.time;
-        
-        // Διατήρηση tasks μόνο για 50 ticks
-        const filteredTasks = tasks.filter(task => (now - task.created) < 50);
-        this.setEnergyTasks(roomName, filteredTasks);
+        if (assignments[creep.name]) {
+            // Αφαίρεση reservation & assignment
+            delete reservations[assignments[creep.name].taskId];
+            delete assignments[creep.name];
+            
+            // ΆΜΕΣΗ ΕΠΑΝΑΝΑΘΕΣΗ ΝΕΟΥ TASK
+            const tasks = roomMemory.energyTasks;
+            this.assignTaskToHauler(creep, tasks, assignments, reservations);
+        }
     },
 
-    cleanupReservations: function(room) {
-        const roomName = room.name;
-        const reservations = this.getTaskReservations(roomName);
+    /**
+     * ΚΑΘΑΡΙΣΜΟΙ TASKS
+     */
+    cleanupTasks: function(roomMemory) {
+        const now = Game.time;
+        roomMemory.energyTasks = roomMemory.energyTasks.filter(task => (now - task.created) < 50);
+    },
+
+    /**
+     * ΚΑΘΑΡΙΣΜΟΙ RESERVATIONS
+     */
+    cleanupReservations: function(roomMemory) {
+        const reservations = roomMemory.taskReservations;
         const now = Game.time;
 
         for (const taskId in reservations) {
             const reservation = reservations[taskId];
             
-            // Διαγραφή reservations που είναι παλιά (100 ticks)
-            if (now - reservation.reservedAt > 100) {
-                delete reservations[taskId];
-                continue;
-            }
-            
-            // Διαγραφή reservations για haulers που δεν υπάρχουν πλέον
-            if (!Game.creeps[reservation.haulerName]) {
+            if (now - reservation.reservedAt > 100 || !Game.creeps[reservation.haulerName]) {
                 delete reservations[taskId];
             }
         }
-        this.setTaskReservations(roomName, reservations);
     },
 
     /**
@@ -830,7 +597,7 @@ findBestTaskForHauler: function(hauler, tasks, reservations) {
      */
     showTasksInfo: function(room) {
         const visual = new RoomVisual(room.name);
-        const tasks = this.getEnergyTasks(room.name);
+        const tasks = room.memory.logistics.energyTasks;
         
         let y = 10;
         visual.text(`Tasks: ${tasks.length}`, 1, y++, { align: 'left', color: '#ffff00' });

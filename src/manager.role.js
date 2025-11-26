@@ -11,6 +11,27 @@ function travelToHomeRoom(creep) {
     }
     return false; // Είναι στο home room του
 }
+function travelToTargetRoom(creep) {
+    const targetRoom = creep.memory.targetRoom;
+    if (!targetRoom) {
+        console.log(`Creep ${creep.name} has no targetRoom!`);
+        return false;
+    }
+    
+    if (creep.room.name !== targetRoom) {
+        const result = creep.moveTo(new RoomPosition(25, 25, targetRoom), { 
+            visualizePathStyle: { stroke: '#ffffff' },
+            reusePath: 50
+        });
+        
+        if (result === ERR_NO_PATH) {
+            console.log(`No path to target room ${targetRoom} for creep ${creep.name}`);
+            // Εδώ μπορείτε να προσθέσετε fallback logic
+        }
+        return true;
+    }
+    return false;
+}
 const roleManager = {
     run: function() {
         for (const name in Game.creeps) {
@@ -36,16 +57,75 @@ const roleManager = {
                 case 'claimer':
                     this.runClaimer(creep);
                     break;
-                case 'scout': // <--- ΝΕΟ
+                case 'scout': 
                     this.runScout(creep);
                     break;
                 case "to_be_recycled":
                     runRecycleCreep(creep);
                     break;
+                case  "supporter":
+                    runSupporter(creep);
+                    break;    
+                case "LDHarvester": 
+                    this.runLDHarvester(creep);
             }
         }
     },
+   runLDHarvester: function(creep) { 
+    if (creep.spawning) return;
+    
+    if(creep.ticksToLive < 200) {
+        creep.memory.role = "to_be_recycled";
+        return;
+    }
 
+    // Απλοποίηση εναλλαγής κατάστασης - μόνο όταν είναι στο σωστό δωμάτιο
+    if (creep.room.name === creep.memory.homeRoom) {
+        if (creep.memory.working && creep.store[RESOURCE_ENERGY] === 0) {
+            creep.memory.working = false;
+            creep.say('🔄 harvest');
+        }
+    }
+    
+    if (creep.room.name === creep.memory.targetRoom) {
+        if (!creep.memory.working && creep.store.getFreeCapacity() === 0) {
+            creep.memory.working = true;
+            creep.say('🚚 deliver');
+        }
+    }
+
+    if (creep.memory.working) {
+        // Πήγαινε στο home room και παράδωσε ενέργεια
+        if (travelToHomeRoom(creep)) { 
+            return;
+        }
+        
+        // Εδώ είμαστε στο home room - παράδωσε ενέργεια
+        if (this.fillContainerOrStorage(creep)) {
+            return;
+        }
+        // Fallback: γέμισε spawn/extensions
+        this.fillSpawnExtension(creep);
+           
+    } else {
+        // Πήγαινε στο target room και μάζεψε ενέργεια
+        if (travelToTargetRoom(creep)) {
+            return;
+        }
+        
+        // Εδώ είμαστε στο target room - μάζεψε ενέργεια
+        const source = creep.pos.findClosestByPath(FIND_SOURCES_ACTIVE);
+        if (source) {
+            if (creep.pos.inRangeTo(source,1) ) {
+                creep.harvest(source);
+            } else {
+                creep.moveTo(source, {visualizePathStyle: {stroke: '#ffaa00'},reusePath: 20});
+            }
+            
+            
+        }
+    }
+},
     /**
      * ΛΟΓΙΚΗ CLAIMER
      */
@@ -91,8 +171,8 @@ const roleManager = {
                      // --- ΝΕΑ ΛΟΓΙΚΗ ΜΕΤΑΒΑΣΗΣ ---
                      console.log(`✅ Spawn built in ${targetRoom}. Entering Initial Setup Phase (RCL1->RCL2).`);
                      Memory.rooms[targetRoom].type = 'initial_setup'; 
+                     creep.memory.role="builder";
                      // Ο Claimer/Builder τελείωσε τη δουλειά του, αυτοκτονεί
-                     creep.suicide(); 
                      return;
                 }
                 
@@ -168,9 +248,14 @@ const roleManager = {
         if (creep.room.name === targetRoom) {
             // Μετακίνηση προς το κέντρο για να μην μείνει στην είσοδο (και μπλοκάρει ή πηγαινοέρχεται)
             if (creep.pos.x === 0 || creep.pos.x === 49 || creep.pos.y === 0 || creep.pos.y === 49) {
-                creep.moveTo(new RoomPosition(25, 25, targetRoom));
+                creep.moveTo(new RoomPosition(25, 25, targetRoom), { 
+                    visualizePathStyle: { stroke: '#ffffff' } , reusePath: 20
+                });
             }
-            
+            if (creep.room.name !== creep.memory.homeRoom) {
+               const hasGCL = Game.gcl.level > _.filter(Game.rooms, r => r.controller && r.controller.my).length;
+                getInfoForNeighborRoom(creep.room.name, hasGCL, creep.memory.homeRoom);
+            }
             // Σημείωση: Δεν χρειάζεται να κάνει κάτι άλλο. 
             // Το ότι υπάρχει εκεί δίνει "Vision".
             // Το expansionManager που τρέχει κάθε 100 ticks θα δει το δωμάτιο, 
@@ -185,10 +270,82 @@ const roleManager = {
                 creep.say("No Path");
             } else {
                 creep.moveTo(new RoomPosition(25, 25, targetRoom), { 
-                    visualizePathStyle: { stroke: '#ffffff' } 
+                    visualizePathStyle: { stroke: '#ffffff' } , reusePath:40
                 });
             }
         }
+    },
+    runSupporter:function(creep) { 
+          if(creep.spawning) return;
+        
+        // 1. Ταξίδι στο Home Room (αν χρειάζεται)
+        if (travelToHomeRoom(creep)) {
+            creep.say("✈️");
+            return;
+        }
+
+        // ... (rest of Builder logic is fine, assuming getEnergy handles energy retrieval in the new room)
+        if(creep.ticksToLive < minTickToLive && getRecoveryContainerId(creep)) {
+            creep.memory.role = "to_be_recycled";
+            return;
+        }
+        
+        if (creep.memory.building && creep.store[RESOURCE_ENERGY] === 0) {
+            
+            
+            
+            creep.memory.building = false;
+            creep.say('🔄 refill');
+        }
+        if (!creep.memory.building && creep.store.getFreeCapacity() === 0) {
+            creep.memory.building = true;
+            creep.say('🚧 build');
+        }
+
+        if (creep.memory.building) {
+            if (this.fillSpawnExtension(creep)){return ;}
+            if (this.buildStructures(creep)) {return;}
+        } else {
+            this.getEnergy(creep);
+        }
+    },
+    fillContainerOrStorage:function(creep) {
+        const targets = creep.room.find(FIND_MY_STRUCTURES, {
+            filter: (s) => {
+                return (s.structureType === STRUCTURE_CONTAINER ||
+                        s.structureType === STRUCTURE_STORAGE ) && 
+                        s.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
+                }
+            }
+        );
+        if (targets && targets.length > 0) {
+            if (creep.pos.inRangeTo(targets[0],1)) {
+                creep.transfer(targets[0], RESOURCE_ENERGY);
+            } else {
+                creep.moveTo(targets[0], {visualizePathStyle: {stroke: '#ffffff'}, reusePath: 8});
+            }
+            return true;
+        }
+        return false;
+    },
+    fillSpawnExtension:function(creep) { 
+        const targets = creep.room.find(FIND_MY_STRUCTURES, {
+            filter: (s) => {
+                return (s.structureType === STRUCTURE_EXTENSION ||
+                        s.structureType === STRUCTURE_SPAWN ) && 
+                        s.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
+                }
+            }
+        );
+        if (targets && targets.length > 0) {
+            if (creep.pos.inRangeTo(targets[0],1)) {
+                creep.transfer(targets[0], RESOURCE_ENERGY);
+            } else {
+                creep.moveTo(targets[0], {visualizePathStyle: {stroke: '#ffffff'}, reusePath: 8});
+            }
+            return true;
+        }
+        return false;
     },
     runBuilder: function(creep) {
         if(creep.spawning) return;
@@ -215,7 +372,8 @@ const roleManager = {
         }
 
         if (creep.memory.building) {
-            this.buildStructures(creep);
+            if (this.buildStructures(creep)){ return ;}
+            this.upgradeController(creep);
         } else {
             this.getEnergy(creep);
         }
@@ -236,7 +394,7 @@ const roleManager = {
                     creep.moveTo(closestSite, { visualizePathStyle: { stroke: '#ffffff' }, reusePath: 8 });                
                 }
             }
-            return;
+            return true;
         }
 
         // 2. Δρόμοι
@@ -253,34 +411,14 @@ const roleManager = {
                     creep.moveTo(closestRoad, { visualizePathStyle: { stroke: '#ffffff' }, reusePath: 8 });
                 }
             }
-            return;
+            return true;
         }
         
-        // 3. Επισκευές
-        // const damagedStructures = creep.room.find(FIND_STRUCTURES, {
-        //     filter: s => s.hits < s.hitsMax * 0.8 &&
-        //                  s.structureType !== STRUCTURE_WALL &&
-        //                  s.structureType !== STRUCTURE_RAMPART
-        // });
-
-        // if (damagedStructures.length > 0) {
-        //     const closestDamaged = creep.pos.findClosestByPath(damagedStructures);
-        //     if (closestDamaged) {
-        //         if (creep.pos.inRangeTo(closestDamaged, 3)) { 
-        //             creep.repair(closestDamaged);
-        //         } else {
-        //             creep.moveTo(closestDamaged, { visualizePathStyle: { stroke: '#ffaa00' }, reusePath: 8 });
-        //         }
-        //     }
-        //     return;
-        // }
 
         // 4. Upgrade αν δεν υπάρχει τίποτα άλλο
-        if (creep.pos.inRangeTo(creep.room.controller, 2)) {
-            creep.upgradeController(creep.room.controller);
-        } else { 
-            creep.moveTo(creep.room.controller, { visualizePathStyle: { stroke: '#00ff00' }, reusePath: 8 });
-        }    
+        
+        
+        return false;
     },
 
     getEnergy: function(creep) {
@@ -368,28 +506,13 @@ const roleManager = {
             creep.say('🚚 deliver');
         }
 
-        // ... (rest of simpleHarvester logic is fine)
+        
         if (creep.memory.working) {
-            const targets = creep.room.find(FIND_MY_STRUCTURES, {
-                filter: (s) => {
-                    return (s.structureType === STRUCTURE_EXTENSION ||
-                            s.structureType === STRUCTURE_SPAWN ) && 
-                            s.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
-                }
-            });
-            
-            if (targets.length > 0) {
-                if (creep.transfer(targets[0], RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-                    creep.moveTo(targets[0], {visualizePathStyle: {stroke: '#ffffff'}});
-                }
-            } else {
+           if(!fillSpawnExtension(creep))
+            {
                 // Αν όλα είναι γεμάτα, κάνε upgrade (για να μην κάθεται)
                 
-                if (creep.room.controller) {
-                    if (creep.upgradeController(creep.room.controller) === ERR_NOT_IN_RANGE) {
-                        creep.moveTo(creep.room.controller, {visualizePathStyle: {stroke: '#ffffff'}});
-                    }
-                }
+               this.upgradeController(creep);
             }
         } else {
             const source = creep.pos.findClosestByPath(FIND_SOURCES_ACTIVE);
@@ -414,16 +537,19 @@ const roleManager = {
         }
 
         if (creep.memory.working) {
-            if (creep.pos.inRangeTo(creep.room.controller, 2)) {
-                creep.upgradeController(creep.room.controller);
-            } else {
-                creep.moveTo(creep.room.controller, { visualizePathStyle: { stroke: '#ffffff' } });
-            }
+            this.upgradeController(creep);
         } else {
             this.getEnergy(creep);
         }
     },
-
+    upgradeController : function(creep) { 
+        if (creep.pos.inRangeTo(creep.room.controller, 2)) {
+                creep.upgradeController(creep.room.controller);
+        } else {
+            creep.moveTo(creep.room.controller, { visualizePathStyle: { stroke: '#ffffff' } });
+        }
+        return true;
+    },
     runStaticHarvester: function(creep) { 
         if(!creep.memory.sourceId) {
             const closestSource = creep.pos.findClosestByPath(FIND_SOURCES);

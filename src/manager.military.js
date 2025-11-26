@@ -294,31 +294,55 @@ var militaryController = {
     /**
      * Συμπεριφορά Guard
      */
-    runGuard: function(creep, hostiles) {
-        if (hostiles.length > 0) {
-            const target = creep.pos.findClosestByRange(hostiles);
-            if (creep.rangedAttack(target) === ERR_NOT_IN_RANGE) {
-                creep.moveTo(target, {visualizePathStyle: {stroke: '#ff0000'}});
-            }
-        } else {
-            // Patrol mode
-            this.patrol(creep);
+    // ... (Στο militaryController)
+
+/**
+ * Συμπεριφορά Guard (Διορθωμένη για ATTACK - melee)
+ */
+runGuard: function(creep, hostiles) {
+    if (hostiles.length > 0) {
+        const target = creep.pos.findClosestByRange(hostiles);
+
+        // Χρησιμοποιούμε attack() για τα melee μέρη
+        if (creep.attack(target) === ERR_NOT_IN_RANGE) {
+            // Κινείται μόνο αν δεν είναι δίπλα στον στόχο
+            creep.moveTo(target, {visualizePathStyle: {stroke: '#ff0000'}});
         }
-    },
+    } else {
+        // Patrol mode
+        this.patrol(creep);
+    }
+},
 
     /**
      * Συμπεριφορά Ranger
      */
-    runRanger: function(creep, hostiles) {
-        if (hostiles.length > 0) {
-            const target = creep.pos.findClosestByRange(hostiles);
-            if (creep.rangedAttack(target) === ERR_NOT_IN_RANGE) {
-                creep.moveTo(target, {visualizePathStyle: {stroke: '#ffaa00'}});
-            }
-        } else {
-            this.patrol(creep);
+   // ... (Στο militaryController)
+
+/**
+ * Συμπεριφορά Ranger (Διορθωμένη για RANGED_ATTACK)
+ */
+runRanger: function(creep, hostiles) {
+    if (hostiles.length > 0) {
+        const target = creep.pos.findClosestByRange(hostiles);
+        const range = creep.pos.getRangeTo(target);
+
+        // Πρώτα επιτίθεται (η επίθεση λειτουργεί σε range <= 3)
+        creep.rangedAttack(target);
+
+        if (range > 3) {
+            // Κινείται προς τον στόχο αν είναι εκτός εμβέλειας
+            creep.moveTo(target, {visualizePathStyle: {stroke: '#ffaa00'}});
+        } else if (range < 3 && hostiles.length > 1) {
+             // Ελαφριά υποχώρηση για να διατηρηθεί η εμβέλεια ή για AoE
+             const retreatDir = creep.pos.getDirectionTo(target) + 4;
+             creep.move(retreatDir % 8);
         }
-    },
+        // Αν range === 3, απλά μένει ακίνητος και επιτίθεται
+    } else {
+        this.patrol(creep);
+    }
+},
 
     /**
      * Συμπεριφορά Scout

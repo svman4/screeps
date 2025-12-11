@@ -64,7 +64,7 @@ const roleManager = {
                     runRecycleCreep(creep);
                     break;
                 case  "supporter":
-                    runSupporter(creep);
+                    this.runSupporter(creep);
                     break;    
                 case "LDHarvester": 
                     this.runLDHarvester(creep);
@@ -256,6 +256,8 @@ const roleManager = {
                const hasGCL = Game.gcl.level > _.filter(Game.rooms, r => r.controller && r.controller.my).length;
                 getInfoForNeighborRoom(creep.room.name, hasGCL, creep.memory.homeRoom);
             }
+            creep.say("Bye bye");
+            creep.suicide();
             // Σημείωση: Δεν χρειάζεται να κάνει κάτι άλλο. 
             // Το ότι υπάρχει εκεί δίνει "Vision".
             // Το expansionManager που τρέχει κάθε 100 ticks θα δει το δωμάτιο, 
@@ -278,11 +280,7 @@ const roleManager = {
     runSupporter:function(creep) { 
           if(creep.spawning) return;
         
-        // 1. Ταξίδι στο Home Room (αν χρειάζεται)
-        if (travelToHomeRoom(creep)) {
-            creep.say("✈️");
-            return;
-        }
+        
 
         // ... (rest of Builder logic is fine, assuming getEnergy handles energy retrieval in the new room)
         if(creep.ticksToLive < minTickToLive && getRecoveryContainerId(creep)) {
@@ -291,9 +289,6 @@ const roleManager = {
         }
         
         if (creep.memory.building && creep.store[RESOURCE_ENERGY] === 0) {
-            
-            
-            
             creep.memory.building = false;
             creep.say('🔄 refill');
         }
@@ -303,9 +298,16 @@ const roleManager = {
         }
 
         if (creep.memory.building) {
+            if (travelToTargetRoom(creep)) { 
+                return;
+            }
             if (this.fillSpawnExtension(creep)){return ;}
             if (this.buildStructures(creep)) {return;}
         } else {
+
+            if (travelToHomeRoom(creep)) { 
+                return;
+            }
             this.getEnergy(creep);
         }
     },
@@ -420,8 +422,7 @@ const roleManager = {
         
         return false;
     },
-
-    getEnergy: function(creep) {
+    getEnergyFromContainersorStorage:function(creep) { 
         // 1. Containers/Storage
         const containers = creep.room.find(FIND_STRUCTURES, {
             filter: s => (s.structureType === STRUCTURE_CONTAINER || s.structureType === STRUCTURE_STORAGE) &&
@@ -437,10 +438,12 @@ const roleManager = {
                     creep.moveTo(closest, { visualizePathStyle: { stroke: '#ffaa00' }, reusePath: 8 });
                 }
             }
-            return;
+            return true;
         }
-
-        // 2. Dropped
+        return false;
+    },
+    getEnergyFromDroppedEnergy:function(creep) {
+      // 2. Dropped
         const droppedEnergy = creep.room.find(FIND_DROPPED_RESOURCES, {
             filter: r => r.resourceType === RESOURCE_ENERGY && r.amount > 40
         });
@@ -454,8 +457,11 @@ const roleManager = {
                     creep.moveTo(closest, { visualizePathStyle: { stroke: '#ffaa00' }, reusePath: 8 });                
                 }
             }
-            return;
-        }
+            return true;
+        }  
+        return false;
+    },
+    getEnergyFromRuins:function(creep) { 
         
         // 3. Ruins
         const ruins = creep.room.find(FIND_RUINS, {
@@ -470,8 +476,11 @@ const roleManager = {
                     creep.moveTo(ruin, { visualizePathStyle: { stroke: '#ffaa00' }, reusePath: 8 });
                 }
             }
-            return;
+            return true;
         }
+        return false;
+    },
+    gotoHarvesting:function(creep) { 
         
         // 4. Harvest (last resort)
         const sources = creep.room.find(FIND_SOURCES_ACTIVE);
@@ -483,8 +492,16 @@ const roleManager = {
                 } else {
                     creep.moveTo(closestSource, { visualizePathStyle: { stroke: '#ffaa00' }, reusePath: 8 });                
                 }
+                return true;
             }
         }
+        return false;
+    },
+    getEnergy: function(creep) {
+        if (this.getEnergyFromContainersorStorage(creep)) { return;}
+        if (this.getEnergyFromDroppedEnergy(creep)) { return;}
+        if (this.getEnergyFromRuins(creep)) { return;}    
+        if(this.gotoHarvesting(creep)) {return ;}
     },
 
     runSimpleHarvester: function(creep) {
@@ -508,17 +525,14 @@ const roleManager = {
 
         
         if (creep.memory.working) {
-           if(!fillSpawnExtension(creep))
+           if(!this.fillSpawnExtension(creep))
             {
                 // Αν όλα είναι γεμάτα, κάνε upgrade (για να μην κάθεται)
                 
                this.upgradeController(creep);
             }
         } else {
-            const source = creep.pos.findClosestByPath(FIND_SOURCES_ACTIVE);
-            if (creep.harvest(source) === ERR_NOT_IN_RANGE) {
-                creep.moveTo(source, {visualizePathStyle: {stroke: '#ffaa00'}});
-            }
+            if(this.gotoHarvesting(creep)) {return ;}
         }
     },
 
@@ -546,7 +560,7 @@ const roleManager = {
         if (creep.pos.inRangeTo(creep.room.controller, 2)) {
                 creep.upgradeController(creep.room.controller);
         } else {
-            creep.moveTo(creep.room.controller, { visualizePathStyle: { stroke: '#ffffff' } });
+            creep.moveTo(creep.room.controller, { visualizePathStyle: { stroke: '#ffffff' } ,reusePath:30});
         }
         return true;
     },

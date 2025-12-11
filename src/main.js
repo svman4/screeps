@@ -6,7 +6,8 @@ var expansionManager = require('manager.expansion');
 var logisticsManager = require('manager.logistics');
 const militaryController = require('manager.military');
 var roleManager = require('manager.role');
-
+var market=require('manager.market');
+var pixels=require('manager.pixels');
  
 global.roomBlueprints = {
     E11N38: require('E11N38'),
@@ -47,7 +48,7 @@ module.exports.loop = function () {
             // MEDIUM PRIORITY - Τρέχουν πιο σπάνια
             constructionManager.run(roomName);
 
-            
+            market.run(roomName);
             // LOW PRIORITY - Μόνο με υψηλό CPU
             if (Game.cpu.bucket > 5000 ) {
                 expansionManager.run(roomName);
@@ -59,11 +60,12 @@ module.exports.loop = function () {
              }
         }
     }
+    pixels.run();
     if (Game.time % 10 === 0) {
         var endCpu = Game.cpu.getUsed();
-    var cpuUsed = endCpu - startCpu;
+        var cpuUsed = (endCpu - startCpu).toFixed(3);
     
-        console.log(`CPU Bucket: ${Game.cpu.bucket} | Creeps: ${Object.keys(Game.creeps).length} |cpusUser: ${cpuUsed}`);
+        console.log(`CPU Bucket: ${Game.cpu.bucket} | Creeps: ${Object.keys(Game.creeps).length} | cpusUser: ${cpuUsed}`);
     }
      } catch (error) {
         console.log(`🔴 ΣΦΑΛΜΑ: ${error.message}`);

@@ -1,7 +1,7 @@
 const expansionManager = {
     run: function(roomName) {
         // Εκτέλεση κάθε 100 ticks
-       // if (Game.time % 100 !== 0) return;
+        if (Game.time % 100 !== 0) return;
 
         const room = Game.rooms[roomName];
         if (!room) return;

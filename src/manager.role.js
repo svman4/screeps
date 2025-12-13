@@ -71,61 +71,63 @@ const roleManager = {
             }
         }
     },
-   runLDHarvester: function(creep) { 
-    if (creep.spawning) return;
-    
-    if(creep.ticksToLive < 200) {
-        creep.memory.role = "to_be_recycled";
-        return;
-    }
+    runLDHarvester: function(creep) { 
+        if (creep.spawning) return;
+        if(creep.ticksToLive < 200) {
+            creep.memory.role = "to_be_recycled";
+            return;
+        }
 
-    // Απλοποίηση εναλλαγής κατάστασης - μόνο όταν είναι στο σωστό δωμάτιο
-    if (creep.room.name === creep.memory.homeRoom) {
-        if (creep.memory.working && creep.store[RESOURCE_ENERGY] === 0) {
-            creep.memory.working = false;
-            creep.say('🔄 harvest');
-        }
-    }
-    
-    if (creep.room.name === creep.memory.targetRoom) {
-        if (!creep.memory.working && creep.store.getFreeCapacity() === 0) {
-            creep.memory.working = true;
-            creep.say('🚚 deliver');
-        }
-    }
-
-    if (creep.memory.working) {
-        // Πήγαινε στο home room και παράδωσε ενέργεια
-        if (travelToHomeRoom(creep)) { 
-            return;
-        }
-        
-        // Εδώ είμαστε στο home room - παράδωσε ενέργεια
-        if (this.fillContainerOrStorage(creep)) {
-            return;
-        }
-        // Fallback: γέμισε spawn/extensions
-        this.fillSpawnExtension(creep);
-           
-    } else {
-        // Πήγαινε στο target room και μάζεψε ενέργεια
-        if (travelToTargetRoom(creep)) {
-            return;
-        }
-        
-        // Εδώ είμαστε στο target room - μάζεψε ενέργεια
-        const source = creep.pos.findClosestByPath(FIND_SOURCES_ACTIVE);
-        if (source) {
-            if (creep.pos.inRangeTo(source,1) ) {
-                creep.harvest(source);
-            } else {
-                creep.moveTo(source, {visualizePathStyle: {stroke: '#ffaa00'},reusePath: 20});
+        // Απλοποίηση εναλλαγής κατάστασης - μόνο όταν είναι στο σωστό δωμάτιο
+        if (creep.room.name === creep.memory.homeRoom) {
+            if (creep.memory.working && creep.store[RESOURCE_ENERGY] === 0) {
+                creep.memory.working = false;
+                creep.say('🔄 harvest');
             }
-            
-            
         }
-    }
-},
+    
+        if (creep.room.name === creep.memory.targetRoom) {
+            if (!creep.memory.working && creep.store.getFreeCapacity() === 0) {
+                creep.memory.working = true;
+                creep.say('🚚 deliver');
+            }
+        }
+
+        if (creep.memory.working) {
+            // Πήγαινε στο home room και παράδωσε ενέργεια
+            if (travelToHomeRoom(creep)) { 
+                return;
+            }
+        
+            // Εδώ είμαστε στο home room - παράδωσε ενέργεια
+            if (this.fillContainerOrStorage(creep)) {
+                return;
+            }
+            // Fallback: γέμισε spawn/extensions
+            this.fillSpawnExtension(creep);
+        } else {
+            // Πήγαινε στο target room και μάζεψε ενέργεια
+             if (travelToTargetRoom(creep)) {
+                 return;
+             }
+            // const sourcePos=creep.memory.sources["0"];
+            // if (creep.pos.inRangeTo(sourcePos,1)) {
+            //     creep.harvest();
+            // } else {
+            //     creep.moveTo(sourcePos, {visualizePathStyle: {stroke: '#ffaa00'},reusePath: 20});
+            // }
+            // Εδώ είμαστε στο target room - μάζεψε ενέργεια
+            const source = creep.pos.findClosestByRange(FIND_SOURCES_ACTIVE);
+            if (source) {
+                if (creep.pos.inRangeTo(source,1) ) {
+                    creep.harvest(source);
+                } else {
+                    creep.moveTo(source, {visualizePathStyle: {stroke: '#ffaa00'},reusePath: 20});
+                }
+            
+            }
+        }
+    },
     /**
      * ΛΟΓΙΚΗ CLAIMER
      */

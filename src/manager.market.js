@@ -8,7 +8,7 @@ const STORE_LIMITS = {
     STORAGE: 0.6, 
     // Το ποσοστό πληρότητας του Terminal που πρέπει να ξεπερνάει η ενέργεια
     // για να θεωρηθεί διαθέσιμη προς πώληση
-    TERMINAL: 0.6 
+    TERMINAL: 0.5 
 };
 
 const market = {
@@ -19,10 +19,10 @@ const market = {
     run: function(roomName) {
         const room = Game.rooms[roomName];
         if (!room) return; // Έλεγχος αν το δωμάτιο υπάρχει (αν το έχουμε claimάρει).
-
+        
         // Ανεξάρτητα από το σχόλιο στον αρχικό κώδικα, η αγορά είναι κρίσιμη, 
         // οπότε η εκτέλεση κάθε tick είναι συνήθως ασφαλής.
-         if (Game.time % INTERVALS.RUN !== 0) return; 
+        if (Game.time % INTERVALS.RUN !== 0) return; 
 
         // Έλεγχος αν υπάρχουν τα απαραίτητα κτίρια (Storage και Terminal).
         if ((room.storage && room.terminal) === false) { 
@@ -139,6 +139,7 @@ const market = {
                 `ΣΥΝΟΛΙΚΑ CREDITS: ${currentCredits}.`;
 
             // 3. Αποστολή ειδοποίησης (groupInterval: 10 ticks).
+            console.log(successMsg);
             Game.notify(successMsg, 10);
             } else {
                // console.log(`❌ Αποτυχία πώλησης (ID: ${bestOrder.id}). Αποτέλεσμα: ${result}`);

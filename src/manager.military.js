@@ -300,6 +300,7 @@ var militaryController = {
  * Συμπεριφορά Guard (Διορθωμένη για ATTACK - melee)
  */
 runGuard: function(creep, hostiles) {
+    if(this.travelToHomeRoom(creep) ){ return; } 
     if (hostiles.length > 0) {
         const target = creep.pos.findClosestByRange(hostiles);
 
@@ -343,11 +344,25 @@ runRanger: function(creep, hostiles) {
         this.patrol(creep);
     }
 },
-
+travelToHomeRoom:function(creep) {
+    const homeRoom = creep.memory.homeRoom;
+    if (creep.room.name !== homeRoom) {
+        creep.moveTo(new RoomPosition(25, 25, homeRoom), { 
+            visualizePathStyle: { stroke: '#ffffff' },
+            reusePath: 50
+        });
+        return true; // Είναι σε διαδικασία ταξιδιού
+    }
+    return false; // Είναι στο home room του
+},
     /**
      * Συμπεριφορά Scout
      */
     runScout: function(creep, hostiles) {
+        if (this.travelToHomeRoom(creep) ){
+            return;
+        }
+           
         if (hostiles.length > 0) {
             // Κράτα απόσταση και επιτέθου από μακριά
             const target = creep.pos.findClosestByRange(hostiles);

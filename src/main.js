@@ -11,7 +11,8 @@ var pixels=require('manager.pixels');
  
 global.roomBlueprints = {
     E11N38: require('E11N38'),
-    E12N38: require('E12N38')
+    E12N38: require('E12N38'),
+    E11N37:require('E11N37')
 };
 // Βοηθητική συνάρτηση για οπτική πληροφόρηση
 
@@ -50,12 +51,12 @@ module.exports.loop = function () {
 
             market.run(roomName);
             // LOW PRIORITY - Μόνο με υψηλό CPU
-            if (Game.cpu.bucket > 5000 ) {
+            if (Game.cpu.bucket > 2000 ) {
                 expansionManager.run(roomName);
             }
             
              //Οπτική πληροφόρηση
-             if (Memory.debug.status && Game.time % 5 === 0 ) {
+             if (Memory.debug.status  ) {
                  showRoomInfo(room);
              }
         }

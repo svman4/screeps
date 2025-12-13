@@ -15,7 +15,7 @@ const INTERVALS = {
 const LIMITS = {
     // Το πόσες φορές συνεχόμενα (ή πόσες φορές ανά το διάστημα RUN)
     // πρέπει να είναι γεμάτο το CPU Bucket (10000) πριν επιτρέψουμε την παραγωγή Pixel.
-    COUNTER_LIMIT: 10, 
+    COUNTER_LIMIT: 5, 
     // Το όριο του CPU Bucket που το θεωρούμε "γεμάτο" (το μέγιστο όριο).
     BUCKET_LIMIT: 10000 
 }
@@ -48,7 +48,7 @@ const pixels = {
         // --- 3. Λογική Μετρητή (Counter) ---
         
         let counter = Memory.pixels.counter; // Λήψη της τρέχουσας τιμής του counter.
-        
+        //console.log("pixels - counter is "+counter);
         // Έλεγχος: Είναι το CPU Bucket γεμάτο (10000);
         if (Game.cpu.bucket >= LIMITS.BUCKET_LIMIT) {
             // Αν είναι γεμάτο, αυξάνουμε τον μετρητή συνεχόμενης πλήρωσης.
@@ -71,7 +71,9 @@ const pixels = {
             
             // Αποστολή ειδοποίησης με το τρέχον σύνολο Pixels.
             // Game.market.pixels: Επιστρέφει το τρέχον σύνολο Pixels του παίκτη.
-            Game.notify(`🎉 Παρήχθη νέο Pixel! Το CPU Bucket μηδενίστηκε. Έχετε συνολικά: ${Game.market.pixels} Pixels.`, 10);
+            const message=`🎉 Παρήχθη νέο Pixel! Το CPU Bucket μηδενίστηκε. Έχετε συνολικά: ${Game.resources["pixel"]+1} Pixels.`;
+            console.log(message);
+            Game.notify(message, 3000);
             
             // Μετά την επιτυχημένη παραγωγή, μηδενίζουμε τον μετρητή για να ξαναρχίσει η διαδικασία.
             counter = 0; 

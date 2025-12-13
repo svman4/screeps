@@ -259,9 +259,10 @@ const respawController = {
         }
         
         body.sort();
-        const creepName = `LDHarvester_${Game.time}`;
+        const creepName = `LDHarvester_${roomName}_${setupRoomName}_${Game.time}`;
+        const sourcePosition=Memory.rooms[setupRoomName].sources.pos;
         return spawn.spawnCreep(body, creepName, { 
-            memory: { role: ROLES.LD_HARVESTER, homeRoom: roomName,targetRoom: setupRoomName , working: false } 
+            memory: { role: ROLES.LD_HARVESTER, homeRoom: roomName,targetRoom: setupRoomName,sourcePos:sourcePosition , working: false } 
         }) === OK;  
     },
     // --- Checks ---

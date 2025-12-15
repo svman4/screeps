@@ -225,9 +225,6 @@ const constructionManager = {
     /**
      * ΔΗΜΙΟΥΡΓΙΑ CONSTRUCTION SITE
      */
-   /**
-     * ΔΗΜΙΟΥΡΓΙΑ CONSTRUCTION SITE
-     */
     createConstructionSite: function(room, x, y, structureType) {
         // Έλεγχος αν η θέση είναι ελεύθερη
         const terrain = room.getTerrain();
@@ -236,6 +233,11 @@ const constructionManager = {
         }
 
         const objects = room.lookAt(x, y);
+        if (structureType ===STRUCTURE_RAMPART) {
+            // Αν είναι rampart τότε δεν έλεγχει αν υπάρχει structures.
+            return room.createConstructionSite(x, y, structureType);
+            
+        }
         for (const object of objects) {
             if (object.type === 'structure' || object.type === 'constructionSite') {
                 return ERR_INVALID_TARGET;
@@ -244,8 +246,6 @@ const constructionManager = {
                 return ERR_INVALID_TARGET;
             }
         }
-
-        return room.createConstructionSite(x, y, structureType);
     },
 
     /**

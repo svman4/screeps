@@ -30,6 +30,7 @@ const pixels = {
         // --- 1. Έλεγχος Συχνότητας Εκτέλεσης ---
         // Αν η συνάρτηση καλείται από τη main.js κάθε tick, ο έλεγχος αυτός περιορίζει
         // την εκτέλεση της λογικής του Pixel σε μία φορά κάθε 50 ticks.
+        if (!Game.cpu.generatePixel) {  return; }
         if (Game.time % INTERVALS.RUN !== 0) return; 
 
         // --- 2. Αρχικοποίηση Μνήμης (Memory) ---

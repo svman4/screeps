@@ -240,7 +240,7 @@ const respawController = {
             }
         }
     },
-    createLDHarvester:function(spawn,roomName,setupRoomName,maxPreferredEnergy=2000) {
+    createLDHarvester:function(spawn,roomName,setupRoomName,maxPreferredEnergy=1500) {
         let energy = spawn.room.energyCapacityAvailable;
         energy = Math.min(energy, maxPreferredEnergy);
         const CORE_BODY = [WORK, CARRY, MOVE, MOVE]; // 250
@@ -260,9 +260,9 @@ const respawController = {
         
         body.sort();
         const creepName = `LDHarvester_${roomName}_${setupRoomName}_${Game.time}`;
-        const sourcePosition=Memory.rooms[setupRoomName].sources.pos;
+        const sourceId=Memory.rooms[setupRoomName].sources[0];
         return spawn.spawnCreep(body, creepName, { 
-            memory: { role: ROLES.LD_HARVESTER, homeRoom: roomName,targetRoom: setupRoomName,sourcePos:sourcePosition , working: false } 
+            memory: { role: ROLES.LD_HARVESTER, homeRoom: roomName,targetRoom: setupRoomName,source:sourceId , working: false } 
         }) === OK;  
     },
     // --- Checks ---

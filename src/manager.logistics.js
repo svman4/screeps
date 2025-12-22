@@ -1,5 +1,6 @@
-// manager.logistics.js - ΒΕΛΤΙΩΜΕΝΗ ΛΟΓΙΚΗ ΜΕ PRIORITY-BASED ENERGY DISTRIBUTION & CPU OPTIMIZATION
+// manager.logistics.js - ΠΛΗΡΗΣ ΕΚΔΟΣΗ (LOGISTICS + SMART PATHFINDING)
 
+// --- CONFIGURATION ---
 const PRIORITIES = {
     // Προτεραιότητες Στόχων
     SPAWN_EXTENSION: 100,
@@ -18,17 +19,23 @@ const PRIORITIES = {
     STORAGE_LINK: 75,
     STORAGE_SOURCE: 76
 };
-const TARGET_FULL_PERCENT= { 
-    TERMINAL : 0.8,
-    STORAGE : 0.8,
-    TOWER : 0.8,
-    CONTROLLER_CONTAINER : 0.6,
-    FACTORY : 0.5,
+
+const TARGET_FULL_PERCENT = { 
+    TERMINAL: 0.8,
+    STORAGE: 0.8,
+    TOWER: 0.8,
+    CONTROLLER_CONTAINER: 0.6,
+    FACTORY: 0.5,
     LAB: 1
 };
 
 const MIN_LIFE_TO_LIVE = 50;
 const UPDATE_TASKS_INTERVAL = 2;
+
+// --- GLOBAL CACHE (Για το CostMatrix) ---
+// Αποθηκεύεται στη Heap Memory (χάνεται μόνο σε Global Reset - ιδανικό για εξοικονόμηση CPU)
+let matrixCache = {}; 
+let lastMatrixUpdate = {};
 
 const logisticsManager = {
     
@@ -147,7 +154,7 @@ const logisticsManager = {
     },
 
     /**
-     * ΕΥΡΕΣΗ ΣΤΟΧΩΝ ΠΟΥ ΧΡΕΙΑΖΟΝΤΑΙ ΕΝΕΡΓΕΙΑ - CPU Optimized
+     * ΕΥΡΕΣΗ ΣΤΟΧΩΝ ΠΟΥ ΧΡΕΙΑΖΟΝΤΑΙ ΕΝΕΡΓΕΙΑ
      */
     findDeliveryTargets: function(room) {
         const targets = [];
@@ -218,7 +225,7 @@ const logisticsManager = {
         }).forEach(energy => sources.push({
             id: energy.id, type: 'dropped', priority: PRIORITIES.DROP_ENERGY, obj: energy
         }));
-  
+   
         // 2. STRUCTURES (Containers, Terminal, Links, Storage)
         room.find(FIND_STRUCTURES).forEach(s => {
             let priority = 0;
@@ -240,7 +247,7 @@ const logisticsManager = {
                     break;
                 case STRUCTURE_TERMINAL:
                     if (s.my && s.store[RESOURCE_ENERGY] > 1000) {
-                        priority = PRIORITIES.TERMINAL_SOURCE; // Χρησιμοποιούμε διαφορετική προτεραιότητα
+                        priority = PRIORITIES.TERMINAL_SOURCE; 
                         condition = true;
                     }
                     break;
@@ -334,7 +341,7 @@ const logisticsManager = {
     },
     
     /**
-     * ΔΗΜΙΟΥΡΓΙΑ TASK (Χρήση μόνο ID)
+     * ΔΗΜΙΟΥΡΓΙΑ TASK
      */
     createTask: function(roomName, source, target, taskType) {
         return {
@@ -437,7 +444,7 @@ const logisticsManager = {
     },
 
     /**
-     * ΕΥΡΕΣΗ ΚΑΛΥΤΕΡΟΥ TASK ΓΙΑ HAULER - ΒΕΛΤΙΩΜΕΝΗ ΜΕ ΑΠΟΣΤΑΣΗ (CPU Optimized)
+     * ΕΥΡΕΣΗ ΚΑΛΥΤΕΡΟΥ TASK ΓΙΑ HAULER
      */
     findBestTaskForHauler: function(hauler, tasks, reservations) {
         if (tasks.length === 0) return null;
@@ -513,8 +520,113 @@ const logisticsManager = {
         }
     },
 
+    // ********* ΝΕΑ ΛΕΙΤΟΥΡΓΙΚΟΤΗΤΑ ΚΙΝΗΣΗΣ & PATHFINDING *********
+
     /**
-     * ΣΥΛΛΟΓΗ ΑΠΟ ΠΗΓΗ
+     * ΕΛΕΓΧΕΙ ΚΑΙ ΕΠΙΣΤΡΕΦΕΙ ΤΟ CostMatrix TOY ROOM
+     */
+    getRoomCostMatrix: function(roomName) {
+        // Αν υπάρχει στο cache και δεν έχει λήξει (ανανέωση κάθε 1000 ticks)
+        if (matrixCache[roomName] && lastMatrixUpdate[roomName] > Game.time - 1000) {
+            return matrixCache[roomName];
+        }
+
+        const room = Game.rooms[roomName];
+        if (!room) return new PathFinder.CostMatrix;
+
+        const costs = new PathFinder.CostMatrix;
+
+        // 1. Δρόμοι και Δομές
+        room.find(FIND_STRUCTURES).forEach(function(struct) {
+            if (struct.structureType === STRUCTURE_ROAD) {
+                // Προτιμάμε δρόμους (κόστος 1)
+                costs.set(struct.pos.x, struct.pos.y, 1);
+            } else if (struct.structureType !== STRUCTURE_CONTAINER && 
+                       (struct.structureType !== STRUCTURE_RAMPART || !struct.my)) {
+                // Αν δεν περπατιέται (τοίχοι, extensions κλπ), το κάνουμε 255
+                costs.set(struct.pos.x, struct.pos.y, 0xff);
+            }
+        });
+
+        // 2. Construction Sites (για να μην κολλάνε τα creeps σε μελλοντικά κτίρια)
+        room.find(FIND_MY_CONSTRUCTION_SITES).forEach(function(site) {
+             if (site.structureType !== STRUCTURE_ROAD && site.structureType !== STRUCTURE_CONTAINER && site.structureType !== STRUCTURE_RAMPART) {
+                 costs.set(site.pos.x, site.pos.y, 0xff);
+             }
+        });
+
+        // Αποθήκευση στο Cache
+        matrixCache[roomName] = costs;
+        lastMatrixUpdate[roomName] = Game.time;
+
+        return costs;
+    },
+
+    /**
+     * ΕΞΥΠΝΗ ΚΙΝΗΣΗ (SmartMove)
+     * Αντικαθιστά το moveTo για βελτιστοποίηση CPU και Traffic
+     */
+    smartMove: function(creep, targetObj, range = 1) {
+        if (creep.fatigue > 0) return; // Αν είναι κουρασμένο, δεν κάνουμε τίποτα
+
+        const targetPos = targetObj.pos || targetObj;
+
+        // Έλεγχος αν έχουμε φτάσει
+        if (creep.pos.inRangeTo(targetPos, range)) return;
+
+        // Ανίχνευση "κολλήματος" (Stuck Detection)
+        if (!creep.memory._lastPos || creep.memory._lastPos.x !== creep.pos.x || creep.memory._lastPos.y !== creep.pos.y) {
+            creep.memory._lastPos = { x: creep.pos.x, y: creep.pos.y };
+            creep.memory._stuckCount = 0;
+        } else {
+            creep.memory._stuckCount = (creep.memory._stuckCount || 0) + 1;
+        }
+
+        // Αν έχουμε κολλήσει για > 2 ticks, αναγκάζουμε επαναϋπολογισμό με creeps ως εμπόδια
+        const isStuck = creep.memory._stuckCount >= 2;
+
+        // Χρήση PathFinder
+        const ret = PathFinder.search(
+            creep.pos, 
+            { pos: targetPos, range: range },
+            {
+                // Plains: 2, Swamps: 10 (για να προτιμούν δρόμους με κόστος 1)
+                plainCost: 2,
+                swampCost: 10,
+
+                roomCallback: (roomName) => {
+                    let costs = this.getRoomCostMatrix(roomName);
+
+                    // Αν έχει κολλήσει, κλωνοποιούμε το matrix και προσθέτουμε τα creeps ως εμπόδια
+                    if (isStuck) {
+                        costs = costs.clone();
+                        const room = Game.rooms[roomName];
+                        if (room) {
+                            room.find(FIND_CREEPS).forEach(c => {
+                                if (c.id !== creep.id) {
+                                    costs.set(c.pos.x, c.pos.y, 0xff); // Άβατο
+                                }
+                            });
+                        }
+                    }
+                    return costs;
+                },
+                maxOps: 2000 // Όριο για να μην κάψουμε CPU αν είναι μακριά
+            }
+        );
+
+        // Μετακίνηση
+        if (ret.path.length > 0) {
+            //new RoomVisual(creep.room.name).poly(ret.path, {stroke: '#fff', strokeWidth: .15, opacity: .2, lineStyle: 'dashed'});
+            creep.moveByPath(ret.path);
+        } else {
+            // Fallback αν αποτύχει το PathFinder (σπάνιο)
+            creep.moveTo(targetPos); 
+        }
+    },
+
+    /**
+     * ΣΥΛΛΟΓΗ ΑΠΟ ΠΗΓΗ (Με SmartMove)
      */
     collectFromSource: function(creep, assignment) {
         const source = Game.getObjectById(assignment.sourceId);
@@ -536,12 +648,13 @@ const logisticsManager = {
                 this.completeTask(creep);
             }
         } else {
-            creep.moveTo(source, { visualizePathStyle: { stroke: '#ffaa00' }, reusePath: 6 });
+            // Χρήση του νέου SmartMove αντί του moveTo
+            this.smartMove(creep, source, 1);
         }
     },
 
     /**
-     * ΠΑΡΑΔΟΣΗ ΣΕ ΣΤΟΧΟ
+     * ΠΑΡΑΔΟΣΗ ΣΕ ΣΤΟΧΟ (Με SmartMove)
      */
     deliverToTarget: function(creep, assignment) {
         const target = Game.getObjectById(assignment.targetId);
@@ -573,7 +686,8 @@ const logisticsManager = {
                 this.completeTask(creep);
             }
         } else {
-            creep.moveTo(target, { visualizePathStyle: { stroke: '#ffffff' }, reusePath: 6 });
+            // Χρήση του νέου SmartMove αντί του moveTo
+            this.smartMove(creep, target, 1);
         }
     },
 
@@ -609,11 +723,13 @@ const logisticsManager = {
         }
     },
 
-   /**
-    * ΟΛΟΚΛΗΡΩΣΗ TASK
-    */
-   completeTask: function(creep) {
+    /**
+     * ΟΛΟΚΛΗΡΩΣΗ TASK
+     */
+    completeTask: function(creep) {
         const roomName = creep.memory.homeRoom;
+        if (!Memory.rooms[roomName] || !Memory.rooms[roomName].logistics) return;
+
         const roomMemory = Memory.rooms[roomName].logistics;
         const assignments = roomMemory.haulerAssignments;
         const reservations = roomMemory.taskReservations;
@@ -622,6 +738,10 @@ const logisticsManager = {
             delete reservations[assignments[creep.name].taskId];
             delete assignments[creep.name];
             
+            // Καθαρισμός μνήμης κίνησης (για το smartMove)
+            delete creep.memory._lastPos;
+            delete creep.memory._stuckCount;
+
             // ΆΜΕΣΗ ΕΠΑΝΑΝΑΘΕΣΗ ΝΕΟΥ TASK
             const tasks = roomMemory.energyTasks;
             this.assignTaskToHauler(creep, tasks, assignments, reservations);
@@ -657,6 +777,7 @@ const logisticsManager = {
      */
     showTasksInfo: function(room) {
         const visual = new RoomVisual(room.name);
+        if (!room.memory.logistics) return;
         const tasks = room.memory.logistics.energyTasks;
         
         let y = 10;

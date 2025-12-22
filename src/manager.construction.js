@@ -45,7 +45,7 @@ const constructionManager = {
     run: function(roomName) {
         const room = Game.rooms[roomName];
         if (!room || !room.controller || !room.controller.my) return;
-
+        
         // Αρχικοποίηση μνήμης
         this.initRoomMemory(roomName);
 
@@ -71,6 +71,7 @@ const constructionManager = {
      * ΔΗΜΙΟΥΡΓΙΑ CONSTRUCTION SITES ΓΙΑ ΔΟΜΕΣ ΠΟΥ ΛΕΙΠΟΥΝ
      */
      buildMissingStructures: function(room) {
+         
         const constructionMemory = Memory.rooms[room.name].construction;
         if (!constructionMemory || !constructionMemory.blueprint) return;
 
@@ -83,7 +84,7 @@ const constructionManager = {
             return;
         }
 
-        //console.log(`🔨 Έλεγχος για construction sites στο ${room.name} (RCL: ${currentRCL}, Sites: ${currentSites.length}/${this.constructionSitesMax})`);
+       // console.log(`🔨 Έλεγχος για construction sites στο ${room.name} (RCL: ${currentRCL}, Sites: ${currentSites.length}/${this.constructionSitesMax})`);
 
         // Φιλτράρισμα δομών που μπορούν να χτιστούν
         const structuresToBuild = blueprint.filter(structure => {
@@ -223,29 +224,50 @@ const constructionManager = {
         return mapping[structureType] || null;
     },
     /**
-     * ΔΗΜΙΟΥΡΓΙΑ CONSTRUCTION SITE
+     * ΔΗΜΙΟΥΡΓΙΑ CONSTRUCTION SITE - ΔΙΟΡΘΩΜΕΝΟ
      */
     createConstructionSite: function(room, x, y, structureType) {
-        // Έλεγχος αν η θέση είναι ελεύθερη
+        // 1. Έλεγχος Terrain
         const terrain = room.getTerrain();
-        if (terrain.get(x, y) === TERRAIN_MASK_WALL) {
+        if (terrain.get(x, y) === TERRAIN_MASK_WALL && structureType !== STRUCTURE_EXTRACTOR) {
             return ERR_INVALID_TARGET;
         }
 
+        // 2. Έλεγχος για υπάρχοντα αντικείμενα στη θέση
         const objects = room.lookAt(x, y);
-        if (structureType ===STRUCTURE_RAMPART) {
-            // Αν είναι rampart τότε δεν έλεγχει αν υπάρχει structures.
-            return room.createConstructionSite(x, y, structureType);
-            
-        }
+        
         for (const object of objects) {
-            if (object.type === 'structure' || object.type === 'constructionSite') {
+            // Αν υπάρχει ήδη το ίδιο construction site, σταμάτα
+            if (object.type === LOOK_CONSTRUCTION_SITES) {
+                return ERR_INVALID_TARGET; 
+            }
+
+            // Αν υπάρχει ήδη η ίδια δομή, σταμάτα
+            if (object.type === LOOK_STRUCTURES && object.structure.structureType === structureType) {
                 return ERR_INVALID_TARGET;
             }
-            if (object.type === 'source' || object.type === 'mineral') {
+
+            // Ειδικοί κανόνες Screeps:
+            // Επιτρέπεται Rampart πάνω από οποιαδήποτε δομή (εκτός άλλου rampart)
+            // Επιτρέπεται οποιαδήποτε δομή πάνω από Road (εκτός αν είναι άλλη οδός)
+            if (object.type === LOOK_STRUCTURES) {
+                const isRampart = structureType === STRUCTURE_RAMPART;
+                const isRoad = object.structure.structureType === STRUCTURE_ROAD;
+                
+                // Αν ΔΕΝ χτίζουμε rampart ΚΑΙ η υπάρχουσα δομή ΔΕΝ είναι δρόμος, τότε η θέση είναι κατειλημμένη
+                if (!isRampart && !isRoad) {
+                    return ERR_INVALID_TARGET;
+                }
+            }
+
+            // Εμπόδια όπως πηγές ενέργειας
+            if (object.type === LOOK_SOURCES || object.type === LOOK_MINERALS) {
                 return ERR_INVALID_TARGET;
             }
         }
+
+        // 3. Προσπάθεια δημιουργίας
+        return room.createConstructionSite(x, y, structureType);
     },
 
     /**
@@ -571,27 +593,21 @@ const constructionManager = {
     /**
      * ΕΝΗΜΕΡΩΣΗ ΚΑΤΑΣΤΑΣΗΣ ΧΤΙΣΜΕΝΩΝ ΔΟΜΩΝ
      */
-    updateBuiltStructures: function(room) {
+   updateBuiltStructures: function(room) {
         const constructionMemory = Memory.rooms[room.name].construction;
-        const builtStructures = constructionMemory.builtStructures;
+        
+        // 1. Δημιουργούμε ένα νέο προσωρινό αντικείμενο για τα κτίρια που όντως υπάρχουν αυτή τη στιγμή
+        const currentStructures = {};
         const allStructures = room.find(FIND_STRUCTURES);
         
-        // Ενημέρωση καταστάσεων
         allStructures.forEach(structure => {
             const posKey = `${structure.pos.x},${structure.pos.y}`;
-            builtStructures[posKey] = structure.structureType;
+            currentStructures[posKey] = structure.structureType;
         });
 
-        // Καθαρισμός positions που δεν υπάρχουν πλέον
-        Object.keys(builtStructures).forEach(posKey => {
-            const [x, y] = posKey.split(',').map(Number);
-            const structuresAtPos = room.lookForAt(LOOK_STRUCTURES, x, y);
-            const hasStructure = structuresAtPos.some(s => s.structureType === builtStructures[posKey]);
-            
-            if (!hasStructure) {
-                delete builtStructures[posKey];
-            }
-        });
+        // 2. Αντικαθιστούμε την παλιά μνήμη με τη φρέσκια εικόνα του δωματίου
+        // Έτσι, αν κάτι καταστράφηκε, απλά δεν θα υπάρχει στο currentStructures
+        constructionMemory.builtStructures = currentStructures;
     },
 
     /**

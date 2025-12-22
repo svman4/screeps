@@ -1,15 +1,15 @@
 const USER_NAME = 'Svman4';
 
 // 1. Ορισμός της Global Function (Πρώτα, ώστε να είναι διαθέσιμη)
-global.getInfoForNeighborRoom = function(neighborRoomName, hasGCL = false, callingRoomName = 'unknown') {
+global.getInfoForNeighborRoom = function (neighborRoomName, hasGCL = false, callingRoomName = 'unknown') {
     const neighborRoom = Game.rooms[neighborRoomName];
-    
+
     // Α. Δεν έχουμε Vision
     if (!neighborRoom) {
         // console.log(`❌ EXPANSION: [${callingRoomName}] No vision for room ${neighborRoomName}`);
         return false;
     }
-    
+
     // Αρχικοποίηση μνήμης αν δεν υπάρχει
     if (!Memory.rooms[neighborRoomName]) {
         Memory.rooms[neighborRoomName] = {};
@@ -26,17 +26,17 @@ global.getInfoForNeighborRoom = function(neighborRoomName, hasGCL = false, calli
     // Αν το δωμάτιο ανήκει στον Svman4 (είτε έχει controller, είτε είναι reserved από σένα)
     if (controller && (controller.my || (controller.reservation && controller.reservation.username === USER_NAME))) {
         // Καθαρισμός περιττών δεδομένων expansion/επίθεσης
-        delete mem.type; 
+        delete mem.type;
         delete mem.sources;
         delete mem.enemyInfo;
         delete mem.scoutNeeded;
         // Αν θες να κρατήσεις κάτι, μπορείς να βάλεις mem.type = 'owned';
-        return true; 
+        return true;
     }
 
     // Γ. ΕΛΕΓΧΟΣ: ΕΙΝΑΙ ΕΛΕΥΘΕΡΟ (Για Expansion/Remote);
-    let isFree = controller && !controller.owner && 
-                 (!controller.reservation || controller.reservation.username === USER_NAME); // (Το reservation check εδώ είναι τυπικό, το καλύψαμε πάνω, αλλά ασφαλές)
+    let isFree = controller && !controller.owner &&
+        (!controller.reservation || controller.reservation.username === USER_NAME); // (Το reservation check εδώ είναι τυπικό, το καλύψαμε πάνω, αλλά ασφαλές)
 
     if (isFree) {
         const sources = neighborRoom.find(FIND_SOURCES);
@@ -48,35 +48,35 @@ global.getInfoForNeighborRoom = function(neighborRoomName, hasGCL = false, calli
                 y: source.pos.y,
                 roomName: source.pos.roomName
             }));
-            
+
             // Λογική Expansion vs Remote Mining
             if (sources.length >= 2 && hasGCL) {
                 mem.type = 'claim_target';
                 mem.sources = sourcePositions;
-                console.log(`🚩 EXPANSION: [${callingRoomName}] Target ${neighborRoomName} free for CLAIMING.`);
+                console.log(`🚩 EXPANSION:  Target ${neighborRoomName} free for CLAIMING.`);
             } else {
                 mem.type = 'remote_mining';
                 mem.sources = sourcePositions;
-                // console.log(`⛏️ EXPANSION: [${callingRoomName}] ${neighborRoomName} set for REMOTE MINING.`);
+                // console.log(`⛏️ EXPANSION: ${neighborRoomName} set for REMOTE MINING.`);
             }
-            
+
             // Αποθήκευση θέσης controller
             mem.controller = {
                 x: controller.pos.x,
                 y: controller.pos.y,
                 roomName: controller.pos.roomName
             };
-            
+
             // Καθαρισμός τυχόν παλιών enemy info
             delete mem.enemyInfo;
-            
+
             return true;
         }
-    } 
+    }
     // Δ. ΕΛΕΓΧΟΣ: ΕΧΘΡΙΚΟ / ΚΑΤΕΙΛΗΜΜΕΝΟ
     else if (controller) {
         mem.type = "enemyCaptured";
-        
+
         // --- MILITARY INTEL (Συλλογή Πληροφοριών για Επίθεση) ---
         const enemyInfo = {
             owner: controller.owner ? controller.owner.username : 'Invader/Keeper',
@@ -102,7 +102,7 @@ global.getInfoForNeighborRoom = function(neighborRoomName, hasGCL = false, calli
         const walls = neighborRoom.find(FIND_STRUCTURES, {
             filter: (s) => s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART
         });
-        
+
         if (walls.length > 0) {
             // Βρίσκουμε το ελάχιστο hits (το πιο αδύναμο σημείο)
             enemyInfo.minWallHits = _.min(walls, 'hits').hits;
@@ -110,62 +110,116 @@ global.getInfoForNeighborRoom = function(neighborRoomName, hasGCL = false, calli
 
         // Αποθήκευση στο memory
         mem.enemyInfo = enemyInfo;
-        
-        console.log(`⚔️ INTEL: [${neighborRoomName}] Owner: ${enemyInfo.owner} | Lvl: ${enemyInfo.level} | Towers: ${enemyInfo.towers} | Walls(min): ${Math.floor(enemyInfo.minWallHits/1000)}k`);
-        
+
+        console.log(`⚔️ INTEL: [${neighborRoomName}] Owner: ${enemyInfo.owner} | Lvl: ${enemyInfo.level} | Towers: ${enemyInfo.towers} | Walls(min): ${Math.floor(enemyInfo.minWallHits / 1000)}k`);
+
         return false;
     }
-    
+
     return false;
 };
 
-// 2. Το Module του Expansion Manager
-const expansionManager = {
-    run: function(roomName) {
-        // Εκτέλεση κάθε 100 ticks για εξοικονόμηση CPU
-        if (Game.time % 100 !== 0) return;
+getNeighborFromMyRooms = function (myRooms) {
+    const neighbors = [];
 
-        const room = Game.rooms[roomName];
-        if (!room) return;
-
-        const myRooms = _.filter(Game.rooms, r => r.controller && r.controller.my).length;
-        const hasGCL = Game.gcl.level > myRooms;
-
+    // Το myRooms αναμένεται να είναι array από room names ή room objects
+    for (let roomName of myRooms) {
+        // Παίρνουμε τα exits (επιστρέφει αντικείμενο π.χ. {"1": "W1N2", "3": "W1N1"})
         const exits = Game.map.describeExits(roomName);
-        
-        // Δεν χρειάζεται πλέον τοπική μνήμη room.memory.neighbors αν όλα πάνε στο Memory.rooms
-        // Αλλά αν το χρησιμοποιείς για pathfinding, κράτα το.
-        
-        for (let exitDir in exits) {
-            let neighborName = exits[exitDir];
-
-            // Ensure memory exists
-            if (!Memory.rooms[neighborName]) {
-                Memory.rooms[neighborName] = {};
-            }
-            
-            let neighborRoom = Game.rooms[neighborName];
-
-            // Α. ΕΧΟΥΜΕ VISION -> ΚΑΛΟΥΜΕ ΤΗΝ GLOBAL
-            if (neighborRoom) {
-                global.getInfoForNeighborRoom(neighborName, hasGCL, roomName);
-            } 
-            // Β. ΔΕΝ ΕΧΟΥΜΕ VISION -> ΖΗΤΑ SCOUT
-            else {
-                const mem = Memory.rooms[neighborName];
-                
-                // Αν είναι ήδη δικό μας (από προηγούμενη μνήμη), δεν στέλνουμε scout
-                // (Προσοχή: Αν χάσουμε το δωμάτιο και δεν έχουμε vision, αυτό ίσως χρειαστεί αλλαγή, 
-                // αλλά υποθέτουμε ότι στα δικά μας δωμάτια έχουμε vision).
-                
-                // Έλεγχος αν χρειάζεται scout
-                if (!mem.scoutNeeded && (!mem.lastScouted || (Game.time - mem.lastScouted > 5000))) {
-                    mem.scoutNeeded = true;
-                    console.log(`🔭 EXPANSION: ${roomName} requesting Scout for ${neighborName}`);
-                }
+        if (exits) {
+            for (let direction in exits) {
+                neighbors.push(exits[direction]);
             }
         }
     }
+
+    // Αφαίρεση διπλοτύπων (δωμάτια που συνορεύουν με πάνω από ένα δικά μας)
+    // και αφαίρεση των ίδιων των δικών μας δωματίων από τη λίστα scout
+    const uniqueNeighbors = _.uniq(neighbors);
+    return _.filter(uniqueNeighbors, name => !myRooms.includes(name));
+};
+cleanMemoryRooms = function(myRoomsNames, neighborsRoomNames) {
+    // Συνδυάζουμε τις δύο λίστες σε μία για ευκολότερο έλεγχο
+    const validRooms = [...myRoomsNames, ...neighborsRoomNames];
+
+    for (let roomName in Memory.rooms) {
+        // Αν το όνομα του δωματίου στη Memory δεν υπάρχει στη λίστα validRooms
+        if (!validRooms.includes(roomName)) {
+            delete Memory.rooms[roomName];
+            // console.log(`🧹 MEMORY: Cleared old room data: ${roomName}`);
+        }
+    }
+};
+// 2. Το Module του Expansion Manager
+const expansionManager = {
+    run: function (roomName) {
+        // Εκτέλεση κάθε 100 ticks για εξοικονόμηση CPU
+        if ( (Game.cpu.bucket < 2000 ) || (Game.time % 100 !== 0)) return;
+       
+        
+        var myRoomsName = (_.filter(Game.rooms, r => r.controller && r.controller.my)).map(room => room.name);
+        const hasGCL = Game.gcl.level > myRoomsName;
+
+
+        const neighborRoomNames = getNeighborFromMyRooms(myRoomsName);
+        
+        if (!Memory.capital || (myRoomsName.includes(Memory.capital))===false) {
+            foundNewCapital(myRoomsName);
+        }
+       // printToConsole(myRoomsName,neighborRoomNames);
+        
+        
+        
+        for (let neighborRoomName of neighborRoomNames) {
+            // Ensure memory exists
+            if (!Memory.rooms[neighborRoomName]) {
+                Memory.rooms[neighborRoomName] = {};
+            }
+            let neighborRoom = Game.rooms[neighborRoomName];
+            if (neighborRoom) {
+                //έχουμε πρόσβαση
+                global.getInfoForNeighborRoom(neighborRoomName, hasGCL, roomName);
+            } else {
+                const mem = Memory.rooms[neighborRoomName];
+
+                // Έλεγχος αν χρειάζεται scout
+                if (!mem.scoutNeeded && (!mem.lastScouted || (Game.time - mem.lastScouted > 5000))) {
+                    mem.scoutNeeded = true;
+                    console.log(`🔭 EXPANSION: requesting Scout for ${neighborRoomName}`);
+                }
+            }
+        }
+        cleanMemoryRooms(myRoomsName, neighborRoomNames);
+        
+    }
+    
+};
+const printToConsole=function(myRoomsNames,neighborRoomNames) {
+    console.log("---- Expansion start----");
+    if(Memory.capital) {
+        console.log('Capital is '+Memory.capital);
+    }
+    console.log('My Rooms: ' + JSON.stringify(myRoomsNames));
+    console.log('neighbor Rooms: ' + JSON.stringify(neighborRoomNames));
 };
 
+const foundNewCapital = function(myRoomsNames) {
+    if (myRoomsNames.length === 0) return null;
+
+    // Μετατρέπουμε τα ονόματα σε αντικείμενα Room για να έχουμε πρόσβαση στα properties
+    const rooms = myRoomsNames.map(name => Game.rooms[name]).filter(r => r && r.controller);
+
+    // Ταξινόμηση βάσει RCL -> Storage Usage -> Energy Available
+    const bestRoom = _.sortBy(rooms, [
+        (r) => -r.controller.level,
+        (r) => -(r.storage ? r.storage.store.getUsedCapacity() : 0),
+        (r) => -r.energyAvailable
+    ])[0];
+
+    if (bestRoom) {
+        Memory.capital = bestRoom.name;
+        return bestRoom.name;
+    }
+    return null;
+};
 module.exports = expansionManager;

@@ -1,5 +1,5 @@
 /*
- * manager.spawn.js
+ * manager.spawn/.js
  */
 
 const ROLES = {
@@ -14,7 +14,7 @@ const ROLES = {
     SCOUT: 'scout',
     SUPPORTER: 'supporter'
 };
-const SUPPORTER_LIMIT_PER_ROOM= 3;
+const SUPPORTER_LIMIT_PER_ROOM= 5;
 const respawController = {
     
     run: function(roomName) {
@@ -247,6 +247,7 @@ const respawController = {
             body.push(CARRY, MOVE);
             energy -= 100;
         }
+        body.sort();
         return spawn.spawnCreep(body, `Hauler_${Game.time}`, { memory: { role: ROLES.HAULER, homeRoom: roomName } }) === OK;
     },
 
@@ -257,6 +258,7 @@ const respawController = {
             body.push(WORK, CARRY, MOVE, MOVE);
             energy -= 250;
         }
+        body.sort();
         return spawn.spawnCreep(body, `Upgrader_${Game.time}`, { memory: { role: ROLES.UPGRADER, homeRoom: roomName } }) === OK;
     },
 
@@ -267,6 +269,7 @@ const respawController = {
             body.push(WORK, CARRY, MOVE, MOVE);
             energy -= 250;
         }
+        body.sort();
         return spawn.spawnCreep(body, `Builder_${Game.time}`, { memory: { role: ROLES.BUILDER, homeRoom: roomName } }) === OK;
     },
 
@@ -277,6 +280,7 @@ const respawController = {
             body.push(WORK, CARRY, MOVE);
             energy -= 200;
         }
+        body.sort();
         const creepName = `Supporter_${homeRoom}_${targetRoom}_${Game.time}`;
         return spawn.spawnCreep(body, creepName, { memory: { role: ROLES.SUPPORTER, homeRoom: homeRoom, targetRoom: targetRoom } }) === OK;
     },
@@ -309,7 +313,6 @@ const respawController = {
             body.push(CARRY, MOVE);
             currentCost += 100;
         }
-        
         body.sort();
         const creepName = `LDHarvester_${roomName}_${setupRoomName}_${Game.time}`;
         const sourceId=Memory.rooms[setupRoomName].sources[0];

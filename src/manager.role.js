@@ -3,31 +3,35 @@ const minTickToLive = 30;
 function travelToHomeRoom(creep) {
     const homeRoom = creep.memory.homeRoom;
     if (creep.room.name !== homeRoom) {
-        creep.moveTo(new RoomPosition(10, 10, homeRoom), { 
-            visualizePathStyle: { stroke: '#ffffff' },
+        
+        creep.moveTo(new RoomPosition(25, 25, homeRoom), { 
             reusePath: 50
         });
-        return true; // Είναι σε διαδικασία ταξιδιού
+        return true; 
     }
-    return false; // Είναι στο home room του
+    // ΑΝΤΙ-BOUNCE: Αν είναι ακόμα πάνω στο border παρόλο που είναι στο σωστό δωμάτιο
+    if (creep.pos.x === 0 || creep.pos.x === 49 || creep.pos.y === 0 || creep.pos.y === 49) {
+        creep.moveTo(new RoomPosition(25, 25, homeRoom));
+        
+        return true;
+    }
+    
+    return false; 
 }
 function travelToTargetRoom(creep) {
     const targetRoom = creep.memory.targetRoom;
-    if (!targetRoom) {
-        console.log(`Creep ${creep.name} has no targetRoom!`);
-        return false;
-    }
+    if (!targetRoom) return false;
     
     if (creep.room.name !== targetRoom) {
-        const result = creep.moveTo(new RoomPosition(45, 10, targetRoom), { 
+        creep.moveTo(new RoomPosition(25, 25, targetRoom), { 
             visualizePathStyle: { stroke: '#ffffff' },
-            reusePath:30
+            reusePath: 30
         });
-        
-        if (result === ERR_NO_PATH) {
-            console.log(`No path to target room ${targetRoom} for creep ${creep.name}`);
-            // Εδώ μπορείτε να προσθέσετε fallback logic
-        }
+        return true;
+    }
+    // ΑΝΤΙ-BOUNCE: Αν μόλις μπήκε στο target room, κάνε ένα βήμα μέσα
+    if (creep.pos.x === 0 || creep.pos.x === 49 || creep.pos.y === 0 || creep.pos.y === 49) {
+        creep.moveTo(new RoomPosition(25, 25, targetRoom));
         return true;
     }
     return false;
@@ -298,8 +302,10 @@ const roleManager = {
             if (travelToTargetRoom(creep)) { 
                 return;
             }
+            
             if (this.fillSpawnExtension(creep)){return ;}
             if (this.buildStructures(creep)) {return;}
+            if(this.upgradeController(creep)) {return;}
         } else {
 
             if (travelToHomeRoom(creep)) { 
@@ -560,7 +566,8 @@ const roleManager = {
         if (creep.pos.inRangeTo(creep.room.controller, 2)) {
                 creep.upgradeController(creep.room.controller);
         } else {
-            creep.moveTo(creep.room.controller, { visualizePathStyle: { stroke: '#ffffff' } ,reusePath:30});
+            //creep.moveTo(creep.room.controller, { visualizePathStyle: { stroke: '#ffffff' } ,reusePath:30});
+            creep.moveTo(creep.room.controller, { reusePath:30});
         }
         return true;
     },

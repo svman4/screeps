@@ -120,7 +120,7 @@ const respawController = {
         const claimTarget = _.findKey(Memory.rooms, (r) => r.type === 'claim_target');
         if (claimTarget && this.isSpawningAllowed(roomName, claimTarget)) {
             const existingClaimer = _.find(Game.creeps, c => c.memory.role === ROLES.CLAIMER && c.memory.targetRoom === claimTarget);
-            if (!existingClaimer) return this.createClaimer(spawn, roomName, claimTarget);
+            if (!existingClaimer) return this.createClaimer(spawn, roomName, claimTarget,3000);
         }
 
         // --- D. INITIAL SETUP (Για νέα δωμάτια) ---
@@ -149,7 +149,7 @@ const respawController = {
             const miningRoomName = targetRoomName; //_.findKey(Memory.rooms, (r) => r.type === 'remote_mining');
             if (miningRoomName && this.isSpawningAllowed(roomName, miningRoomName)) {
                 const remoteHarvesters = _.filter(Game.creeps, c => c.memory.role === ROLES.LD_HARVESTER && c.memory.targetRoom === miningRoomName).length;
-                if (remoteHarvesters < 2) {
+                if (remoteHarvesters < 1) {
                     return this.createLDHarvester(spawn, roomName, miningRoomName);
                 }
             }
@@ -297,11 +297,20 @@ const respawController = {
         return spawn.spawnCreep([MOVE], `Scout_${Game.time}`, { memory: { role: ROLES.SCOUT, homeRoom: homeRoom, targetRoom: targetRoom } }) === OK;
     },
 
-    createClaimer: function(spawn, homeRoom, targetRoom) {
+    createClaimer: function(spawn, homeRoom, targetRoom,maxPreferredEnergy=2000) {
         const energy = spawn.room.energyCapacityAvailable;
-        let body = [CLAIM, MOVE];
-        if (energy >= 1300) body = [CLAIM, CLAIM, MOVE, MOVE];
-        return spawn.spawnCreep(body, `Claimer_${Game.time}`, { memory: { role: ROLES.CLAIMER, homeRoom: homeRoom, targetRoom: targetRoom } }) === OK;
+        let body = [];
+        let currentCost=0;
+        const CORE_BODY=[MOVE,MOVE,WORK,CLAIM];
+        const CORE_COST=800;
+        while(currentCost+CORE_COST<maxPreferredEnergy) {
+            body=body.concat(CORE_BODY);
+            currentCost+=CORE_COST;
+            
+        }
+        body.sort();
+        //if (energy >= 1300) body = [CLAIM, CLAIM, MOVE, MOVE];
+        return spawn.spawnCreep(body, `Claimer_${homeRoom}_${targetRoom}_${Game.time}`, { memory: { role: ROLES.CLAIMER, homeRoom: homeRoom, targetRoom: targetRoom } }) === OK;
     },
 
     createLDHarvester:function(spawn,roomName,setupRoomName,maxPreferredEnergy=1500) {

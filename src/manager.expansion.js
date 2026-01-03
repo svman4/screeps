@@ -9,7 +9,7 @@ global.getInfoForNeighborRoom = function (neighborRoomName, hasGCL = false, call
         // console.log(`❌ EXPANSION: [${callingRoomName}] No vision for room ${neighborRoomName}`);
         return false;
     }
-
+    
     // Αρχικοποίηση μνήμης αν δεν υπάρχει
     if (!Memory.rooms[neighborRoomName]) {
         Memory.rooms[neighborRoomName] = {};
@@ -156,7 +156,7 @@ const expansionManager = {
         // Εκτέλεση κάθε 100 ticks για εξοικονόμηση CPU
         if ( (Game.cpu.bucket < 2000 ) || (Game.time % 100 !== 0)) return;
        
-        
+        return;
         var myRoomsName = (_.filter(Game.rooms, r => r.controller && r.controller.my)).map(room => room.name);
         const hasGCL = Game.gcl.level > myRoomsName;
 

@@ -144,33 +144,39 @@ const roleManager = {
         const controller = creep.room.controller;
 
         if (controller) {
-            // A. CLAIM/RESERVE LOGIC
+             // αν υπάρχει controller
             if (!controller.my) {
-                const claimResult = creep.claimController(controller);
-                
-                if (claimResult === ERR_NOT_IN_RANGE) {
-                    creep.moveTo(controller, { visualizePathStyle: { stroke: '#ff00ff' } });
-                    return;
-                } else if (claimResult === ERR_INVALID_TARGET) { 
-               // Προσπάθησε να το κάνεις downgrade/attack
-                    const attackResult = creep.attackController(controller);
-                    if (attackResult===0  ) {
-                        console.log("Attack controller"+attackResult);
-                        creep.say("Attack controller"+attackResult);    
+                if (!controller.owner && !controller.upgradeBlocked) {
+                    // αν γίνεται claim...
+                    if (controller && creep.pos.inRangeTo(controller,1)) {
+                        const claimResult = creep.claimController(controller);
+                        if (claimResult===0  ) {
+                            console.log("Attack controller"+attackResult);
+                            creep.say("Attack controller"+attackResult);    
+                        }
+                    } else {
+                        creep.moveTo(controller, { visualizePathStyle: { stroke: '#ff00ff' } });    
+                        return ;
                     }
                     
                 }
-    
-                else if (claimResult === ERR_GCL_NOT_ENOUGH) {
-                    // Αν δεν αρκεί το GCL, κάνε Reserve (για προστασία)
-                    const reserveResult = creep.reserveController(controller);
-                    if (reserveResult === ERR_NOT_IN_RANGE) {
-                         creep.moveTo(controller, { visualizePathStyle: { stroke: '#ff00ff' } });
-                         return;
+                
+                if (!((controller.upgradeBlocked || 0) > 0)) {
+                    // True αν είναι έτοιμος για νέα επίθεση
+                    if (controller && creep.pos.inRangeTo(controller,1)) {
+                        const attackResult = creep.attackController(controller);
+                        if (attackResult===0  ) {
+                            console.log("Attack controller"+attackResult);
+                            creep.say("Attack controller"+attackResult);    
+                        }
+                    } else {
+                        creep.moveTo(controller, { visualizePathStyle: { stroke: '#ff00ff' } });    
+                        return;
                     }
                 }
+                    
             }
-            
+            if (this.destroyTowers(creep)===true) { return };
             // B. BUILDING LOGIC
             if (creep.memory.isBuilder) {
                 
@@ -235,7 +241,38 @@ const roleManager = {
             }
         }
     },
+    destroyTowers:function(creep) {
+        creep.say("destroy");
+        let target = creep.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
+            filter: (s) => s.structureType === STRUCTURE_TOWER
+        });
 
+        if (target) {
+            // 3. Προσπάθεια διάλυσης (Dismantle)
+            if (creep.dismantle(target) === ERR_NOT_IN_RANGE) {
+                creep.moveTo(target, { visualizePathStyle: { stroke: '#ff0000' } });
+            }
+            return true;
+        } 
+        // Αν δεν υπάρχουν Towers, διάλυσε το Spawn ή άλλα κτίρια
+        target = creep.pos.findClosestByRange(FIND_HOSTILE_SPAWNS);
+        if (target) {
+            if (creep.dismantle(target) === ERR_NOT_IN_RANGE) {
+                creep.moveTo(target);
+            }
+            return true;
+        }
+        // Αν δεν υπάρχουν Towers, διάλυσε το Spawn ή άλλα κτίρια
+        target = creep.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES);
+        if (target) {
+            if (creep.dismantle(target) === ERR_NOT_IN_RANGE) {
+                creep.moveTo(target);
+            }
+            return true;
+        }
+        
+        return false;  
+    },
     runHarvester: function(creep) {
         if (creep.spawning) return;
         if(creep.ticksToLive < minTickToLive && getRecoveryContainerId(creep)) {

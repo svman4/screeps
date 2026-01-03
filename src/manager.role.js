@@ -151,7 +151,17 @@ const roleManager = {
                 if (claimResult === ERR_NOT_IN_RANGE) {
                     creep.moveTo(controller, { visualizePathStyle: { stroke: '#ff00ff' } });
                     return;
-                } else if (claimResult === ERR_GCL_NOT_ENOUGH) {
+                } else if (claimResult === ERR_INVALID_TARGET) { 
+               // Προσπάθησε να το κάνεις downgrade/attack
+                    const attackResult = creep.attackController(controller);
+                    if (attackResult===0  ) {
+                        console.log("Attack controller"+attackResult);
+                        creep.say("Attack controller"+attackResult);    
+                    }
+                    
+                }
+    
+                else if (claimResult === ERR_GCL_NOT_ENOUGH) {
                     // Αν δεν αρκεί το GCL, κάνε Reserve (για προστασία)
                     const reserveResult = creep.reserveController(controller);
                     if (reserveResult === ERR_NOT_IN_RANGE) {

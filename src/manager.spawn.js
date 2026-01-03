@@ -141,13 +141,21 @@ const respawController = {
         }
 
         // --- E. REMOTE MINING ---
-        const miningRoomName = _.findKey(Memory.rooms, (r) => r.type === 'remote_mining');
-        if (miningRoomName && this.isSpawningAllowed(roomName, miningRoomName)) {
-            const remoteHarvesters = _.filter(Game.creeps, c => c.memory.role === ROLES.LD_HARVESTER && c.memory.targetRoom === miningRoomName).length;
-            if (remoteHarvesters < 1) {
-                return this.createLDHarvester(spawn, roomName, miningRoomName);
+        const targetRoomNames = _.filter(Object.keys(Memory.rooms), (rName) => {
+            return Memory.rooms[rName].type === 'remote_mining'; // Άλλαξέ το σε 'initial_setup' αν θες τον παλιό τύπο
+            });
+        for (const targetRoomName of targetRoomNames) {   
+        
+            const miningRoomName = targetRoomName; //_.findKey(Memory.rooms, (r) => r.type === 'remote_mining');
+            if (miningRoomName && this.isSpawningAllowed(roomName, miningRoomName)) {
+                const remoteHarvesters = _.filter(Game.creeps, c => c.memory.role === ROLES.LD_HARVESTER && c.memory.targetRoom === miningRoomName).length;
+                if (remoteHarvesters < 2) {
+                    return this.createLDHarvester(spawn, roomName, miningRoomName);
+                }
             }
         }
+            
+        
 
         return false;
     },

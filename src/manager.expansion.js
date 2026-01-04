@@ -175,9 +175,7 @@ const expansionManager = {
             if (!Memory.rooms[neighborRoomName]) {
                 Memory.rooms[neighborRoomName] = {};
             }
-            if(neighborRoomName==="E13N38") {
-                continue;
-            }
+            
             let neighborRoom = Game.rooms[neighborRoomName];
             if (neighborRoom) {
                 //έχουμε πρόσβαση

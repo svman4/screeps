@@ -140,7 +140,10 @@ const roleManager = {
         // 2. IN TARGET ROOM
         const controller = creep.room.controller;
         const isOnTargetRoom=creep.room.name===targetRoom;
-        
+        if (isOnTargetRoom && controller &&(controller.my)) {
+            creep.memory.homeRoom=creep.memory.targetRoom;
+            creep.memory.role="builder";
+        }
         if (isOnTargetRoom && controller &&(!controller.my)) {
              // αν υπάρχει controller και δεν είναι δικός μου
             if (!controller.owner && !controller.upgradeBlocked) {
@@ -149,6 +152,8 @@ const roleManager = {
                     const claimResult = creep.claimController(controller);
                         if (claimResult===0  ) {
                             console.log("Claim controller successfully");
+                            creep.room.memory={type:"initial_setup"}
+                            creep.memory.role="builder";
                             return ;
                         }
                     } else {
@@ -177,6 +182,9 @@ const roleManager = {
              creep.say("destroy");
              return ;
         }
+        
+        
+        
     },
     destroyHostileStructures:function(creep) {
         

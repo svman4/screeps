@@ -25,9 +25,13 @@ const market = {
         if (Game.time % INTERVALS.RUN !== 0) return; 
 
         // Έλεγχος αν υπάρχουν τα απαραίτητα κτίρια (Storage και Terminal).
-        if ((room.storage && room.terminal) === false) { 
+        if (!room.storage) {
             return;
         }
+        if (!room.terminal) { 
+            return;
+        }
+        
 
         // --- 1. Έλεγχος Αποθεμάτων Storage ---
         const storageCapacity = room.storage.store.getCapacity();

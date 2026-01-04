@@ -136,7 +136,7 @@ const market = {
                 `ΠΩΛΗΣΗ ΕΝΕΡΓΕΙΑΣ στο ${roomName}: ` +
                 `Ποσότητα: ${bestOrder.amountToDeal} μονάδες. ` +
                 `Κέρδος: ${maxProfit.toFixed(3)} credits. ` +
-                `ΣΥΝΟΛΙΚΑ CREDITS: ${currentCredits}.`;
+                `ΣΥΝΟΛΙΚΑ CREDITS: ${currentCredits+maxProfit}.`;
 
             // 3. Αποστολή ειδοποίησης (groupInterval: 10 ticks).
             console.log(successMsg);

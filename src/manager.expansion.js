@@ -152,11 +152,11 @@ cleanMemoryRooms = function(myRoomsNames, neighborsRoomNames) {
 };
 // 2. Το Module του Expansion Manager
 const expansionManager = {
-    run: function (roomName) {
+    run: function () {
         // Εκτέλεση κάθε 100 ticks για εξοικονόμηση CPU
         if ( (Game.cpu.bucket < 2000 ) || (Game.time % 100 !== 0)) return;
-       
-        return;
+        
+
         var myRoomsName = (_.filter(Game.rooms, r => r.controller && r.controller.my)).map(room => room.name);
         const hasGCL = Game.gcl.level > myRoomsName;
 
@@ -175,10 +175,13 @@ const expansionManager = {
             if (!Memory.rooms[neighborRoomName]) {
                 Memory.rooms[neighborRoomName] = {};
             }
+            if(neighborRoomName==="E13N38") {
+                continue;
+            }
             let neighborRoom = Game.rooms[neighborRoomName];
             if (neighborRoom) {
                 //έχουμε πρόσβαση
-                global.getInfoForNeighborRoom(neighborRoomName, hasGCL, roomName);
+                global.getInfoForNeighborRoom(neighborRoomName, hasGCL);
             } else {
                 const mem = Memory.rooms[neighborRoomName];
 

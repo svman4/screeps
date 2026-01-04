@@ -12,7 +12,8 @@ var pixels=require('manager.pixels');
 global.roomBlueprints = {
     E11N38: require('E11N38'),
     E12N38: require('E12N38'),
-    E11N37:require('E11N37')
+    E11N37:require('E11N37'),
+    E13N38:require('E13N38')
 };
 // Βοηθητική συνάρτηση για οπτική πληροφόρηση
 

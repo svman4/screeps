@@ -130,119 +130,56 @@ const roleManager = {
         if (creep.spawning) return;
         const targetRoom = creep.memory.targetRoom;
         if (!targetRoom) return;
-
+            
         // 1. TRAVEL TO TARGET ROOM
-        if (creep.room.name !== targetRoom) {
-            creep.moveTo(new RoomPosition(25, 25, targetRoom), { 
-                visualizePathStyle: { stroke: '#ffffff' },
-                reusePath: 50
-            });
+        if (travelToTargetRoom(creep)) { 
             return;
-        } 
+        }
+        
         
         // 2. IN TARGET ROOM
         const controller = creep.room.controller;
-
-        if (controller) {
-             // αν υπάρχει controller
-            if (!controller.my) {
-                if (!controller.owner && !controller.upgradeBlocked) {
-                    // αν γίνεται claim...
-                    if (controller && creep.pos.inRangeTo(controller,1)) {
-                        const claimResult = creep.claimController(controller);
+        const isOnTargetRoom=creep.room.name===targetRoom;
+        
+        if (isOnTargetRoom && controller &&(!controller.my)) {
+             // αν υπάρχει controller και δεν είναι δικός μου
+            if (!controller.owner && !controller.upgradeBlocked) {
+                // αν γίνεται claim...
+                if (creep.pos.inRangeTo(controller,1)) {
+                    const claimResult = creep.claimController(controller);
                         if (claimResult===0  ) {
-                            console.log("Attack controller"+attackResult);
-                            creep.say("Attack controller"+attackResult);    
+                            console.log("Claim controller successfully");
+                            return ;
                         }
                     } else {
                         creep.moveTo(controller, { visualizePathStyle: { stroke: '#ff00ff' } });    
                         return ;
                     }
-                    
                 }
-                
-                if (!((controller.upgradeBlocked || 0) > 0)) {
-                    // True αν είναι έτοιμος για νέα επίθεση
-                    if (controller && creep.pos.inRangeTo(controller,1)) {
-                        const attackResult = creep.attackController(controller);
-                        if (attackResult===0  ) {
-                            console.log("Attack controller"+attackResult);
-                            creep.say("Attack controller"+attackResult);    
-                        }
-                    } else {
-                        creep.moveTo(controller, { visualizePathStyle: { stroke: '#ff00ff' } });    
-                        return;
+            if (!((controller.upgradeBlocked || 0) > 0)) {
+                // True αν είναι έτοιμος για νέα επίθεση
+                if (controller && creep.pos.inRangeTo(controller,1)) {
+                    const attackResult = creep.attackController(controller);
+                    if (attackResult===0  ) {
+                        console.log("Attack controller successfully");
+                        return ;
                     }
-                }
-                    
-            }
-            if (this.destroyTowers(creep)===true) { return };
-            // B. BUILDING LOGIC
-            if (creep.memory.isBuilder) {
-                
-                // Check 1: Αν έχει χτιστεί το Spawn.
-                if (creep.room.find(FIND_MY_SPAWNS).length > 0) {
-                     // --- ΝΕΑ ΛΟΓΙΚΗ ΜΕΤΑΒΑΣΗΣ ---
-                     console.log(`✅ Spawn built in ${targetRoom}. Entering Initial Setup Phase (RCL1->RCL2).`);
-                     Memory.rooms[targetRoom].type = 'initial_setup'; 
-                     creep.memory.role="builder";
-                     // Ο Claimer/Builder τελείωσε τη δουλειά του, αυτοκτονεί
-                     return;
-                }
-                
-                // ... (rest of building/refill logic, as previously provided) ...
-                if (creep.memory.building && creep.store[RESOURCE_ENERGY] === 0) {
-                    creep.memory.building = false;
-                    creep.say('🔄 refill');
-                }
-                if (!creep.memory.building && creep.store.getFreeCapacity() === 0) {
-                    creep.memory.building = true;
-                    creep.say('🚧 build');
-                }
-                
-                if (creep.memory.building) {
-                    // 1. Βρες το construction site για το Spawn
-                    let spawnSite = creep.room.find(FIND_CONSTRUCTION_SITES, {
-                        filter: s => s.structureType === STRUCTURE_SPAWN
-                    })[0];
-                    
-                    // 2. Βρες οποιοδήποτε άλλο construction site
-                    let targetSite = spawnSite || creep.pos.findClosestByPath(FIND_CONSTRUCTION_SITES);
-                    
-                    if (targetSite) {
-                        if (creep.pos.inRangeTo(targetSite, 3)) {
-                            creep.build(targetSite);
-                        } else {
-                            creep.moveTo(targetSite, { visualizePathStyle: { stroke: '#00ff00' }, reusePath: 5 });
-                        }
-                        return;
-                    }
-
-                    // 3. Fallback: Upgrade controller
-                    if (controller.my || controller.reservation) {
-                         if (creep.pos.inRangeTo(controller, 3)) {
-                            creep.upgradeController(controller);
-                        } else { 
-                            creep.moveTo(controller, { visualizePathStyle: { stroke: '#00ff00' }, reusePath: 8 });
-                        }
-                    }
-                    
                 } else {
-                    // Refill energy (χρησιμοποιούμε τη λογική του Builder)
-                    this.getEnergy(creep); 
+                    creep.moveTo(controller, { visualizePathStyle: { stroke: '#ff00ff' } });    
+                    return;
                 }
-            } 
-            // C. SUICIDE LOGIC (Minimal claimer)
-            else {
-                 if (controller.my || (controller.reservation && controller.reservation.username === 'svman4')) {
-                    console.log(`💤 Minimal Claimer finished job in ${targetRoom}. Suiciding.`);
-                    creep.suicide();
-                 }
             }
+        }        
+        // ΜΕτά από εδώ δεν έχει κάτι άλλο να κάνει με το controller (claim ή attack)
+        // προχωράει σε άλλες δευτερεύουσες λειτουργίες.
+        
+         if (this.destroyHostileStructures(creep)===true) { 
+             creep.say("destroy");
+             return ;
         }
     },
-    destroyTowers:function(creep) {
-        creep.say("destroy");
+    destroyHostileStructures:function(creep) {
+        
         let target = creep.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
             filter: (s) => s.structureType === STRUCTURE_TOWER
         });
@@ -252,6 +189,7 @@ const roleManager = {
             if (creep.dismantle(target) === ERR_NOT_IN_RANGE) {
                 creep.moveTo(target, { visualizePathStyle: { stroke: '#ff0000' } });
             }
+            console.log("Destroy tower");
             return true;
         } 
         // Αν δεν υπάρχουν Towers, διάλυσε το Spawn ή άλλα κτίρια
@@ -260,17 +198,25 @@ const roleManager = {
             if (creep.dismantle(target) === ERR_NOT_IN_RANGE) {
                 creep.moveTo(target);
             }
-            return true;
-        }
-        // Αν δεν υπάρχουν Towers, διάλυσε το Spawn ή άλλα κτίρια
-        target = creep.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES);
-        if (target) {
-            if (creep.dismantle(target) === ERR_NOT_IN_RANGE) {
-                creep.moveTo(target);
-            }
+            console.log("Destroy spawns");
             return true;
         }
         
+        target = creep.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
+            filter: (s) => s.structureType !== STRUCTURE_WALL && 
+                           s.structureType !== STRUCTURE_RAMPART &&
+                           s.structureType !== STRUCTURE_CONTROLLER // Για σιγουριά, αν και δεν επιστρέφεται
+        });
+        if (target) {
+            if(creep.pos.inRangeTo(target,1)) {
+                creep.dismantle(target);
+            } else {
+                creep.moveTo(target, { visualizePathStyle: { stroke: '#ff0000' } });
+            }
+            
+            
+            return true;
+        }
         return false;  
     },
     runHarvester: function(creep) {
@@ -532,7 +478,7 @@ const roleManager = {
     },
     gotoHarvesting:function(creep) { 
         
-        // 4. Harvest (last resort)
+        
         const sources = creep.room.find(FIND_SOURCES_ACTIVE);
         if (sources.length > 0) {
             const closestSource = creep.pos.findClosestByPath(sources);
@@ -540,6 +486,7 @@ const roleManager = {
                 if (creep.pos.inRangeTo(closestSource, 1)) {
                     creep.harvest(closestSource);
                 } else {
+                    
                     creep.moveTo(closestSource, { visualizePathStyle: { stroke: '#ffaa00' }, reusePath: 8 });                
                 }
                 return true;

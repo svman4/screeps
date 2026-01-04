@@ -120,7 +120,7 @@ const respawController = {
         const claimTarget = _.findKey(Memory.rooms, (r) => r.type === 'claim_target');
         if (claimTarget && this.isSpawningAllowed(roomName, claimTarget)) {
             const existingClaimer = _.find(Game.creeps, c => c.memory.role === ROLES.CLAIMER && c.memory.targetRoom === claimTarget);
-            if (!existingClaimer) return this.createClaimer(spawn, roomName, claimTarget,3000);
+            if (!existingClaimer) return this.createClaimer(spawn, roomName, claimTarget,5000);
         }
 
         // --- D. INITIAL SETUP (Για νέα δωμάτια) ---
@@ -298,15 +298,23 @@ const respawController = {
     },
 
     createClaimer: function(spawn, homeRoom, targetRoom,maxPreferredEnergy=2000) {
-        const energy = spawn.room.energyCapacityAvailable;
+        let energy = spawn.room.energyCapacityAvailable;
+        energy = Math.min(energy, maxPreferredEnergy);
         let body = [];
         let currentCost=0;
-        const CORE_BODY=[MOVE,MOVE,WORK,CLAIM];
-        const CORE_COST=800;
-        while(currentCost+CORE_COST<maxPreferredEnergy) {
+        const CORE_BODY=[MOVE,CLAIM];
+        const CORE_COST=650;
+        while(currentCost+CORE_COST<energy) {
             body=body.concat(CORE_BODY);
             currentCost+=CORE_COST;
-            
+        }
+        while (currentCost + 250 <= energy) {
+            body.push(MOVE,MOVE,WORK,CARRY);
+            currentCost += 250;
+        }
+        while (currentCost + 100 <= energy) {
+            body.push(MOVE,CARRY);
+            currentCost += 100;
         }
         body.sort();
         //if (energy >= 1300) body = [CLAIM, CLAIM, MOVE, MOVE];

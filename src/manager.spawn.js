@@ -15,8 +15,8 @@ const ROLES = {
     SUPPORTER: 'supporter'
 };
 
-const SUPPORTER_LIMIT_PER_ROOM = 5;
-
+const SUPPORTER_LIMIT_PER_ROOM = 1;
+const REMOTE_SPAWNING_STORE_LIMIT=600000
 const respawController = {
     
     run: function(roomName) {
@@ -107,7 +107,7 @@ const respawController = {
         
         // --- A. CAPITAL SUPPORT ---
         const capitalName = Memory.capital;
-        if (capitalName && capitalName !== roomName && room.storage && room.storage.store[RESOURCE_ENERGY] > 600000) {
+        if (capitalName && capitalName !== roomName && room.storage && room.storage.store[RESOURCE_ENERGY] > REMOTE_SPAWNING_STORE_LIMIT) {
             
             // Αν η πρωτεύουσα είναι γειτονική.
             if (this.isRoomAdjacent(roomName, capitalName)) {
@@ -121,7 +121,7 @@ const respawController = {
                 );
                 if (needsSupport && activeSupporters.length < SUPPORTER_LIMIT_PER_ROOM) {
                     console.log(`🏛️ ${roomName}: Sending Capital Support to ${capitalName}`);
-                    return this.createSupporter(spawn, roomName, capitalName, 2000);
+                    return this.createSupporter(spawn, roomName, capitalName, 2500);
                 }
             }
         }
@@ -147,15 +147,15 @@ const respawController = {
             // Ελέγχουμε αν ο γείτονας έχει τύπο 'initial_setup'
             if (neighborMemory && neighborMemory.type === 'initial_setup') {
                 
-                // Αν το δωμάτιο έχει αναπτυχθεί (RCL 3+), αφαιρούμε το flag και πάμε στον επόμενο
+                // Αν το δωμάτιο έχει αναπτυχθεί (RCL 4+), αφαιρούμε το flag και πάμε στον επόμενο
                 const setupRoom = Game.rooms[targetNeighbor];
-                if (setupRoom && setupRoom.controller && setupRoom.controller.level >= 3) {
+                if (setupRoom && setupRoom.controller && setupRoom.controller.level > 4) {
                     delete Memory.rooms[targetNeighbor].type;
                     continue; 
                 }
 
                 // Έλεγχος πληθυσμού για το συγκεκριμένο γείτονα
-                const setupCreeps = _.filter(Game.creeps, c => c.memory.targetRoom === targetNeighbor);
+                const setupCreeps = _.filter(Game.creeps, c => c.memory.homeRoom===roomName && c.memory.targetRoom === targetNeighbor);
                 
                 // Αν λείπουν supporters
                 if (setupCreeps.filter(c => c.memory.role === ROLES.SUPPORTER).length < SUPPORTER_LIMIT_PER_ROOM) {
@@ -164,26 +164,66 @@ const respawController = {
 
                 
             }
-        }
-
-        // --- E. REMOTE MINING ---
-        const targetRoomNames = _.filter(Object.keys(Memory.rooms), (rName) => {
-            return Memory.rooms[rName].type === 'remote_mining'; 
-        });
-        
-        for (const targetRoomName of targetRoomNames) {    
-            const miningRoomName = targetRoomName; 
-            if (miningRoomName && this.isSpawningAllowed(roomName, miningRoomName)) {
-                const remoteHarvesters = _.filter(Game.creeps, c => c.memory.role === ROLES.LD_HARVESTER && c.memory.targetRoom === miningRoomName).length;
-                if (remoteHarvesters < 1) {
-                    return this.createLDHarvester(spawn, roomName, miningRoomName);
-                }
+            if (neighborMemory && neighborMemory.type === 'remote_mining') {
+                const miningRoomName = targetNeighbor; 
+                if (miningRoomName && this.isSpawningAllowed(roomName, miningRoomName)) {
+                    const remoteHarvesters = _.filter(Game.creeps, c => c.memory.role === ROLES.LD_HARVESTER && c.memory.targetRoom === miningRoomName).length;
+                    if (remoteHarvesters < 1) {
+                        return this.createLDHarvester(spawn, roomName, miningRoomName);
+                    }
+                }    
             }
+        } // για όλους τους γείτονες.
+        if (room && room.controller.level===8 &&  room.storage.store[RESOURCE_ENERGY] > REMOTE_SPAWNING_STORE_LIMIT ) {
+            this.supportNeighbors(spawn, roomName);
         }
             
         return false;
     },
-
+    supportNeighbors: function(spawn, roomName) { 
+    const room = spawn.room;
+    
+    // Εξαγωγή λίστας γειτονικών δωματίων
+    let neighborRooms = room.memory.neighbors;
+    
+    // Αν δεν υπάρχουν γείτονες, επιστροφή
+    if (!neighborRooms || neighborRooms.length === 0) {
+        return false;
+    }
+    
+    // Αν το neighborRooms είναι Object, μετατροπή σε πίνακα
+    if (!Array.isArray(neighborRooms)) {
+        neighborRooms = Object.keys(neighborRooms);
+    }
+    
+    // Διάσχιση όλων των γειτονικών δωματίων
+    for (const targetNeighbor of neighborRooms) {
+        // Παράβλεψη του τρέχοντος δωματίου
+        if (targetNeighbor === roomName) continue;
+        
+        // Αναζήτηση γειτονικού δωματίου στο Game
+        const neighborRoom = Game.rooms[targetNeighbor];
+        if (!neighborRoom) continue; // Αν το δωμάτιο δεν είναι ορατό, συνέχιση
+        
+        // Έλεγχος εάν το γειτονικό δωμάτιο ανήκει στον παίκτη
+        if (!neighborRoom.controller || !neighborRoom.controller.my) continue;
+        if (neighborRoom.controller.level===8) continue;
+        // Εύρεση υφιστάμενων supporters για αυτό το δωμάτιο
+        const existingSupporters = _.filter(Game.creeps, c => 
+            c.memory.role === ROLES.SUPPORTER && 
+            c.memory.homeRoom === roomName && 
+            c.memory.targetRoom === targetNeighbor
+        );
+        
+        // Αν δεν έχουν φτάσει το όριο
+        if (existingSupporters.length < SUPPORTER_LIMIT_PER_ROOM) {
+            console.log(`🔄 ${roomName}: Στέλνει υποστηρικτή στο γειτονικό δωμάτιο ${targetNeighbor}`);
+            return this.createSupporter(spawn, roomName, targetNeighbor, 2500);
+        }
+    }
+    
+    return false;
+},
     // --- HELPER FUNCTIONS ---
 
     cleanupDeadCreeps: function(roomName) {
@@ -318,7 +358,7 @@ const respawController = {
     },
 
     createScout: function(spawn, homeRoom, targetRoom) {
-        return spawn.spawnCreep([MOVE], `Scout_${Game.time}`, { memory: { role: ROLES.SCOUT, homeRoom: homeRoom, targetRoom: targetRoom } }) === OK;
+        return spawn.spawnCreep([MOVE], `Scout_${homeRoom}_${targetRoom}_${Game.time}`, { memory: { role: ROLES.SCOUT, homeRoom: homeRoom, targetRoom: targetRoom } }) === OK;
     },
 
     createClaimer: function(spawn, homeRoom, targetRoom, maxPreferredEnergy = 2000) {

@@ -87,7 +87,7 @@ const MoveUtils = {
                     }
                     return costs;
                 },
-                maxOps: 3000 // Αυξημένο λίγο για inter-room travel
+                maxOps: 2000 // Αυξημένο λίγο για inter-room travel
             }
         );
 
@@ -198,7 +198,9 @@ const roleManager = {
             if (this.fillContainerOrStorage(creep)) {
                 return;
             }
-            this.fillSpawnExtension(creep);
+            if (this.fillSpawnExtension(creep)) {return;}
+                
+            creep.drop(RESOURCE_ENERGY);
         } else {
              const pos = new RoomPosition(
                 creep.memory.source.x,
@@ -602,9 +604,11 @@ const roleManager = {
         
         if (creep.memory.working) {
            if(this.fillSpawnExtension(creep)) {return ; }
+           if (this.buildStructures(creep)) { return ; }
             this.upgradeController(creep);
         } else {
             if (this.getEnergyFromDroppedEnergy(creep)) { return;}
+        
             if (this.getEnergy(creep)) {return ; }
         }
     },
@@ -633,10 +637,10 @@ const roleManager = {
 
     upgradeController: function(creep) { 
         // Χρήση Range 3 για upgrade
-        if (creep.pos.inRangeTo(creep.room.controller, 3)) {
+        if (creep.pos.inRangeTo(creep.room.controller, 2)) {
                 creep.upgradeController(creep.room.controller);
         } else {
-            MoveUtils.smartMove(creep, creep.room.controller, 3);
+            MoveUtils.smartMove(creep, creep.room.controller, 2);
         }
         return true;
     },

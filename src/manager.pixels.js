@@ -9,13 +9,13 @@ const INTERVALS = {
     // ΠΡΟΣΟΧΗ: Αυτός ο έλεγχος (Game.time % INTERVALS.RUN !== 0) θα κάνει τη λογική
     // του counter να λειτουργεί με άλματα (skipping ticks), κάτι που μπορεί να μην είναι επιθυμητό
     // για το CPU Bucket. Συνήθως, η λογική του Bucket τρέχει κάθε tick.
-    RUN: 20 
+    RUN: 30 
 }
 
 const LIMITS = {
     // Το πόσες φορές συνεχόμενα (ή πόσες φορές ανά το διάστημα RUN)
     // πρέπει να είναι γεμάτο το CPU Bucket (10000) πριν επιτρέψουμε την παραγωγή Pixel.
-    COUNTER_LIMIT:3, 
+    COUNTER_LIMIT:5, 
     // Το όριο του CPU Bucket που το θεωρούμε "γεμάτο" (το μέγιστο όριο).
     BUCKET_LIMIT: 10000 
 }

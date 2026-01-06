@@ -573,7 +573,7 @@ const constructionManager = {
             'extension': 2,
             'road': 1,
             'constructedWall': 2,
-            'rampart': 2,
+            'rampart': 4,
             'container': 1,
             'tower': 3,
             'storage': 4,

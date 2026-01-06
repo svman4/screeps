@@ -158,6 +158,23 @@ const expansionManager = {
         
 
         var myRoomsName = (_.filter(Game.rooms, r => r.controller && r.controller.my)).map(room => room.name);
+        for (let myRoomName of myRoomsName ) {
+            const room=Game.rooms[myRoomName];
+            if (!room) {
+                continue;
+            }
+            if (!room.memory.neighbors) {
+                const exits = Game.map.describeExits(myRoomName);
+                let neig=[];
+                if (exits) {
+                    for (let direction in exits) {
+                        neig.push(exits[direction]);
+                    }
+                }
+                room.memory.neighbors=neig;
+                
+            }
+        }
         const hasGCL = Game.gcl.level > myRoomsName;
 
 

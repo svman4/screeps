@@ -8,6 +8,9 @@ const PRIORITIES = {
     CONTROLLER_CONTAINER: 70,
     LAB: 40,
     TERMINAL: 40,
+    NUKER: 35 , 
+    FACTORY: 35, 
+    POWER_SPAWN: 35,
     STORAGE: 10,
     
     // Προτεραιότητες Πηγών (για ανάκτηση)
@@ -26,7 +29,9 @@ const TARGET_FULL_PERCENT = {
     TOWER: 0.8,
     CONTROLLER_CONTAINER: 0.6,
     FACTORY: 0.5,
-    LAB: 1
+    LAB: 1,
+    NUKER : 1,
+    POWER_SPAWN : 1 
 };
 
 const MIN_LIFE_TO_LIVE = 50;
@@ -187,26 +192,38 @@ const logisticsManager = {
                     priority = PRIORITIES.TERMINAL;
                     condition = energyAmount < capacity * TARGET_FULL_PERCENT.TERMINAL;
                     break;
-                case STRUCTURE_FACTORY :
+                case STRUCTURE_FACTORY:
                     priority=PRIORITIES.FACTORY;
                     condition=energyAmount<capacity*TARGET_FULL_PERCENT.FACTORY;
+                    break;
+                case STRUCTURE_NUKER: 
+                    priority=PRIORITIES.NUKER;
+                    condition=energyAmount<capacity*TARGET_FULL_PERCENT.NUKER;
+                    break;
+                case STRUCTURE_POWER_SPAWN:
+                    priority=PRIORITIES.POWER_SPAWN;
+                    condition=energyAmount<capacity*TARGET_FULL_PERCENT.POWER_SPAWN;
                     break;
                 default:
                     return;
             }
 
             if (condition) {
+                
                 targets.push({ id: s.id, type: s.structureType, priority: priority, obj: s });
             }
         });
 
         // Controller Container
         if (room.memory.controllerContainerId) {
+            
             const cc = Game.getObjectById(room.memory.controllerContainerId);
             if (cc && cc.store && cc.store[RESOURCE_ENERGY] < cc.store.getCapacity(RESOURCE_ENERGY) * TARGET_FULL_PERCENT.CONTROLLER_CONTAINER) {
                 targets.push({
                     id: cc.id, type: 'controllerContainer', priority: PRIORITIES.CONTROLLER_CONTAINER, obj: cc
                 });
+                
+            
             }
         }
         
@@ -376,7 +393,7 @@ const logisticsManager = {
             creep.memory.homeRoom === roomName &&
             !creep.spawning
         );
-
+        
         const assignments = roomMemory.haulerAssignments;
         const reservations = roomMemory.taskReservations;
         const tasks = roomMemory.energyTasks;

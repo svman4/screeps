@@ -6,26 +6,21 @@ global.getInfoForNeighborRoom = function (neighborRoomName, hasGCL = false, call
 
     // Α. Δεν έχουμε Vision
     if (!neighborRoom) {
-        // Αν υπάρχει observer, δοκίμασε να παρατηρήσεις
         if (observerId) {
             const observer = Game.getObjectById(observerId);
             if (observer && observer.observeRoom(neighborRoomName) === OK) {
                 console.log(`👁️ Observer παρατήρησε δωμάτιο: ${neighborRoomName} από ${callingRoomName}`);
-                // Περίμενε 1 tick για να ενημερωθεί το Game.rooms
                 return 'observed';
             }
         }
-        // console.log(`❌ EXPANSION: [${callingRoomName}] No vision for room ${neighborRoomName}`);
         return false;
     }
     
-    // Αρχικοποίηση μνήμης αν δεν υπάρχει
     if (!Memory.rooms[neighborRoomName]) {
         Memory.rooms[neighborRoomName] = {};
     }
     const mem = Memory.rooms[neighborRoomName];
     
-    // Ενημέρωση scouting info
     mem.scoutNeeded = false;
     mem.lastScouted = Game.time;
     mem.scoutMethod = observerId ? 'observer' : 'direct';
@@ -62,7 +57,6 @@ global.getInfoForNeighborRoom = function (neighborRoomName, hasGCL = false, call
             } else {
                 mem.type = 'remote_mining';
                 mem.sources = sourcePositions;
-                // console.log(`⛏️ EXPANSION: ${neighborRoomName} set for REMOTE MINING.`);
             }
 
             mem.controller = {
@@ -108,56 +102,16 @@ global.getInfoForNeighborRoom = function (neighborRoomName, hasGCL = false, call
         }
 
         mem.enemyInfo = enemyInfo;
-
-        console.log(`⚔️ INTEL: [${neighborRoomName}] Owner: ${enemyInfo.owner} | Lvl: ${enemyInfo.level} | Towers: ${enemyInfo.towers} | Walls(min): ${Math.floor(enemyInfo.minWallHits / 1000)}k`);
+        console.log(`⚔️ INTEL: [${neighborRoomName}] Owner: ${enemyInfo.owner} | Lvl: ${enemyInfo.level} | Towers: ${enemyInfo.towers}`);
         return false;
     }
 
     return false;
 };
 
-// 2. Βοηθητικές συναρτήσεις για Observers
-function getRoomObserver(roomName) {
-    const room = Game.rooms[roomName];
-    if (!room) return null;
-    
-    const observers = room.find(FIND_MY_STRUCTURES, {
-        filter: { structureType: STRUCTURE_OBSERVER }
-    });
-    
-    return observers.length > 0 ? observers[0] : null;
-}
-
-function canObserverReach(observer, targetRoom) {
-    if (!observer) return false;
-    
-    const observerRoom = observer.room.name;
-    const range = Game.map.getRoomLinearDistance(observerRoom, targetRoom);
-    
-    // Ο Observer μπορεί να παρατηρήσει σε απόσταση 5 δωματίων
-    return range <= 5;
-}
-
-// 3. Βοηθητικές συναρτήσεις
-function getNeighborFromMyRooms(myRooms) {
-    const neighbors = [];
-
-    for (let roomName of myRooms) {
-        const exits = Game.map.describeExits(roomName);
-        if (exits) {
-            for (let direction in exits) {
-                neighbors.push(exits[direction]);
-            }
-        }
-    }
-
-    const uniqueNeighbors = _.uniq(neighbors);
-    return _.filter(uniqueNeighbors, name => !myRooms.includes(name));
-}
-
+// 2. Βοηθητικές συναρτήσεις
 function cleanMemoryRooms(myRoomsNames, neighborsRoomNames) {
     const validRooms = [...myRoomsNames, ...neighborsRoomNames];
-
     for (let roomName in Memory.rooms) {
         if (!validRooms.includes(roomName)) {
             delete Memory.rooms[roomName];
@@ -167,7 +121,6 @@ function cleanMemoryRooms(myRoomsNames, neighborsRoomNames) {
 
 function foundNewCapital(myRoomsNames) {
     if (myRoomsNames.length === 0) return null;
-
     const rooms = myRoomsNames.map(name => Game.rooms[name]).filter(r => r && r.controller);
     const bestRoom = _.sortBy(rooms, [
         (r) => -r.controller.level,
@@ -182,138 +135,112 @@ function foundNewCapital(myRoomsNames) {
     return null;
 }
 
-// 4. Κύριο expansion manager με Observer support
+// 4. Κύριο expansion manager
 const expansionManager = {
     run: function () {
-        // Εκτέλεση κάθε 50 ticks για εξοικονόμηση CPU
+        // Εκτέλεση κάθε 50 ticks
         if (Game.cpu.bucket < 2000 || Game.time % 50 !== 0) return;
         
         const myRoomsName = _.filter(Game.rooms, r => r.controller && r.controller.my).map(room => room.name);
         
-        // Ενημέρωση γειτονικών δωματίων για κάθε δικό μας δωμάτιο
-        for (let myRoomName of myRoomsName) {
-            const room = Game.rooms[myRoomName];
-            if (!room) continue;
-            
-            // Αρχικοποίηση memory για γείτονες
-            if (!room.memory.neighbors) {
-                const exits = Game.map.describeExits(myRoomName);
-                let neig = [];
-                if (exits) {
-                    for (let direction in exits) {
-                        neig.push(exits[direction]);
-                    }
-                }
-                room.memory.neighbors = neig;
-            }
-            
-            // Ελέγχουμε αν έχουμε Observer σε αυτό το δωμάτιο
-            const observer = getRoomObserver(myRoomName);
-            
-            // Ενημέρωση γειτονικών δωματίων
-            this.updateNeighborRooms(myRoomName, observer);
-        }
-        
+        // Βρίσκουμε όλους τους γείτονες σε ακτίνα 2 (BFS) - καλύπτει όλες τις κατευθύνσεις
+        const allTargets = this.getUniqueNeighbors(myRoomsName, 2);
         const hasGCL = Game.gcl.level > myRoomsName.length;
-        const neighborRoomNames = getNeighborFromMyRooms(myRoomsName);
-        
+
+        // Διαχείριση Observer
+        this.processObserverQueue(allTargets, hasGCL);
+
         // Ενημέρωση πρωτεύουσας
         if (!Memory.capital || !myRoomsName.includes(Memory.capital)) {
             foundNewCapital(myRoomsName);
         }
-        
+
         // Καθαρισμός μνήμης
-        cleanMemoryRooms(myRoomsName, neighborRoomNames);
+        cleanMemoryRooms(myRoomsName, allTargets);
     },
-    
-    updateNeighborRooms: function(roomName, observer) {
-        const room = Game.rooms[roomName];
-        if (!room) return;
-        
-        // ΔΙΟΡΘΩΣΗ: Βεβαιώνουμε ότι το neighbors είναι πίνακας
-        let neighbors = room.memory.neighbors;
-        if (!neighbors || !Array.isArray(neighbors)) {
-            // Αν δεν είναι πίνακας, δημιουργούμε νέο από τα exits
-            const exits = Game.map.describeExits(roomName);
-            neighbors = [];
-            if (exits) {
-                for (let direction in exits) {
-                    neighbors.push(exits[direction]);
+
+    // Σάρωση δωματίων προς όλες τις κατευθύνσεις (Breadth-First Search)
+    getUniqueNeighbors: function(myRooms, depth) {
+        let nodes = new Set(myRooms);
+        let currentLevel = [...myRooms];
+
+        for (let i = 0; i < depth; i++) {
+            let nextLevel = [];
+            for (let roomName of currentLevel) {
+                const exits = Game.map.describeExits(roomName);
+                if (!exits) continue;
+                for (let dir in exits) {
+                    const neighborName = exits[dir];
+                    if (!nodes.has(neighborName)) {
+                        nodes.add(neighborName);
+                        nextLevel.push(neighborName);
+                    }
                 }
             }
-            room.memory.neighbors = neighbors;
+            currentLevel = nextLevel;
+        }
+        // Επιστρέφουμε μόνο τα δωμάτια που ΔΕΝ είναι δικά μας
+        return [...nodes].filter(name => !myRooms.includes(name));
+    },
+
+    processObserverQueue: function(targets, hasGCL) {
+        if (targets.length === 0) return;
+
+        const observers = _.filter(Game.structures, s => s.structureType === STRUCTURE_OBSERVER && s.my);
+        
+        // Round Robin: Κάθε tick διαλέγουμε ένα διαφορετικό δωμάτιο από τη λίστα targets
+        // Χρησιμοποιούμε το Game.time για να εναλλάσσονται οι στόχοι αυτόματα
+        let targetIndex = Game.time % targets.length;
+        let targetRoomName = targets[targetIndex];
+
+        if (observers.length > 0) {
+            for (let obs of observers) {
+                // Έλεγχος αν ο συγκεκριμένος observer φτάνει το δωμάτιο (range 10)
+                if (Game.map.getRoomLinearDistance(obs.room.name, targetRoomName) <= 10) {
+                    const result = global.getInfoForNeighborRoom(targetRoomName, hasGCL, obs.room.name, obs.id);
+                    if (result === 'observed') {
+                        if (!Memory.rooms[targetRoomName]) Memory.rooms[targetRoomName] = {};
+                        Memory.rooms[targetRoomName].lastObserved = Game.time;
+                        // Μόλις ένας observer αναλάβει το τρέχον target, σταματάμε για αυτό το tick
+                        break; 
+                    }
+                }
+            }
         }
         
-        const hasGCL = Game.gcl.level > _.filter(Game.rooms, r => r.controller && r.controller.my).length;
-        
-        // Ενημέρωση κάθε γειτονικού δωματίου
-        for (let neighborRoomName of neighbors) {
-            // Εξασφαλίζουμε ότι το neighborRoomName είναι έγκυρο string
-            if (!neighborRoomName || typeof neighborRoomName !== 'string') continue;
-            
-            if (!Memory.rooms[neighborRoomName]) {
-                Memory.rooms[neighborRoomName] = {};
-            }
-            
-            const mem = Memory.rooms[neighborRoomName];
-            const neighborRoom = Game.rooms[neighborRoomName];
-            
-            // Προτεραιότητα: χρήση Observer αν υπάρχει
-            if (observer && canObserverReach(observer, neighborRoomName)) {
-                // Χρησιμοποιούμε observer για παρατήρηση
-                const result = global.getInfoForNeighborRoom(neighborRoomName, hasGCL, roomName, observer.id);
-                
-                if (result === 'observed') {
-                    // Το δωμάτιο παρατηρήθηκε με επιτυχία
-                    mem.lastObserved = Game.time;
-                    mem.scoutNeeded = false;
-                    continue;
-                } else if (result === true) {
-                    // Έχουμε ήδη vision
-                    mem.lastScouted = Game.time;
-                    mem.scoutNeeded = false;
-                    continue;
-                }
-            }
-            
-            // Εναλλακτικά: direct vision ή scout
-            if (neighborRoom) {
-                // Έχουμε άμεση πρόσβαση
-                global.getInfoForNeighborRoom(neighborRoomName, hasGCL, roomName);
-            } else {
-                // Χρειάζεται scout μόνο αν δεν έχουμε παρατηρήσει πρόσφατα
-                const lastCheck = mem.lastObserved || mem.lastScouted || 0;
-                const needsScout = !lastCheck || (Game.time - lastCheck > 10000);
-                
-                if (needsScout && !mem.scoutNeeded) {
-                    mem.scoutNeeded = true;
-                    mem.scoutMethod = 'creep';
-                    // console.log(`🔭 EXPANSION: requesting Scout for ${neighborRoomName} (no observer available)`);
-                }
+        // Παράλληλα, για όλα τα targets, ελέγχουμε αν υπάρχει ήδη Vision (π.χ. από creeps)
+        // ή αν πρέπει να ζητηθεί physical scout
+        for (let tName of targets) {
+            this.simpleScoutCheck(tName, hasGCL);
+        }
+    },
+
+    simpleScoutCheck: function(targetRoomName, hasGCL) {
+        const neighborRoom = Game.rooms[targetRoomName];
+        if (neighborRoom) {
+            // Έχουμε ήδη vision, τρέξε την ενημέρωση πληροφοριών
+            global.getInfoForNeighborRoom(targetRoomName, hasGCL);
+        } else {
+            const mem = Memory.rooms[targetRoomName] || {};
+            const lastCheck = mem.lastObserved || mem.lastScouted || 0;
+            // Αν το δωμάτιο είναι "σκοτεινό" για πάνω από 10.000 ticks, ζήτα creep
+            if (Game.time - lastCheck > 10000 && !mem.scoutNeeded) {
+                if (!Memory.rooms[targetRoomName]) Memory.rooms[targetRoomName] = {};
+                Memory.rooms[targetRoomName].scoutNeeded = true;
             }
         }
     }
 };
 
-// 5. Ενημέρωση spawn manager για να λαμβάνει υπόψη observers
+// 5. Ενημέρωση spawn manager
 global.shouldSendScout = function(targetRoomName) {
-    // Έλεγχος αν υπάρχει observer που μπορεί να καλύψει το δωμάτιο
-    const myRooms = _.filter(Game.rooms, r => r.controller && r.controller.my);
+    const mem = Memory.rooms[targetRoomName];
+    if (!mem) return true;
     
-    for (const room of myRooms) {
-        const observer = getRoomObserver(room.name);
-        if (observer && canObserverReach(observer, targetRoomName)) {
-            // Έχουμε observer που μπορεί να παρατηρήσει αυτό το δωμάτιο
-            const mem = Memory.rooms[targetRoomName];
-            if (mem && mem.lastObserved && Game.time - mem.lastObserved < 5000) {
-                // Έχουμε πρόσφατη παρατήρηση
-                return false;
-            }
-        }
-    }
+    // Αν παρατηρήθηκε πρόσφατα μέσω Observer, δεν στέλνουμε scout
+    if (mem.lastObserved && Game.time - mem.lastObserved < 5000) return false;
     
-    // Χρειάζεται scout
-    return true;
+    return mem.scoutNeeded;
 };
 
 module.exports = expansionManager;

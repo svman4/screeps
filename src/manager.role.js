@@ -178,10 +178,7 @@ const roleManager = {
     },
     runMiner:function(creep) { 
         if (creep.spawning) return;
-        if(creep.ticksToLive < 200) {
-            creep.memory.role = "to_be_recycled";
-            return;
-        }
+        
         
         if (!creep.memory.working && creep.store.getFreeCapacity() === 0) {
             creep.memory.working = true;
@@ -189,6 +186,10 @@ const roleManager = {
         }
         if (creep.memory.working && creep.store.getUsedCapacity() === 0) {
                 creep.memory.working = false;
+                if(creep.ticksToLive < 200) {
+                    creep.memory.role = "to_be_recycled";
+                    return;
+                }
                 //creep.say('🔄 harvest');
         }
         
@@ -256,6 +257,13 @@ const roleManager = {
         }
         
         if (creep.memory.working) {
+            const road = creep.pos.lookFor(LOOK_STRUCTURES).find(s => 
+                s.structureType === STRUCTURE_ROAD && s.hits < s.hitsMax
+            );
+            if (road) {
+                creep.repair(road);
+            }
+            
             if ( (creep.room.name !== creep.memory.homeRoom) && this.buildStructures(creep)) {return;}
             if (travelToHomeRoom(creep)) { 
                 return;

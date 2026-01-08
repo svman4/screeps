@@ -486,8 +486,8 @@ function initPopulation(roomName) {
     room.memory.populationLimits = {
         SIMPLE_HARVESTER: 1,
         STATIC_HARVESTER: sourceCount,
-        HAULER: sourceCount + 1,
-        UPGRADER: 1,
+        HAULER: sourceCount ,
+        UPGRADER: sourceCount,
         BUILDER: 1,
         LD_HARVESTER: 0,
         CLAIMER: 0,

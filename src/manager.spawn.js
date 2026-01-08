@@ -12,7 +12,8 @@ const ROLES = {
     LD_HAULER: 'LDHauler',
     CLAIMER: 'claimer',
     SCOUT: 'scout',
-    SUPPORTER: 'supporter'
+    SUPPORTER: 'supporter',
+    MINER: "miner"
 };
 
 const SUPPORTER_LIMIT_PER_ROOM = 1;
@@ -84,9 +85,77 @@ const respawController = {
         if (this.needBuilder(room, population, populationLimit)) {
             return this.createBuilder(spawn, roomName, rcl);
         }
+        if (this.lookForMiner(spawn,room,rcl)===true) return;
+        
     },
-
-    /**
+    lookForMiner: function(spawn, room, rcl) { 
+        // Το όριο ποσότητας πάνω από το οποίο σταματάμε την εξόρυξη
+        const MINERAL_MARKET_LIMIT = 2000;
+        
+        // Εύρεση όλων των κοιτασμάτων (minerals) στο δωμάτιο
+        const minerals = room.find(FIND_MINERALS);
+        
+        // Αν δεν υπάρχουν mineral στο δωμάτιο, σταμάτα τη διαδικασία
+        if (!minerals.length) { 
+            return false;
+        }
+    
+        // Φιλτράρισμα των υπαρχόντων creeps για να βρούμε όσα είναι ήδη Miners σε αυτό το δωμάτιο
+        const existedMiners = _.filter(Game.creeps, c => 
+            c.memory.role === ROLES.MINER && c.memory.homeRoom === room.name
+        );
+    
+        for (let mineral of minerals) {
+            // 1. Έλεγχος για Extractor: Το mineral δεν μπορεί να εξορυχθεί χωρίς την ειδική κατασκευή
+            const extractor = mineral.pos.lookFor(LOOK_STRUCTURES).find(s => 
+                s.structureType === STRUCTURE_EXTRACTOR
+            );
+            
+            // Αν δεν υπάρχει Extractor, προχώρα στο επόμενο mineral
+            if (!extractor) { 
+                continue;
+            }
+            
+            // 2. Έλεγχος Ανάθεσης: Αν υπάρχει ήδη creep που έχει αναλάβει αυτό το συγκεκριμένο mineral (mineralId)
+            const isAssigned = existedMiners.some(c => c.memory.mineralId === mineral.id);
+            if (isAssigned) {
+                continue;
+            }
+            
+            // 3. Έλεγχος Αποθέματος: Αν το κοίτασμα είναι άδειο (mineralAmount === 0), πήγαινε στο επόμενο
+            if (mineral.mineralAmount === 0) {
+                continue;
+            }
+            
+            // 4. Έλεγχος Αποθήκης (Terminal): Αν έχουμε ήδη αρκετό από αυτό το υλικό στην αποθήκη μας
+            // Χρησιμοποιούμε το mineral.mineralType για να δούμε το συγκεκριμένο είδος (π.χ. Η, Ο, U)
+            const totalInMarket = room.terminal ? room.terminal.store[mineral.mineralType] || 0 : 0;
+            if (totalInMarket >= MINERAL_MARKET_LIMIT) {
+                continue;
+            }
+            
+            // 5. Προετοιμασία Σώματος και Μνήμης για το νέο Creep
+            // Το σώμα περιλαμβάνει WORK για εξόρυξη, CARRY για μεταφορά και MOVE για κίνηση
+            let body = [WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE, MOVE];
+            const creepName = `miner_${room.name}_${Game.time}`;
+            
+            const creepMemory = { 
+                memory: { 
+                    role: ROLES.MINER, 
+                    mineralId: mineral.id, // Ανάθεση του ID του mineral στο creep
+                    homeRoom: room.name,
+                    working: false 
+                } 
+            };
+    
+            // Προσπάθεια δημιουργίας του creep. Αν πετύχει (=== OK), η συνάρτηση επιστρέφει true
+            return spawn.spawnCreep(body, creepName, creepMemory) === OK;
+        }
+        
+        // Αν φτάσουμε εδώ, σημαίνει ότι δεν χρειαζόταν ή δεν μπορούσε να δημιουργηθεί miner
+        return false;
+    },
+/**
      * Διαχείριση αποστολών εκτός δωματίου
      */
     handleRemoteSpawning: function(spawn, roomName, population, populationLimit) {

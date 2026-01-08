@@ -188,8 +188,10 @@ var towerController = {
     calculateWallLimit: function(controllerLevel) {
         // Δυναμικό όριο που αυξάνεται με το επίπεδο
         const baseLimit = 10000;
-        const multiplier = controllerLevel * 5000;
-        return Math.min(baseLimit + multiplier, 100000); // Μέγιστο όριο 100K για απόδοση
+        const maxLimit=95000;
+        const multiplier = controllerLevel * 50000;
+        
+        return Math.min(baseLimit + multiplier, maxLimit); // Μέγιστο όριο 100K για απόδοση
     },
 
     /**

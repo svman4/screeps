@@ -169,10 +169,76 @@ const roleManager = {
                     break;    
                 case "LDHarvester": 
                     this.runLDHarvester(creep);
+                    break;
+                case "miner" : 
+                    this.runMiner(creep);
+                    break;
             }
         }
     },
+    runMiner:function(creep) { 
+        if (creep.spawning) return;
+        if(creep.ticksToLive < 200) {
+            creep.memory.role = "to_be_recycled";
+            return;
+        }
+        
+        if (!creep.memory.working && creep.store.getFreeCapacity() === 0) {
+            creep.memory.working = true;
+         
+        }
+        if (creep.memory.working && creep.store.getUsedCapacity() === 0) {
+                creep.memory.working = false;
+                //creep.say('🔄 harvest');
+        }
+        
+        if (creep.memory.working===false ) {
+            if(!creep.memory.mineralId) {
+                const closestSource = creep.pos.findClosestByPath(FIND_SOURCES);
+                if (closestSource) creep.memory.sourceId = closestSource.id;
+                else return;
+            }
+            const source = Game.getObjectById(creep.memory.mineralId);
+            if (!source) return;
+    
+            let containerId = creep.memory.containerId;
+            if (!containerId) {
+                const containers = source.pos.findInRange(FIND_STRUCTURES, 2, { 
+                    filter: (s) => s.structureType === STRUCTURE_CONTAINER
+                });
+                if (containers.length > 0) creep.memory.containerId = containers[0].id;
+            }
+    
+            const container = Game.getObjectById(creep.memory.containerId);
+            if (container) {
+                if (!creep.pos.inRangeTo(container, 0)) {
+                    MoveUtils.smartMove(creep, container, 0);
+                } 
+            } else {
+                if (!creep.pos.inRangeTo(source, 1)) {
+                    MoveUtils.smartMove(creep, source, 1);
+                    return; 
+                }
+            }
+            if((source.cooldown>0)===false ) {
+                creep.harvest(source);
+            }
+        }
+        else {
+            if (creep.pos.inRangeTo(creep.room.terminal,1)===true) {
+                for (const resourceType in creep.store) {
+                    creep.transfer(creep.room.terminal, resourceType);
+                }
+            }
+            else {
+                MoveUtils.smartMove(creep,creep.room.terminal,1);
+            
+            }
 
+        }
+        
+    
+    },
     runLDHarvester: function(creep) { 
         if (creep.spawning) return;
         if(creep.ticksToLive < 200) {

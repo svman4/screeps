@@ -34,14 +34,86 @@ const market = {
         
         // 1. Πώληση Ενέργειας
         this.handleEnergySelling(room, roomName);
-
+        this.handleMineralSelling(room,roomName);
         // 2. Αγορά Power (αν υπάρχει Power Spawn)
         this.handlePowerBuying(room, roomName);
 
         // 3. Αγορά Ghodium (αν υπάρχει Nuker)
         this.handleNukerBuying(room, roomName);
+        
     },
+    // --- Διαχείριση Πώλησης Minerals (Liquidation) ---
+    handleMineralSelling: function(room, roomName) {
+        const terminal = room.terminal;
+        
+        // Λίστα με RESOURCES που ΔΕΝ θέλουμε να πουλήσουμε
+        // 1. ENERGY: Το καύσιμο για τις μεταφορές
+        // 2. POWER: Το αγοράζουμε εμείς (βλ. handlePowerBuying)
+        // 3. GHODIUM: Το αγοράζουμε εμείς (βλ. handleNukerBuying)
+        const RESOURCES_TO_KEEP = [RESOURCE_ENERGY, RESOURCE_POWER, RESOURCE_GHODIUM];
 
+        // Iteration σε όλα τα resources που έχει το terminal
+        for (const resourceType in terminal.store) {
+            
+            // Αν είναι στη λίστα εξαίρεσης, προχώρα στο επόμενο
+            if (RESOURCES_TO_KEEP.includes(resourceType)) continue;
+
+            const amountInTerminal = terminal.store[resourceType];
+            
+            // Αν είναι άδειο ή πολύ λίγο (π.χ. < 100), ίσως δεν αξίζει το CPU, 
+            // αλλά αφού θες "μηδενισμό" το αφήνουμε > 0
+            if (amountInTerminal <= 0) continue;
+
+            // 1. Βρες Αγοραστές
+            const buyOrders = Game.market.getAllOrders(order => 
+                order.resourceType === resourceType &&
+                order.type === ORDER_BUY &&
+                order.remainingAmount > 0
+            );
+
+            // Αν δεν υπάρχει κανείς να αγοράσει, προχώρα στο επόμενο resource
+            if (buyOrders.length === 0) continue;
+
+            // 2. Ταξινόμηση για την καλύτερη τιμή (High to Low)
+            buyOrders.sort((a, b) => b.price - a.price);
+            const bestOrder = buyOrders[0];
+
+            // 3. Υπολογισμός Ποσότητας Deal
+            // Ξεκινάμε με το ελάχιστο μεταξύ: του τι έχουμε εμείς VS τι θέλει ο αγοραστής
+            let amountToDeal = Math.min(amountInTerminal, bestOrder.remainingAmount);
+
+            // 4. Έλεγχος Κόστους Ενέργειας (Transaction Cost)
+            const transactionCost = Game.market.calcTransactionCost(amountToDeal, roomName, bestOrder.roomName);
+            const energyAvailable = terminal.store[RESOURCE_ENERGY];
+
+            // Αν δεν φτάνει η ενέργεια, μειώνουμε την ποσότητα αποστολής
+            if (transactionCost > energyAvailable) {
+                // Τύπος: (EnergyAvailable / CostPerUnit)
+                // Υπολογίζουμε κατά προσέγγιση το ratio κόστους
+                const costRatio = transactionCost / amountToDeal;
+                // Νέα ποσότητα = Διαθέσιμη Ενέργεια / Κόστος ανά μονάδα
+                amountToDeal = Math.floor(energyAvailable / costRatio);
+            }
+
+            // Αν η ποσότητα κατέληξε 0 ή αρνητική, σταματάμε
+            if (amountToDeal <= 0) continue;
+
+            // 5. Εκτέλεση Deal
+            const result = Game.market.deal(bestOrder.id, amountToDeal, roomName);
+
+            if (result === OK) {
+                const msg = `💰 LIQUIDATION ${resourceType} από ${roomName}: ` +
+                            `Πουλήθηκαν ${amountToDeal} με τιμή ${bestOrder.price}. ` +
+                            `Έμειναν: ${amountInTerminal - amountToDeal}`;
+                console.log(msg);
+                
+                // Επιστρέφουμε (return) για να μην κάνουμε πολλά deals στο ίδιο tick 
+                // και "μπουκώσουμε" το CPU ή τα όρια του Market. 
+                // Θα πουλήσει το επόμενο resource στο επόμενο run (σε 100 ticks).
+                return; 
+            }
+        }
+    },
     // --- Διαχείριση Πώλησης Ενέργειας ---
     handleEnergySelling: function(room, roomName) {
         const storageCapacity = room.storage.store.getCapacity();

@@ -324,14 +324,14 @@ const roleManager = {
                 s.structureType === STRUCTURE_ROAD && s.hits < s.hitsMax
             );
             if (road) creep.repair(road);
-            
+            if (this.buildStructures(creep)) return; 
             // Επιστροφή στο Home Room
             if (travelToHomeRoom(creep)) return;
             
             // Παράδοση ενέργειας με σειρά προτεραιότητας
             if (this.fillSpawnExtension(creep)) return;
             if (this.fillContainerOrStorage(creep)) return;
-            if (this.buildStructures(creep)) return; 
+            
         } else {
             // Μετάβαση στο Target Room για εξόρυξη
             const pos = new RoomPosition(creep.memory.source.x, creep.memory.source.y, creep.memory.source.roomName);

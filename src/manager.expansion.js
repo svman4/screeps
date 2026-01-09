@@ -110,14 +110,14 @@ function foundNewCapital(myRoomsNames) {
 const expansionManager = {
     run: function () {
         if (Game.cpu.bucket < 500) return; // Πιο χαμηλό όριο για ασφάλεια
-
+    
         const myRoomsName = _.filter(Game.rooms, r => r.controller && r.controller.my).map(room => room.name);
         const hasGCL = Game.gcl.level > myRoomsName.length;
 
         // Φάση 1: Διάβασμα αποτελεσμάτων Observer από το προηγούμενο Tick
         this.observerRead(hasGCL);
 
-        // Φάση 2: Βαριές εργασίες κάθε 200 ticks
+        // Φάση 2: Βαριές εργασίες κάθε 500 ticks
         if (Game.time % 500 === 0) {
             const allTargets = this.getUniqueNeighbors(myRoomsName, 2);
             this.refreshQueue(allTargets);
@@ -169,26 +169,39 @@ const expansionManager = {
     },
 
     getUniqueNeighbors: function(myRooms, depth) {
-        let nodes = new Set(myRooms);
-        let currentLevel = [...myRooms];
+    let nodes = new Set(myRooms);
+    let currentLevel = [...myRooms];
 
-        for (let i = 0; i < depth; i++) {
-            let nextLevel = [];
-            for (let roomName of currentLevel) {
+    for (let i = 0; i < depth; i++) {
+        let nextLevel = [];
+        for (let roomName of currentLevel) {
+            // Αν δεν έχουμε αποθηκευμένους τους γείτονες στη μνήμη του δωματίου
+            if (!Memory.rooms[roomName]) Memory.rooms[roomName] = {};
+            
+            if (!Memory.rooms[roomName].neighbors) {
                 const exits = Game.map.describeExits(roomName);
-                if (!exits) continue;
-                for (let dir in exits) {
-                    const neighborName = exits[dir];
-                    if (!nodes.has(neighborName)) {
-                        nodes.add(neighborName);
-                        nextLevel.push(neighborName);
-                    }
+                if (exits) {
+                    // Μετατρέπουμε το αντικείμενο των exits σε έναν απλό πίνακα ονομάτων
+                    Memory.rooms[roomName].neighbors = Object.values(exits);
+                } else {
+                    Memory.rooms[roomName].neighbors = [];
                 }
             }
-            currentLevel = nextLevel;
+
+            // Χρήση των αποθηκευμένων γειτόνων για την εύρεση της επόμενης στάθμης (depth)
+            const neighbors = Memory.rooms[roomName].neighbors;
+            for (let neighborName of neighbors) {
+                if (!nodes.has(neighborName)) {
+                    nodes.add(neighborName);
+                    nextLevel.push(neighborName);
+                }
+            }
         }
-        return [...nodes].filter(name => !myRooms.includes(name));
+        currentLevel = nextLevel;
     }
+    // Επιστρέφουμε όλα τα δωμάτια που βρέθηκαν εκτός από τα δικά μας
+    return [...nodes].filter(name => !myRooms.includes(name));
+}
 };
 
 // --- 4. EXPORTS ---

@@ -69,57 +69,57 @@ const MoveUtils = {
      * @param {number} [range=1] - Η απόσταση στην οποία θέλουμε να φτάσουμε.
      */
     smartMove: function(creep, targetObj, range = 1) {
-    if (creep.fatigue > 0) return;
-
-    const targetPos = targetObj.pos || targetObj;
-    if (creep.pos.inRangeTo(targetPos, range)) return;
-
-    // Stuck Detection
-    if (!creep.memory._lastPos || creep.memory._lastPos.x !== creep.pos.x || creep.memory._lastPos.y !== creep.pos.y) {
-        creep.memory._lastPos = { x: creep.pos.x, y: creep.pos.y };
-        creep.memory._stuckCount = 0;
-    } else {
-        creep.memory._stuckCount = (creep.memory._stuckCount || 0) + 1;
-    }
-
-    // Αν κολλήσει έστω και 1 tick, ενεργοποιούμε την αποφυγή
-    const isStuck = creep.memory._stuckCount >= 1; 
-
-    const ret = PathFinder.search(
-        creep.pos, 
-        { pos: targetPos, range: range },
-        {
-            plainCost: 2,
-            swampCost: 10,
-            roomCallback: (roomName) => {
-                let costs = this.getRoomCostMatrix(roomName).clone(); // Πάντα clone για ασφάλεια
-                
-                // Αν είμαστε stuck, προσθέτουμε ΟΛΑ τα creeps ως αδιάβατα (255)
-                if (isStuck) {
-                    const room = Game.rooms[roomName];
-                    if (room) {
-                        room.find(FIND_CREEPS).forEach(c => {
-                            costs.set(c.pos.x, c.pos.y, 0xff);
-                        });
-                        // Επίσης τα Power Creeps αν υπάρχουν
-                        room.find(FIND_POWER_CREEPS).forEach(c => {
-                            costs.set(c.pos.x, c.pos.y, 0xff);
-                        });
-                    }
-                }
-                return costs;
-            },
-            maxOps: 2000 
+        if (creep.fatigue > 0) return;
+    
+        const targetPos = targetObj.pos || targetObj;
+        if (creep.pos.inRangeTo(targetPos, range)) return;
+    
+        // Stuck Detection
+        if (!creep.memory._lastPos || creep.memory._lastPos.x !== creep.pos.x || creep.memory._lastPos.y !== creep.pos.y) {
+            creep.memory._lastPos = { x: creep.pos.x, y: creep.pos.y };
+            creep.memory._stuckCount = 0;
+        } else {
+            creep.memory._stuckCount = (creep.memory._stuckCount || 0) + 1;
         }
-    );
-
-    if (ret.path.length > 0) {
-        // Χρήση move αντί για moveByPath για πιο άμεση απόκριση σε μικρές αποστάσεις
-        creep.move(creep.pos.getDirectionTo(ret.path[0]));
-    } else {
-        creep.moveTo(targetPos, { reusePath: 0 }); // Hard reset κίνησης
+    
+        // Αν κολλήσει έστω και 1 tick, ενεργοποιούμε την αποφυγή
+        const isStuck = creep.memory._stuckCount >= 1; 
+    
+        const ret = PathFinder.search(
+            creep.pos, 
+            { pos: targetPos, range: range },
+            {
+                plainCost: 2,
+                swampCost: 10,
+                roomCallback: (roomName) => {
+                    let costs = this.getRoomCostMatrix(roomName).clone(); // Πάντα clone για ασφάλεια
+                    
+                    // Αν είμαστε stuck, προσθέτουμε ΟΛΑ τα creeps ως αδιάβατα (255)
+                    if (isStuck) {
+                        const room = Game.rooms[roomName];
+                        if (room) {
+                            room.find(FIND_CREEPS).forEach(c => {
+                                costs.set(c.pos.x, c.pos.y, 0xff);
+                            });
+                            // Επίσης τα Power Creeps αν υπάρχουν
+                            room.find(FIND_POWER_CREEPS).forEach(c => {
+                                costs.set(c.pos.x, c.pos.y, 0xff);
+                            });
+                        }
+                    }
+                    return costs;
+                },
+                maxOps: 2000 
+            }
+        );
+    
+        if (ret.path.length > 0) {
+            // Χρήση move αντί για moveByPath για πιο άμεση απόκριση σε μικρές αποστάσεις
+            creep.move(creep.pos.getDirectionTo(ret.path[0]));
+        } else {
+            creep.moveTo(targetPos, { reusePath: 0 }); // Hard reset κίνησης
+        }
     }
-}
 };
 
 /**
@@ -178,6 +178,7 @@ const roleManager = {
         for (const name in Game.creeps) {
             const creep = Game.creeps[name];
             if (creep.spawning) continue; 
+            
 
             try {
                 // Διαχωρισμός συμπεριφοράς βάσει του role στη μνήμη
@@ -206,7 +207,7 @@ const roleManager = {
      * Μεταφέρει τα ορυκτά στο Terminal ή το Storage.
      */
     runMiner: function(creep) { 
-        if (creep.spawning) return;
+        
         
         // Διαχείριση κατάστασης (Working = Παράδοση, !Working = Εξόρυξη)
         if (!creep.memory.working && creep.store.getFreeCapacity() === 0) {
@@ -324,7 +325,7 @@ const roleManager = {
                 s.structureType === STRUCTURE_ROAD && s.hits < s.hitsMax
             );
             if (road) creep.repair(road);
-            if (this.buildStructures(creep)) return; 
+            if (creep.memory.homeRoom!==creep.room.name && this.buildStructures(creep)) return; 
             // Επιστροφή στο Home Room
             if (travelToHomeRoom(creep)) return;
             
@@ -451,7 +452,7 @@ const roleManager = {
      * Πηγαίνει σε ένα δωμάτιο για να δώσει vision και αυτοκτονεί αφού καταγράψει δεδομένα.
      */
     runScout: function(creep) {
-        if (creep.spawning) return;
+        
         const targetRoom = creep.memory.targetRoom;
         if (!targetRoom) return;
 
@@ -479,7 +480,7 @@ const roleManager = {
      * Πολυμορφικό creep που γεμίζει Spawns, χτίζει ή αναβαθμίζει controller σε ξένα δωμάτια.
      */
     runSupporter: function(creep) { 
-        if(creep.spawning) return;
+      
         
         if(creep.ticksToLive < minTickToLive && getRecoveryContainerId(creep)) {
             creep.memory.role = "to_be_recycled";
@@ -556,7 +557,7 @@ const roleManager = {
      * Επικεντρώνεται στο χτίσιμο δομών και την αναβάθμιση του controller.
      */
     runBuilder: function(creep) {
-        if(creep.spawning) return;
+        
         if (travelToHomeRoom(creep)) return;
 
         if(creep.ticksToLive < minTickToLive && getRecoveryContainerId(creep)) {
@@ -675,7 +676,7 @@ const roleManager = {
      * Creep γενικής χρήσης για τα αρχικά στάδια.
      */
     runSimpleHarvester: function(creep) {
-        if (creep.spawning || travelToHomeRoom(creep)) return;
+        if ( travelToHomeRoom(creep)) return;
         
         if (creep.memory.working && creep.store[RESOURCE_ENERGY] === 0) creep.memory.working = false;
         if (!creep.memory.working && creep.store.getFreeCapacity() === 0) creep.memory.working = true;
@@ -694,7 +695,7 @@ const roleManager = {
      * Creep αποκλειστικά για την αναβάθμιση του Controller.
      */
     runUpgrader: function(creep) {
-        if (creep.spawning) return;
+        
         if(creep.ticksToLive < minTickToLive && getRecoveryContainerId(creep)) {
             creep.memory.role = "to_be_recycled"; return;
         }
@@ -726,7 +727,7 @@ const roleManager = {
      * Παραμένει πάνω σε ένα container και σκάβει συνεχώς ένα source.
      */
     runStaticHarvester: function(creep) { 
-        if (creep.spawning) return;
+        
         if(!creep.memory.sourceId) {
             const closest = creep.pos.findClosestByPath(FIND_SOURCES);
             if (closest) creep.memory.sourceId = closest.id;

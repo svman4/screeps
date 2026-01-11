@@ -11,7 +11,7 @@ const STORE_LIMITS = {
 
 const MARKET_CONFIG = {
     // Ελάχιστη ποσότητα για να κάνουμε deal (αποφεύγει το bug της 1 μονάδας)
-    MIN_DEAL_AMOUNT: 100,
+    MIN_DEAL_AMOUNT: 40,
     
     // Μέγιστο Ratio Κόστους Μεταφοράς (Energy / Amount).
     // 0.6 σημαίνει: Για να στείλω 1000 items, δέχομαι να πληρώσω μέχρι 600 Energy.

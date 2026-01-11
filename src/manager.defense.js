@@ -1,4 +1,5 @@
 var towerController = {
+    
     /**
      * Η κύρια συνάρτηση ελέγχου των Towers σε ένα συγκεκριμένο δωμάτιο.
      * @param {string} roomName - Το όνομα του δωματίου που πρέπει να διαχειριστεί.
@@ -6,7 +7,11 @@ var towerController = {
     run: function(roomName) {
         const room = Game.rooms[roomName];
         if (!room) return;
-
+       if (Game.time % 4000 === 0) {
+           this.refreshWallThreshold(room);
+          
+           
+       }
         const towers = room.find(FIND_MY_STRUCTURES, {
             filter: { structureType: STRUCTURE_TOWER }
         });
@@ -50,6 +55,7 @@ var towerController = {
             }
         }
     },
+    
 
     /**
      * Βρίσκει τον καλύτερο στόχο για επίθεση
@@ -128,7 +134,7 @@ var towerController = {
                 // Προστατευμένες δομές (τείχη/ramparts) - δυναμικά όρια
                 if (structure.structureType === STRUCTURE_WALL || 
                     structure.structureType === STRUCTURE_RAMPART) {
-                    const limit = this.calculateWallLimit(room.controller ? room.controller.level : 1);
+                    const limit = this.calculateWallLimit(room,room.controller ? room.controller.level : 1);
                     return structure.hits < limit;
                 }
 
@@ -181,17 +187,43 @@ var towerController = {
 
         return priorities[structure.structureType] || 5;
     },
-
+    refreshWallThreshold:function(room) {
+        if (!room) {
+            return;
+        }
+        const step = 1000;
+        
+        
+        const walls = room.find(FIND_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART });
+        if (walls.length===0) {
+            return;
+        }
+        let hits_minimum_value=  _.min(walls, 'hits').hits;
+        hits_minimum_value = Math.floor(hits_minimum_value / step) * step;
+        if(room.controller.level===8) {
+            
+            hits_minimum_value+=1000;
+            hits_minimum_value=Math.min(hits_minimum_value,100000000);
+            
+        } else {
+            hits_minimum_value=100000*room.controller.level/7;
+        }
+        if(!Memory.rooms[room.name]) Memory.rooms[room.name] = {};
+        Memory.rooms[room.name].wallLimit = hits_minimum_value;
+        
+        console.log(room.name+"_"+ room.controller.level+" hit "+room.memory.wallLimit);
+    },
     /**
      * Υπολογίζει το όριο hits για τα τείχη/ramparts ανάλογα με το επίπεδο του controller
      */
-    calculateWallLimit: function(controllerLevel) {
+    calculateWallLimit: function(room,controllerLevel) {
         // Δυναμικό όριο που αυξάνεται με το επίπεδο
-        const baseLimit = 10000;
-        const maxLimit=95000;
-        const multiplier = controllerLevel * 50000;
-        
-        return Math.min(baseLimit + multiplier, maxLimit); // Μέγιστο όριο 100K για απόδοση
+        let limit=20000;
+        if(room && room.memory.wallLimit) {
+            limit=room.memory.wallLimit;
+        }
+     
+        return limit;
     },
 
     /**

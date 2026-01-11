@@ -206,12 +206,12 @@ var towerController = {
             hits_minimum_value=Math.min(hits_minimum_value,100000000);
             
         } else {
-            hits_minimum_value=100000*room.controller.level/7;
+            hits_minimum_value=15000*room.controller.level;
         }
         if(!Memory.rooms[room.name]) Memory.rooms[room.name] = {};
         Memory.rooms[room.name].wallLimit = hits_minimum_value;
         
-        console.log(room.name+"_"+ room.controller.level+" hit "+room.memory.wallLimit);
+        //console.log(room.name+"_"+ room.controller.level+" hit "+room.memory.wallLimit);
     },
     /**
      * Υπολογίζει το όριο hits για τα τείχη/ramparts ανάλογα με το επίπεδο του controller

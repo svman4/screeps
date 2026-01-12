@@ -28,7 +28,7 @@ const respawController = {
         if (!room) return;
         
         const roomMemory = Memory.rooms[roomName];
-        if (!roomMemory || !roomMemory.populationLimits || Game.time%30===0) {
+        if (!roomMemory || !roomMemory.populationLimits || Game.time%3000===0) {
             initPopulation(roomName);
         }
         
@@ -79,11 +79,11 @@ const respawController = {
 
         // 3. ΤΡΙΤΗ ΠΡΟΤΕΡΑΙΟΤΗΤΑ: ΑΝΑΠΤΥΞΗ (Local Growth)
         if (this.needUpgrader(population, populationLimit)) {
-            return this.createUpgrader(spawn, roomName, rcl);
+            return this.createUpgrader(spawn, roomName, rcl,2000);
         }
         
         if (this.needBuilder(room, population, populationLimit)) {
-            return this.createBuilder(spawn, roomName, rcl);
+            return this.createBuilder(spawn, roomName, rcl,2000);
         }
         if (this.lookForMiner(spawn,room,rcl)===true) return;
         
@@ -506,14 +506,17 @@ function initPopulation(roomName) {
     room.memory.populationLimits.SIMPLE_HARVESTER=1;
     
     room.memory.populationLimits.STATIC_HARVESTER= sourceCount;
-    room.memory.populationLimits.HAULER= sourceCount ;
+    room.memory.populationLimits.HAULER= 1+sourceCount/2 ;
     if (room.controller.level===8 ) {
         room.memory.populationLimits.UPGRADER= 0;
         room.memory.populationLimits.BUILDER= 1;
     } else {
-        
         room.memory.populationLimits.UPGRADER= 1;
-        room.memory.populationLimits.BUILDER= sourceCount+1;
+        if(room.storage && room.storage.store[RESOURCE_ENERGY] > 500000) {
+            room.memory.populationLimits.BUILDER= sourceCount+2;
+        } else {
+            room.memory.populationLimits.BUILDER= sourceCount+1;
+        }
     }
     room.memory.populationLimits.lastRcl=room.controller.level;
     

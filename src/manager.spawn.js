@@ -26,9 +26,9 @@ const respawController = {
 
         const room = Game.rooms[roomName];
         if (!room) return;
-
+        
         const roomMemory = Memory.rooms[roomName];
-        if (!roomMemory || !roomMemory.populationLimits) {
+        if (!roomMemory || !roomMemory.populationLimits || Game.time%30===0) {
             initPopulation(roomName);
         }
         
@@ -377,8 +377,8 @@ const respawController = {
     },
     
     needBuilder: function(room, population, populationMax) {
-        const hasWork = room.find(FIND_CONSTRUCTION_SITES).length > 0;
-        return hasWork && population[ROLES.BUILDER] < populationMax.BUILDER;
+        
+        return population[ROLES.BUILDER] < populationMax.BUILDER;
     },
 
     // --- SPAWN CREATION ---
@@ -503,17 +503,39 @@ function initPopulation(roomName) {
     const room = Game.rooms[roomName];
     if (!room) return;
     const sourceCount = room.find(FIND_SOURCES).length;
-    room.memory.populationLimits = {
-        SIMPLE_HARVESTER: 1,
-        STATIC_HARVESTER: sourceCount,
-        HAULER: sourceCount ,
-        UPGRADER: sourceCount,
-        BUILDER: 1,
-        LD_HARVESTER: 0,
-        CLAIMER: 0,
-        SCOUT: 0,
-        SUPPORTER: 0
-    };
+    room.memory.populationLimits.SIMPLE_HARVESTER=1;
+    
+    room.memory.populationLimits.STATIC_HARVESTER= sourceCount;
+    room.memory.populationLimits.HAULER= sourceCount ;
+    if (room.controller.level===8 ) {
+        room.memory.populationLimits.UPGRADER= 0;
+        room.memory.populationLimits.BUILDER= 1;
+    } else {
+        
+        room.memory.populationLimits.UPGRADER= 1;
+        room.memory.populationLimits.BUILDER= sourceCount+1;
+    }
+    room.memory.populationLimits.lastRcl=room.controller.level;
+    
+    
+    // room.memory.populationLimits.LD_HARVESTER= 0;
+    // room.memory.populationLimits.CLAIMER= 0;
+    // room.memory.populationLimits.SCOUT= 0;
+    // room.memory.populationLimits.SUPPORTER= 0;
+    
+    
+    
+    // room.memory.populationLimits = {
+    //     SIMPLE_HARVESTER: 1,
+    //     STATIC_HARVESTER: sourceCount,
+    //     HAULER: sourceCount ,
+    //     UPGRADER: sourceCount,
+    //     BUILDER: 1,
+    //     LD_HARVESTER: 0,
+    //     CLAIMER: 0,
+    //     SCOUT: 0,
+    //     SUPPORTER: 0
+    // };
 }
 
 module.exports = respawController;

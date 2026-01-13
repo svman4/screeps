@@ -45,7 +45,7 @@ const constructionManager = {
     run: function(roomName) {
         const room = Game.rooms[roomName];
         if (!room || !room.controller || !room.controller.my) return;
-        //return;
+        return;
         // Αρχικοποίηση μνήμης
         this.initRoomMemory(roomName);
 

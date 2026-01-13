@@ -124,13 +124,14 @@ const market = {
             // 4. Εκτέλεση Deal (αν βρέθηκε valid order)
             if (bestOrder) {
                 const result = Game.market.deal(bestOrder.id, finalDealAmount, roomName);
-
+            
                 if (result === OK) {
+                    const buyerName = bestOrder.owner ? bestOrder.owner.username : "NPC/Unknown";
                     const msg = `💰 LIQUIDATION -- ${resourceType} -- από ${roomName}: ` +
                                 `Πουλήθηκαν ${finalDealAmount} με τιμή ${bestOrder.price}. ` +
-                                `Buyer Room: ${bestOrder.roomName}`;
+                                `Buyer: ${buyerName} (${bestOrder.roomName})`;
                     console.log(msg);
-                    return; // Ένα deal ανά run είναι αρκετό
+                    return; 
                 }
             }
         }
@@ -235,9 +236,11 @@ const market = {
             const result = Game.market.deal(bestOrder.id, bestOrder.amountToDeal, roomName);
 
             if (result === OK) {
-                const msg = `ΑΓΟΡΑ ${resourceType} στο ${roomName}: ` +
+                const sellerName = bestOrder.owner ? bestOrder.owner.username : "NPC/Unknown";
+                const msg = `🛒 ΑΓΟΡΑ ${resourceType} στο ${roomName}: ` +
                             `Ποσότητα: ${bestOrder.amountToDeal}. ` +
                             `Τιμή: ${bestOrder.price}. ` +
+                            `Seller: ${sellerName} (${bestOrder.roomName}). ` +
                             `Κόστος Μεταφοράς: ${bestOrder.txCost} Energy.`;
                 console.log(msg);
                 Game.notify(msg, 60);
@@ -284,8 +287,11 @@ const market = {
         if (bestOrder) {
             const result = Game.market.deal(bestOrder.id, bestOrder.amountToDeal, roomName);
             if (result === OK) {
-                const currentCredits = Game.market.credits.toFixed(3); 
-                const msg = `ΠΩΛΗΣΗ ΕΝΕΡΓΕΙΑΣ στο ${roomName}: ${bestOrder.amountToDeal} @ ${bestOrder.price}. Total: ${currentCredits}`;
+                const buyerName = bestOrder.owner ? bestOrder.owner.username : "NPC/Unknown";
+                const currentCredits = Game.market.credits.toFixed(2); 
+                const msg = `⚡ ΠΩΛΗΣΗ ΕΝΕΡΓΕΙΑΣ στο ${roomName}: ` +
+                            `${bestOrder.amountToDeal} units @ ${bestOrder.price} στον ${buyerName}. ` +
+                            `Total Credits: ${currentCredits}`;
                 console.log(msg);
                 Game.notify(msg, 60);
             }

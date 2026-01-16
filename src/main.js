@@ -1,5 +1,5 @@
 // main.js
-// Version 1.0.3
+// Version 1.1.0
 var spawnManager = require('manager.spawn');
 var defenceManager = require('manager.defense');
 var constructionManager = require('manager.construction');
@@ -32,7 +32,7 @@ var pixels=require('manager.pixels');
         // Μορφοποίηση χιλιάδων
         const formattedRemaining = remaining.toLocaleString('el-GR');
         
-        // Προσθήκη του Level [Lvl X] στην αρχή της γραμμής
+        
         answer += `Room ${room.name}: [Lvl ${controller.level}] -> ${formattedRemaining} left (${progressPercent.toFixed(2)}% done)\n`;
     }
     

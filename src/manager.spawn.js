@@ -79,11 +79,11 @@ const respawController = {
 
         // 3. ΤΡΙΤΗ ΠΡΟΤΕΡΑΙΟΤΗΤΑ: ΑΝΑΠΤΥΞΗ (Local Growth)
         if (this.needUpgrader(population, populationLimit)) {
-            return this.createUpgrader(spawn, roomName, rcl,1500);
+            return this.createUpgrader(spawn, roomName, rcl,1200);
         }
         
         if (this.needBuilder(room, population, populationLimit)) {
-            return this.createBuilder(spawn, roomName, rcl,1500);
+            return this.createBuilder(spawn, roomName, rcl,1200);
         }
         if (this.lookForMiner(spawn,room,rcl)===true) return;
         

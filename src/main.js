@@ -1,5 +1,5 @@
 // main.js
-// Version 1.0.2
+// Version 1.0.3
 var spawnManager = require('manager.spawn');
 var defenceManager = require('manager.defense');
 var constructionManager = require('manager.construction');
@@ -9,7 +9,35 @@ const militaryController = require('manager.military');
 var roleManager = require('manager.role');
 var market=require('manager.market');
 var pixels=require('manager.pixels');
- 
+ global.RoomInfo = function() {
+    let answer = "\n--- 🏰 Controller Progress Report ---\n";
+    
+    // Φιλτράρουμε τα δωμάτια που μας ανήκουν και έχουμε ορατότητα
+    const myRooms = Object.values(Game.rooms).filter(r => r.controller && r.controller.my);
+    
+    if (myRooms.length === 0) return "No rooms with active visibility found.";
+
+    for (const room of myRooms) {
+        const controller = room.controller;
+        
+        // Αν είναι Level 8, δεν υπάρχει πρόοδος προς το επόμενο level
+        if (controller.level === 8) {
+            answer += `Room ${room.name}: [Lvl ${controller.level}] - Max Level ✨\n`;
+            continue;
+        }
+
+        const remaining = controller.progressTotal - controller.progress;
+        const progressPercent = (controller.progress / controller.progressTotal) * 100;
+        
+        // Μορφοποίηση χιλιάδων
+        const formattedRemaining = remaining.toLocaleString('el-GR');
+        
+        // Προσθήκη του Level [Lvl X] στην αρχή της γραμμής
+        answer += `Room ${room.name}: [Lvl ${controller.level}] -> ${formattedRemaining} left (${progressPercent.toFixed(2)}% done)\n`;
+    }
+    
+    return answer;
+};
 global.roomBlueprints = {
     E11N38: require('E11N38'),
     E12N38: require('E12N38')
@@ -106,4 +134,4 @@ function showRoomInfo(room) {
     if (Memory.energyQueue && Memory.energyQueue[room.name]) {
         logisticsManager.showQueueInfo(room);
     }
-}
+}; // end of showRoomInfo(room)

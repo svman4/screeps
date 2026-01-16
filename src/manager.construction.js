@@ -45,7 +45,12 @@ const constructionManager = {
     run: function(roomName) {
         const room = Game.rooms[roomName];
         if (!room || !room.controller || !room.controller.my) return;
-        return;
+        // ✅ ΚΡΙΣΙΜΟΣ ΕΛΕΓΧΟΣ: Αν δεν υπάρχει blueprint για αυτό το δωμάτιο, σταμάτα εδώ
+        if (!global.roomBlueprints || !global.roomBlueprints[roomName]) {
+         
+            // console.log(`⚠️ Δεν υπάρχει blueprint για το ${roomName} - Παράλειψη construction manager`);
+            return;
+        }
         // Αρχικοποίηση μνήμης
         this.initRoomMemory(roomName);
 

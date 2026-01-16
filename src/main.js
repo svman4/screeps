@@ -1,5 +1,5 @@
 // main.js
-// Version 1.0.1
+// Version 1.0.2
 var spawnManager = require('manager.spawn');
 var defenceManager = require('manager.defense');
 var constructionManager = require('manager.construction');

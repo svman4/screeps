@@ -130,6 +130,20 @@ class BaseRole {
     }
 
     checkYield() {
+        // 1. Έλεγχος αν υπάρχει κάποιος που θέλει να περάσει
+        const priorityRoles = ['LDHarvester', 'hauler', 'supporter'];
+        const blocker = this.creep.pos.findInRange(FIND_MY_CREEPS, 1).find(
+            c => {
+                // Εδώ ορίζεις ποιοι ρόλοι έχουν "προτεραιότητα" (Priority Roles)
+            
+                return c.id !== this.creep.id && 
+                    priorityRoles.includes(c.memory.role) && 
+                    c.fatigue === 0; // Μόνο αν μπορεί να κινηθεί
+                }
+            );
+
+    // Αν δεν υπάρχει Hauler κοντά, μην κάνεις yield
+    if (!blocker) return false;
         if (movementManager.isBlockingPath(this.creep)) {
             const directions = [TOP, TOP_RIGHT, RIGHT, BOTTOM_RIGHT, BOTTOM, BOTTOM_LEFT, LEFT, TOP_LEFT];
             for (let dir of directions) {

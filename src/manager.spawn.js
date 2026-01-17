@@ -16,7 +16,7 @@ const ROLES = {
     MINER: "miner"
 };
 
-const SUPPORTER_LIMIT_PER_ROOM = 1;
+const SUPPORTER_LIMIT_PER_ROOM = 2;
 const REMOTE_SPAWNING_STORE_LIMIT=600000
 const respawController = {
     

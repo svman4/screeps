@@ -1,6 +1,5 @@
 /*
  * File: manager.movement.js
- * Λειτουργία: Κεντρική διαχείριση κίνησης και Pathfinding (CostMatrix Cache).
  */
 
 let matrixCache = {}; 
@@ -8,11 +7,7 @@ let lastMatrixUpdate = {};
 
 const movementManager = {
 
-    /**
-     * Επιστρέφει το CostMatrix για ένα δωμάτιο (με Caching).
-     */
     getRoomCostMatrix: function(roomName) {
-        // Ανανέωση κάθε 50 ticks για να πιάνει νέα construction sites
         if (matrixCache[roomName] && lastMatrixUpdate[roomName] > Game.time - 50) {
             return matrixCache[roomName];
         }
@@ -22,7 +17,6 @@ const movementManager = {
 
         const costs = new PathFinder.CostMatrix;
 
-        // 1. Δρόμοι και Δομές
         room.find(FIND_STRUCTURES).forEach(function(struct) {
             if (struct.structureType === STRUCTURE_ROAD) {
                 costs.set(struct.pos.x, struct.pos.y, 1);
@@ -32,45 +26,35 @@ const movementManager = {
             }
         });
 
-        // 2. Construction Sites (ώστε να μην κολλάνε τα creeps σε μελλοντικά κτίρια)
-        room.find(FIND_MY_CONSTRUCTION_SITES).forEach(function(site) {
-             if (site.structureType !== STRUCTURE_ROAD && 
-                 site.structureType !== STRUCTURE_CONTAINER && 
-                 site.structureType !== STRUCTURE_RAMPART) {
-                 costs.set(site.pos.x, site.pos.y, 0xff);
-             }
+        room.find(FIND_CONSTRUCTION_SITES).forEach(function(site) {
+            if (site.structureType !== STRUCTURE_ROAD && 
+                site.structureType !== STRUCTURE_CONTAINER && 
+                site.structureType !== STRUCTURE_RAMPART) {
+                costs.set(site.pos.x, site.pos.y, 0xff);
+            }
         });
 
         matrixCache[roomName] = costs;
         lastMatrixUpdate[roomName] = Game.time;
-
         return costs;
     },
 
-    /**
-     * Κεντρική συνάρτηση έξυπνης κίνησης.
-     * @param {Creep} creep 
-     * @param {Object|RoomPosition} targetObj 
-     * @param {number} range 
-     */
-    smartMove: function(creep, targetObj, range = 1) {
-        if (creep.fatigue > 0) return;
+    smartMove: function(creep, target, range = 1) {
+        if (!target) return ERR_INVALID_TARGET;
+        const targetPos = target.pos || target;
 
-        // Διαχείριση target (είτε είναι Object με .pos είτε σκέτο RoomPosition)
-        const targetPos = targetObj.pos || targetObj;
+        if (creep.pos.inRangeTo(targetPos, range)) return OK;
 
-        if (creep.pos.inRangeTo(targetPos, range)) return;
-
-        // --- Stuck Detection Logic ---
-        if (!creep.memory._lastPos || creep.memory._lastPos.x !== creep.pos.x || creep.memory._lastPos.y !== creep.pos.y) {
-            creep.memory._lastPos = { x: creep.pos.x, y: creep.pos.y };
-            creep.memory._stuckCount = 0;
-        } else {
+        // Stuck detection
+        const lastPos = creep.memory._lastPos;
+        if (lastPos && lastPos.x === creep.pos.x && lastPos.y === creep.pos.y && lastPos.roomName === creep.pos.roomName) {
             creep.memory._stuckCount = (creep.memory._stuckCount || 0) + 1;
+        } else {
+            creep.memory._stuckCount = 0;
+            creep.memory._lastPos = { x: creep.pos.x, y: creep.pos.y, roomName: creep.pos.roomName };
         }
 
-        // Αν το creep έχει κολλήσει για >= 2 ticks, ενεργοποιούμε την αποφυγή άλλων creeps
-        const isStuck = creep.memory._stuckCount >= 2;
+        const isStuck = creep.memory._stuckCount > 2;
 
         const ret = PathFinder.search(
             creep.pos, 
@@ -80,19 +64,12 @@ const movementManager = {
                 swampCost: 10,
                 roomCallback: (roomName) => {
                     let costs = this.getRoomCostMatrix(roomName);
-
-                    // Αν έχει κολλήσει, κλωνοποιούμε το matrix και προσθέτουμε τα creeps ως εμπόδια
                     if (isStuck) {
                         costs = costs.clone();
                         const room = Game.rooms[roomName];
                         if (room) {
                             room.find(FIND_CREEPS).forEach(c => {
-                                if (c.id !== creep.id) {
-                                    costs.set(c.pos.x, c.pos.y, 0xff);
-                                }
-                            });
-                            room.find(FIND_POWER_CREEPS).forEach(c => {
-                                costs.set(c.pos.x, c.pos.y, 0xff);
+                                if (c.id !== creep.id) costs.set(c.pos.x, c.pos.y, 0xff);
                             });
                         }
                     }
@@ -103,13 +80,29 @@ const movementManager = {
         );
 
         if (ret.path.length > 0) {
-            // Ανίχνευση κατεύθυνσης για την επόμενη κίνηση
-            const direction = creep.pos.getDirectionTo(ret.path[0]);
-            creep.move(direction);
+            const nextStep = ret.path[0];
+            // Καταγραφή επόμενου βήματος για το Yield logic
+            creep.memory._nextStep = { x: nextStep.x, y: nextStep.y, t: Game.time };
+            
+            const direction = creep.pos.getDirectionTo(nextStep);
+            return creep.move(direction);
         } else {
-            // Fallback
-            creep.moveTo(targetPos, { reusePath: 0 }); 
+            return creep.moveTo(targetPos, { reusePath: 10, visualizePathStyle: {stroke: '#ffaa00'} });
         }
+    },
+
+    // Ελέγχει αν κάποιο άλλο creep θέλει να πατήσει εδώ που είμαστε
+    isBlockingPath: function(creep) {
+        const scanner = creep.pos.findInRange(FIND_MY_CREEPS, 1, {
+            filter: (c) => {
+                return c.id !== creep.id && 
+                       c.memory._nextStep && 
+                       c.memory._nextStep.t === Game.time &&
+                       c.memory._nextStep.x === creep.pos.x && 
+                       c.memory._nextStep.y === creep.pos.y;
+            }
+        });
+        return scanner.length > 0;
     }
 };
 

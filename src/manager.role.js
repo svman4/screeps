@@ -46,15 +46,40 @@ class BaseRole {
         return this.gotoHarvesting();
     }
 
-    getEnergyFromContainersorStorage() {
+    /**
+     * Τροποποιημένη μέθοδος για να δέχεται resourceType.
+     * Αν δεν οριστεί, παίρνει RESOURCE_ENERGY.
+     */
+    getEnergyFromContainersorStorage(resource = RESOURCE_ENERGY) {
         const target = this.creep.pos.findClosestByPath(FIND_STRUCTURES, {
             filter: s => (s.structureType === STRUCTURE_CONTAINER || s.structureType === STRUCTURE_STORAGE) &&
-                         s.store[RESOURCE_ENERGY] > 100
+                         s.store[resource] > 0
         });
         if (target) {
-            if (this.creep.pos.inRangeTo(target, 1)) this.creep.withdraw(target, RESOURCE_ENERGY);
+            if (this.creep.pos.inRangeTo(target, 1)) this.creep.withdraw(target, resource);
             else movementManager.smartMove(this.creep, target, 1);
             return true;
+        }
+        return false;
+    }
+
+    /**
+     * Νέα μέθοδος: Ψάχνει containers για οτιδήποτε ΔΕΝ είναι ενέργεια (Minerals).
+     */
+    getAnyMineralFromContainers() {
+        const target = this.creep.pos.findClosestByPath(FIND_STRUCTURES, {
+            filter: s => (s.structureType === STRUCTURE_CONTAINER) && 
+                         Object.keys(s.store).some(res => res !== RESOURCE_ENERGY && s.store[res] > 0)
+        });
+
+        if (target) {
+            // Βρίσκουμε ποιο mineral είναι μέσα
+            const resourceType = Object.keys(target.store).find(res => res !== RESOURCE_ENERGY && target.store[res] > 0);
+            if (resourceType) {
+                if (this.creep.pos.inRangeTo(target, 1)) this.creep.withdraw(target, resourceType);
+                else movementManager.smartMove(this.creep, target, 1);
+                return true;
+            }
         }
         return false;
     }
@@ -130,25 +155,19 @@ class BaseRole {
     }
 
     checkYield() {
-        // 1. Έλεγχος αν υπάρχει κάποιος που θέλει να περάσει
         const priorityRoles = ['LDHarvester', 'hauler', 'supporter'];
         const blocker = this.creep.pos.findInRange(FIND_MY_CREEPS, 1).find(
             c => {
-                // Εδώ ορίζεις ποιοι ρόλοι έχουν "προτεραιότητα" (Priority Roles)
-            
                 return c.id !== this.creep.id && 
                     priorityRoles.includes(c.memory.role) && 
-                    c.fatigue === 0; // Μόνο αν μπορεί να κινηθεί
+                    c.fatigue === 0; 
                 }
             );
 
-    // Αν δεν υπάρχει Hauler κοντά, μην κάνεις yield
-    if (!blocker) return false;
+        if (!blocker) return false;
         if (movementManager.isBlockingPath(this.creep)) {
             const directions = [TOP, TOP_RIGHT, RIGHT, BOTTOM_RIGHT, BOTTOM, BOTTOM_LEFT, LEFT, TOP_LEFT];
             for (let dir of directions) {
-                const pos = this.creep.pos.getPositionAtDirection ? this.creep.pos.getPositionAtDirection(dir) : null; 
-                // Fallback αν δεν υπάρχει helper
                 const nx = this.creep.pos.x + (dir === RIGHT || dir === TOP_RIGHT || dir === BOTTOM_RIGHT ? 1 : dir === LEFT || dir === TOP_LEFT || dir === BOTTOM_LEFT ? -1 : 0);
                 const ny = this.creep.pos.y + (dir === BOTTOM || dir === BOTTOM_RIGHT || dir === BOTTOM_LEFT ? 1 : dir === TOP || dir === TOP_RIGHT || dir === TOP_LEFT ? -1 : 0);
                 
@@ -174,6 +193,8 @@ class BaseRole {
 /**
  * --- Ρόλοι (Child Classes) ---
  */
+
+// ... (Οι υπόλοιπες κλάσεις Harvester, Upgrader κλπ παραμένουν ίδιες) ...
 
 class Harvester extends BaseRole {
     run() {
@@ -267,7 +288,6 @@ class LDHarvester extends BaseRole {
             if (this.travelToHomeRoom()) return;
             if (this.fillSpawnExtension()) return;
             
-            // Fill Storage/Container logic
             const target = this.creep.pos.findClosestByPath(FIND_STRUCTURES, {
                 filter: s => (s.structureType === STRUCTURE_CONTAINER || s.structureType === STRUCTURE_STORAGE) && s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
             });
@@ -344,24 +364,45 @@ class Claimer extends BaseRole {
     }
 }
 
+/**
+ * --- ΕΝΗΜΕΡΩΜΕΝΟΣ MINER ---
+ */
 class Miner extends BaseRole {
     run() {
+        // Καθορισμός κατάστασης: working (παράδοση) ή όχι (συλλογή)
         if (!this.creep.memory.working && this.creep.store.getFreeCapacity() === 0) this.creep.memory.working = true;
         if (this.creep.memory.working && this.creep.store.getUsedCapacity() === 0) this.creep.memory.working = false;
 
         if (!this.creep.memory.working) {
+            // 1. Προτεραιότητα: Έλεγχος containers για Minerals που πρέπει να αδειάσουν
+            if (this.getAnyMineralFromContainers()) {
+                //this.creep.say('💎 collect');
+                return;
+            }
+
+            // 2. Αν δεν υπάρχουν minerals σε containers, πήγαινε στο Mineral Deposit για harvest
             const mineral = Game.getObjectById(this.creep.memory.mineralId) || this.creep.pos.findClosestByPath(FIND_MINERALS);
             if (mineral) {
                 this.creep.memory.mineralId = mineral.id;
-                if (!this.creep.pos.inRangeTo(mineral, 1)) movementManager.smartMove(this.creep, mineral, 1);
-                else this.creep.harvest(mineral);
+                // Ελέγχουμε αν το Mineral είναι διαθέσιμο (recharge time)
+                if (mineral.mineralAmount > 0) {
+                    if (!this.creep.pos.inRangeTo(mineral, 1)) movementManager.smartMove(this.creep, mineral, 1);
+                    else this.creep.harvest(mineral);
+                } else {
+                    this.creep.say('💤 waiting');
+                }
             }
         } else {
+            // Παράδοση σε Terminal (προτεραιότητα) ή Storage
             const target = this.creep.room.terminal || this.creep.room.storage;
             if (target) {
                 if (this.creep.pos.inRangeTo(target, 1)) {
-                    for (const res in this.creep.store) this.creep.transfer(target, res);
-                } else movementManager.smartMove(this.creep, target, 1);
+                    for (const res in this.creep.store) {
+                        this.creep.transfer(target, res);
+                    }
+                } else {
+                    movementManager.smartMove(this.creep, target, 1);
+                }
             }
         }
     }
@@ -396,7 +437,6 @@ const roleManager = {
             const creep = Game.creeps[name];
             if (creep.spawning) continue;
 
-            // Recycling check
             if (creep.ticksToLive < minTickToLive && creep.room.memory.recoveryContainerId) {
                 creep.memory.role = "to_be_recycled";
             }

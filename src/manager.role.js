@@ -411,6 +411,9 @@ class Miner extends BaseRole {
 class Scout extends BaseRole {
     run() {
         if (this.travelToTargetRoom()) return;
+        const targetRoom = this.creep.memory.targetRoom;
+        getInfoForNeighborRoom(targetRoom);
+        
         this.creep.suicide();
     }
 }

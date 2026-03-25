@@ -206,7 +206,10 @@ var towerController = {
             hits_minimum_value=Math.min(hits_minimum_value,100000000);
             
         } else {
-            hits_minimum_value=15000*room.controller.level;
+            hits_minimum_value+=1000;
+            hits_minimum_value=Math.min(hits_minimum_value,100000000);
+           // hits_minimum_value=15000*room.controller.level;
+           
         }
         if(!Memory.rooms[room.name]) Memory.rooms[room.name] = {};
         Memory.rooms[room.name].wallLimit = hits_minimum_value;

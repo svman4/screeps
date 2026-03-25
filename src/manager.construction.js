@@ -13,6 +13,7 @@ const constructionManager = {
     },
 
     run: function(roomName) {
+
         const room = Game.rooms[roomName];
         if (!room || !room.controller || !room.controller.my) return;
         
@@ -21,7 +22,7 @@ const constructionManager = {
 
         // 1. Αρχικοποίηση μνήμης (αν χρειάζεται)
         this.initRoomMemory(roomName);
-
+        
         // 2. Φόρτωση Blueprint (αν δεν έχει φορτωθεί ήδη)
         if (!this.hasBlueprint(roomName)) {
             this.loadBlueprintFromFile(roomName);
@@ -94,6 +95,7 @@ const constructionManager = {
         if (!constructionMemory || !constructionMemory.blueprint) return;
 
         const currentSites = room.find(FIND_MY_CONSTRUCTION_SITES);
+        
         if (currentSites.length >= this.constructionSitesMax) return; // Όριο sites
 
         const blueprint = constructionMemory.blueprint;
@@ -110,13 +112,13 @@ const constructionManager = {
                    s.rcl <= currentRCL &&
                    !this.siteExistsAt(currentSites, s.x, s.y);
         });
-
+        
         if (validStructure) {
             const screepsType = this.mapStructureType(validStructure.type);
             if (screepsType) {
                 const result = room.createConstructionSite(validStructure.x, validStructure.y, screepsType);
                 if (result === OK) {
-                    console.log(`🔨 New Construction Site: ${screepsType} at [${validStructure.x}, ${validStructure.y}]`);
+                    console.log(`${room.name} - 🔨 New Construction Site: ${screepsType} at [${validStructure.x}, ${validStructure.y}]`);
                 }
             }
         }
@@ -142,7 +144,8 @@ const constructionManager = {
     },
 
     initRoomMemory: function(roomName) {
-        if (!Memory.rooms[roomName]) Memory.rooms[roomName] = {};
+        if (!Memory.rooms[roomName]) 
+            Memory.rooms[roomName] = {};
         if (!Memory.rooms[roomName].construction) {
             Memory.rooms[roomName].construction = { blueprint: null, builtStructures: {} };
         }

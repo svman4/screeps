@@ -39,8 +39,8 @@ var pixels=require('manager.pixels');
     return answer;
 };
 global.roomBlueprints = {
-    E11N38: require('E11N38'),
-    E12N38: require('E12N38')
+    W7S6: require('W7S6'),
+    
 
     
 };

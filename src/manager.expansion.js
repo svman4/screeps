@@ -106,9 +106,9 @@ const expansionManager = {
 
         // Φάση 1: Διάβασμα αποτελεσμάτων Observer (από το προηγούμενο tick)
         this.observerRead(hasGCL);
-
+        
         // Φάση 2: Βαριές εργασίες (Κάθε 500 ticks)
-        if (Game.time % 500 === 0) {
+        if (Game.time % 100000 === 0) {
             const allTargets = this.getUniqueNeighbors(myRoomsName, 2);
             this.refreshQueue(allTargets);
             cleanMemoryRooms(myRoomsName, allTargets);

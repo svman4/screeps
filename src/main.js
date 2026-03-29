@@ -39,7 +39,8 @@ var pixels=require('manager.pixels');
     return answer;
 };
 global.roomBlueprints = {
-    W7S6: require('W7S6'),
+   
+    E12S28:require('E12S28')
     
 
     
@@ -88,7 +89,7 @@ module.exports.loop = function () {
         }
     }
     
-    expansionManager.run();
+    //expansionManager.run();
     pixels.run();
     if (Game.time % 10 === 0) {
         var endCpu = Game.cpu.getUsed();

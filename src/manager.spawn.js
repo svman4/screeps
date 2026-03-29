@@ -166,7 +166,9 @@ const respawController = {
             if (this.isRoomWithinRange(roomName, scoutTarget, MAX_SCOUT_DISTANCE)) {
                 const existingScout = _.find(Game.creeps, c => c.memory.role === ROLES.SCOUT && c.memory.targetRoom === scoutTarget);
                 if (!existingScout) {
+                    //console.log("tet +" +scoutTarget+ "   "+Memory.rooms[scoutTarget].scoutNeeded);
 					Memory.rooms[scoutTarget].scoutNeeded=false;
+					//console.log("tet3213131 +" +scoutTarget+ "   "+Memory.rooms[scoutTarget].scoutNeeded);
                     console.log(`🔭 ${roomName}: Spawning Scout for ${scoutTarget} (Distance: ${Game.map.getRoomLinearDistance(roomName, scoutTarget)})`);
                     return this.createScout(spawn, roomName, scoutTarget) === OK;
                 }

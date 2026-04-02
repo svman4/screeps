@@ -2,7 +2,7 @@
 const MIN_RCL_FOR_ROADS = 2;
 const SCAN_INTERVALS = {
     UPDATE_BUILT_CACHE: 30,
-    CHECK_CONSTRUCTION_SITES: 50
+    CHECK_CONSTRUCTION_SITES: 60
 };
 
 /**
@@ -32,15 +32,26 @@ const constructionManager = {
         NUKER: 30,
         OBSERVER: 20,
         ROAD: 10,
-        RAMPART: 5,
-        WALL: 1
+        RAMPART: 1,
+        WALL: 5
+    },
+
+    /**
+     * Επίπεδα RCL ανά ποσότητα κτιρίων (π.χ. το 1ο spawn στο rcl 1, το 2ο στο rcl 7)
+     */
+    STRUCTURE_RCL_STEPS: {
+        'spawn': [1, 7, 8],
+        'tower': [3, 5, 7, 8, 8, 8],
+        'extension': {
+            1: 0, 2: 5, 3: 10, 4: 20, 5: 30, 6: 40, 7: 50, 8: 60
+        },
+        'link': [5, 5, 6, 7, 8, 8],
+        'lab': [6, 6, 6, 7, 7, 8, 8, 8, 8, 8]
     },
 
     run: function (roomName) {
         const room = Game.rooms[roomName];
         if (!room || !room.controller || !room.controller.my) return;
-
-        if (!global.roomBlueprints || !global.roomBlueprints[roomName]) return;
 
         this.initRoomMemory(roomName);
 
@@ -51,7 +62,7 @@ const constructionManager = {
         if (Game.time % SCAN_INTERVALS.UPDATE_BUILT_CACHE === 0) {
             this.updateBuiltStructures(room);
         }
-
+			
         if (Game.time % SCAN_INTERVALS.CHECK_CONSTRUCTION_SITES === 0) {
             this.buildMissingStructures(room);
         }
@@ -61,10 +72,6 @@ const constructionManager = {
         }
     },
 
-    /**
-     * VISUALIZATION
-     * Εμφανίζει το blueprint και το priority score.
-     */
     visualizeBlueprint: function (roomName) {
         const constructionMemory = Memory.rooms[roomName].construction;
         if (!constructionMemory || !constructionMemory.blueprint) return;
@@ -82,64 +89,54 @@ const constructionManager = {
             let color = isBuilt ? '#00ff00' : (canBuild ? '#ffff00' : '#ff0000');
             let opacity = isBuilt ? 0.1 : 0.5;
 
-            // Σχεδίαση σχήματος
             if (s.type === 'road') {
                 visual.circle(s.x, s.y, { radius: 0.15, fill: color, opacity: opacity });
             } else if (['container', 'storage', 'terminal', 'factory'].includes(s.type)) {
                 visual.rect(s.x - 0.35, s.y - 0.35, 0.7, 0.7, { stroke: color, strokeWidth: 0.05, opacity: opacity, fill: 'transparent' });
-            } else if (s.type === 'rampart' || s.type === 'constructedWall') {
-                visual.rect(s.x - 0.5, s.y - 0.5, 1, 1, { fill: color, opacity: 0.1 });
             } else {
                 visual.circle(s.x, s.y, { radius: 0.4, stroke: color, strokeWidth: 0.05, opacity: opacity, fill: 'transparent' });
             }
 
-            // Εμφάνιση Score Προτεραιότητας αν δεν έχει χτιστεί
-            if (!isBuilt && canBuild) {
-                visual.text(s.score, s.x, s.y + 0.2, { color: color, size: 0.3, opacity: 0.8 });
+            if (!isBuilt) {
+                if (!canBuild) {
+                    visual.text(`R${s.rcl}`, s.x, s.y, { color: '#ff0000', size: 0.4 });
+                } else {
+                    visual.text(s.score.toFixed(0), s.x, s.y + 0.2, { color: color, size: 0.3, opacity: 0.8 });
+                }
             }
         }
     },
 
-    /**
-     * LOGIC: Δημιουργία Construction Sites
-     */
     buildMissingStructures: function (room) {
         const constructionMemory = Memory.rooms[room.name].construction;
         if (!constructionMemory || !constructionMemory.blueprint) return false;
-
+		
         const currentSites = room.find(FIND_MY_CONSTRUCTION_SITES);
         if (currentSites.length >= MAX_CONCURRENT_SITES) return false;
-
+	
         const blueprint = constructionMemory.blueprint;
         const builtStructures = constructionMemory.builtStructures || {};
         const currentRCL = room.controller.level;
-
-        // Ταξινομούμε εκ νέου αν χρειάζεται (αν και είναι ήδη ταξινομημένα από το load)
-        // Εδώ επιλέγουμε το πρώτο διαθέσιμο βάσει της ήδη υπάρχουσας ταξινόμησης
+	
+        // Επιλογή του πρώτου στη λίστα (υψηλότερο score) που επιτρέπεται από το RCL
         const validStructure = blueprint.find(s => {
             const posKey = `${s.x},${s.y}`;
             return !builtStructures[posKey] &&
                 s.rcl <= currentRCL &&
                 !this.siteExistsAt(currentSites, s.x, s.y);
         });
-
+		
         if (!validStructure) return false;
 
         const screepsType = this.mapStructureType(validStructure.type);
         if (screepsType) {
             const result = room.createConstructionSite(validStructure.x, validStructure.y, screepsType);
             if (result === OK) {
-                console.log(`${room.name} - 🔨 New Construction Site: ${screepsType} at [${validStructure.x}, ${validStructure.y}] (Score: ${validStructure.score.toFixed(1)})`);
+                console.log(`${room.name} - 🔨 Construction: ${validStructure.type} at [${validStructure.x}, ${validStructure.y}] (Score: ${validStructure.score.toFixed(1)}, RCL Req: ${validStructure.rcl})`);
                 return true;
             }
         }
         return false;
-    },
-
-    // --- UTILITIES ---
-
-    siteExistsAt: function (sites, x, y) {
-        return sites.some(s => s.pos.x === x && s.pos.y === y);
     },
 
     mapStructureType: function (type) {
@@ -174,34 +171,74 @@ const constructionManager = {
             for (const [type, positions] of Object.entries(rawData.buildings)) {
                 if (type === 'center') continue;
 
-                positions.forEach(pos => {
+                const sortedPositions = [...positions].sort((a, b) => {
+                    const distA = Math.max(Math.abs(a.x - center.x), Math.abs(a.y - center.y));
+                    const distB = Math.max(Math.abs(b.x - center.x), Math.abs(b.y - center.y));
+                    return distA - distB;
+                });
+
+                sortedPositions.forEach((pos, index) => {
                     const typeUpper = type.toUpperCase();
                     const basePriority = this.PRIORITIES[typeUpper] || 0;
-
-                    // Υπολογισμός Chebyshev Distance από το center
                     const distance = Math.max(Math.abs(pos.x - center.x), Math.abs(pos.y - center.y));
+                    
+                    const rclReq = this.calculateRCLRequirement(type, index);
 
-                    // Score = BasePriority - (Distance * Factor)
-                    // Έτσι, μικρότερη απόσταση = υψηλότερο score
+                    // Score για tie-breaking (υψηλότερο score = προηγείται)
                     const finalScore = basePriority - (distance * DISTANCE_FACTOR);
 
                     flattened.push({
                         type: type,
                         x: pos.x,
                         y: pos.y,
-                        rcl: this.getRCLRequirement(type),
+                        rcl: rclReq,
                         score: finalScore,
                         dist: distance
                     });
                 });
             }
 
-            // Ταξινόμηση βάσει Score (Φθίνουσα)
-            flattened.sort((a, b) => b.score - a.score);
+            /**
+             * ΤΕΛΙΚΗ ΤΑΞΙΝΟΜΗΣΗ (ΔΙΟΡΘΩΜΕΝΗ)
+             * Ταξινομούμε αποκλειστικά βάσει Score (Priority).
+             * Η συνάρτηση buildMissingStructures θα φιλτράρει το RCL.
+             */
+            flattened.sort((a, b) => {
+                return b.score - a.score;
+            });
 
             Memory.rooms[roomName].construction.blueprint = flattened;
-            console.log(`✅ Blueprint loaded for ${roomName} (${flattened.length} structures) with distance-aware priorities.`);
+            console.log(`✅ Blueprint loaded for ${roomName}. Sorted by Priority Score (Tower/Extensions before Roads).`);
         }
+    },
+
+    /**
+     * Υπολογίζει το απαιτούμενο RCL για μια συγκεκριμένη δομή βάσει του πλήθους της.
+     */
+    calculateRCLRequirement: function (type, index) {
+        if (this.STRUCTURE_RCL_STEPS[type]) {
+            const steps = this.STRUCTURE_RCL_STEPS[type];
+            if (Array.isArray(steps)) {
+                return steps[index] || steps[steps.length - 1];
+            }
+            if (type === 'extension') {
+                for (let rcl = 1; rcl <= 8; rcl++) {
+                    if (index < steps[rcl]) return rcl;
+                }
+                return 8;
+            }
+        }
+
+        const DEFAULTS = {
+            'road': 2, 'container': 1, 'spawn': 1, 'extension': 2, 'rampart': 2, 'constructedWall': 2,
+            'tower': 3, 'storage': 4, 'link': 5, 'extractor': 6, 'lab': 6, 'terminal': 6,
+            'factory': 7, 'nuker': 8, 'powerSpawn': 8, 'observer': 8
+        };
+        return DEFAULTS[type] || 8;
+    },
+
+    siteExistsAt: function (sites, x, y) {
+        return sites.some(s => s.pos.x === x && s.pos.y === y);
     },
 
     updateBuiltStructures: function (room) {
@@ -210,15 +247,6 @@ const constructionManager = {
             found[`${s.pos.x},${s.pos.y}`] = s.structureType;
         });
         Memory.rooms[room.name].construction.builtStructures = found;
-    },
-
-    getRCLRequirement: function (type) {
-        const RCL = {
-            'road': 2, 'container': 1, 'spawn': 1, 'extension': 2, 'rampart': 2, 'constructedWall': 2,
-            'tower': 3, 'storage': 4, 'link': 5, 'extractor': 6, 'lab': 6, 'terminal': 6,
-            'factory': 7, 'nuker': 8, 'powerSpawn': 8, 'observer': 8
-        };
-        return RCL[type] || 8;
     }
 };
 

@@ -7,7 +7,7 @@ var towerController = {
     run: function(roomName) {
         const room = Game.rooms[roomName];
         if (!room) return;
-       if (Game.time % 4000 === 0) {
+       if (Game.time % 3000 === 0) {
            this.refreshWallThreshold(room);
           
            
@@ -193,12 +193,15 @@ var towerController = {
         }
         const step = 1000;
         
+        if(!Memory.rooms[room.name]) Memory.rooms[room.name] = {wallLimit:10000};
+        
         
         const walls = room.find(FIND_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART });
         if (walls.length===0) {
             return;
         }
         let hits_minimum_value=  _.min(walls, 'hits').hits;
+        hits_minimum_value=Math.max(room.controller.level*10000,hits_minimum_value);
         hits_minimum_value = Math.floor(hits_minimum_value / step) * step;
         if(room.controller.level===8) {
             

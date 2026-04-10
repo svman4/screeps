@@ -40,7 +40,7 @@ var pixels=require('manager.pixels');
 };
 global.roomBlueprints = {
    
-    E12S28:require('E12S28')
+    E15S11:require('E15S11')
     
 
     
@@ -89,7 +89,7 @@ module.exports.loop = function () {
         }
     }
     
-    //expansionManager.run();
+    expansionManager.run();
     pixels.run();
     if (Game.time % 10 === 0) {
         var endCpu = Game.cpu.getUsed();
@@ -136,3 +136,75 @@ function showRoomInfo(room) {
         logisticsManager.showQueueInfo(room);
     }
 }; // end of showRoomInfo(room)
+/**
+ * Screeps Room Data Exporter
+ * * Χρήση στην κονσόλα: exportRoom('E12S28')
+ */
+
+global.exportRoom = function(roomName) {
+    const room = Game.rooms[roomName];
+    if (!room) {
+        return "Error: Δεν έχω visibility στο δωμάτιο " + roomName;
+    }
+
+    // 1. Βασικές πληροφορίες
+    const output = {
+        name: room.name,
+        shard: Game.shard.name,
+        rcl: room.controller ? room.controller.level : 0,
+        buildings: {},
+        controller: room.controller ? { x: room.controller.pos.x, y: room.controller.pos.y } : null,
+        terrain: {
+            wall: [],
+            swamp: []
+        },
+        sources: [],
+        mineral: null
+    };
+
+    // 2. Επεξεργασία Terrain (Σάρωση όλου του grid 50x50)
+    const terrain = room.getTerrain();
+    for (let y = 0; y < 50; y++) {
+        for (let x = 0; x < 50; x++) {
+            const t = terrain.get(x, y);
+            if (t === TERRAIN_MASK_WALL) {
+                output.terrain.wall.push({ x, y });
+            } else if (t === TERRAIN_MASK_SWAMP) {
+                output.terrain.swamp.push({ x, y });
+            }
+        }
+    }
+
+    // 3. Επεξεργασία Κτιρίων (Structures)
+    // Ομαδοποίηση ανά τύπο κτιρίου
+    const structures = room.find(FIND_STRUCTURES);
+    structures.forEach(s => {
+        if (s.structureType === STRUCTURE_CONTROLLER) return; // Το έχουμε ήδη σε ξεχωριστό field
+        
+        if (!output.buildings[s.structureType]) {
+            output.buildings[s.structureType] = [];
+        }
+        output.buildings[s.structureType].push({ x: s.pos.x, y: s.pos.y });
+    });
+
+    // 4. Sources
+    const sources = room.find(FIND_SOURCES);
+    sources.forEach(s => {
+        output.sources.push({ x: s.pos.x, y: s.pos.y });
+    });
+
+    // 5. Mineral
+    const minerals = room.find(FIND_MINERALS);
+    if (minerals.length > 0) {
+        output.mineral = {
+            x: minerals[0].pos.x,
+            y: minerals[0].pos.y,
+            mineralType: minerals[0].mineralType
+        };
+    }
+
+    // Επιστροφή σε μορφή string για εύκολο copy από το log
+    console.log("--- ROOM EXPORT DATA: " + roomName + " ---");
+    console.log(JSON.stringify(output));
+    return "Done! Ελέγξτε το console log για το JSON.";
+};

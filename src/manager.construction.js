@@ -1,8 +1,8 @@
 // manager.construction.js
 const MIN_RCL_FOR_ROADS = 2;
 const SCAN_INTERVALS = {
-    UPDATE_BUILT_CACHE: 30,
-    CHECK_CONSTRUCTION_SITES: 60
+    UPDATE_BUILT_CACHE: 10,
+    CHECK_CONSTRUCTION_SITES: 5
 };
 
 /**
@@ -23,7 +23,7 @@ const constructionManager = {
         TOWER: 120,
         EXTENSION: 110,
         STORAGE: 100,
-        CONTAINER: 90,
+        CONTAINER: 110,
         TERMINAL: 80,
         LINK: 70,
         LAB: 60,
@@ -46,7 +46,9 @@ const constructionManager = {
             1: 0, 2: 5, 3: 10, 4: 20, 5: 30, 6: 40, 7: 50, 8: 60
         },
         'link': [5, 5, 6, 7, 8, 8],
-        'lab': [6, 6, 6, 7, 7, 8, 8, 8, 8, 8]
+        'lab': [6, 6, 6, 7, 7, 8, 8, 8, 8, 8],
+		'container':{1:3,4:2},
+
     },
 
     run: function (roomName) {
@@ -123,6 +125,7 @@ const constructionManager = {
             const posKey = `${s.x},${s.y}`;
             return !builtStructures[posKey] &&
                 s.rcl <= currentRCL &&
+				
                 !this.siteExistsAt(currentSites, s.x, s.y);
         });
 		
@@ -230,7 +233,7 @@ const constructionManager = {
         }
 
         const DEFAULTS = {
-            'road': 2, 'container': 1, 'spawn': 1, 'extension': 2, 'rampart': 2, 'constructedWall': 2,
+            'road': 3, 'container': 1, 'spawn': 1, 'extension': 2, 'rampart': 4, 'constructedWall': 4,
             'tower': 3, 'storage': 4, 'link': 5, 'extractor': 6, 'lab': 6, 'terminal': 6,
             'factory': 7, 'nuker': 8, 'powerSpawn': 8, 'observer': 8
         };
@@ -238,7 +241,10 @@ const constructionManager = {
     },
 
     siteExistsAt: function (sites, x, y) {
-        return sites.some(s => s.pos.x === x && s.pos.y === y);
+        const answer= sites.some(s => s.pos.x === x && s.pos.y === y);
+		if (answer===true)
+			console.log("Βρέθηκε άλλο κτίριο στη θεση ("+x+","+y+")");
+		return answer;
     },
 
     updateBuiltStructures: function (room) {
@@ -246,7 +252,17 @@ const constructionManager = {
         room.find(FIND_STRUCTURES).forEach(s => {
             found[`${s.pos.x},${s.pos.y}`] = s.structureType;
         });
+        this.checkRecoveryContainer(room);
+        this.checkControllerContainer(room);
         Memory.rooms[room.name].construction.builtStructures = found;
+    }
+    ,checkRecoveryContainer:function(room) {
+        // TODO έλεγχος αν έχει χτιστεί το recovery Container και εισαγωγή του στο memory του δωματίου
+        return ;
+    } 
+    , checkControllerContainer:function(room) {
+        // TODO έλεγχος αν έχει χτιστεί το controller Container και εισαγωγή του στο memory του δωματίου
+        return;
     }
 };
 

@@ -1,5 +1,5 @@
-// manager.construction.js
-const MIN_RCL_FOR_ROADS = 2;
+require('RoomVisual'); // Φορτώνει τις επεκτάσεις στο prototype
+
 const SCAN_INTERVALS = {
     UPDATE_BUILT_CACHE: 10,
     CHECK_CONSTRUCTION_SITES: 5
@@ -47,7 +47,7 @@ const constructionManager = {
         },
         'link': [5, 5, 6, 7, 8, 8],
         'lab': [6, 6, 6, 7, 7, 8, 8, 8, 8, 8],
-		'container':{1:3,4:2},
+		'container':{1:3,4:5},
 
     },
 
@@ -75,37 +75,55 @@ const constructionManager = {
     },
 
     visualizeBlueprint: function (roomName) {
+        const room = Game.rooms[roomName];
         const constructionMemory = Memory.rooms[roomName].construction;
         if (!constructionMemory || !constructionMemory.blueprint) return;
 
         const visual = new RoomVisual(roomName);
         const blueprint = constructionMemory.blueprint;
         const builtStructures = constructionMemory.builtStructures || {};
-        const currentRCL = Game.rooms[roomName].controller.level;
+        const currentRCL = room.controller.level;
 
         for (const s of blueprint) {
             const posKey = `${s.x},${s.y}`;
-            const isBuilt = builtStructures[posKey] === s.type;
+            const isBuilt = builtStructures[posKey] === this.mapStructureType(s.type);
+
+            // Αν είναι ήδη χτισμένο, δεν χρειάζεται να το δείχνουμε (ή το δείχνουμε αχνά)
+            if (isBuilt) continue;
+
             const canBuild = s.rcl <= currentRCL;
+            const screepsType = this.mapStructureType(s.type);
 
-            let color = isBuilt ? '#00ff00' : (canBuild ? '#ffff00' : '#ff0000');
-            let opacity = isBuilt ? 0.1 : 0.5;
+            // Χρήση της μεθόδου structure από το RoomVisual.js
+            // Προσθέτουμε χαμηλό opacity για να φαίνεται σαν "φάντασμα" (blueprint)
+            if (screepsType) {
+                visual.structure(s.x, s.y, screepsType, {
+                    opacity: canBuild ? 0.4 : 0.15
+                });
+            }
 
-            if (s.type === 'road') {
-                visual.circle(s.x, s.y, { radius: 0.15, fill: color, opacity: opacity });
-            } else if (['container', 'storage', 'terminal', 'factory'].includes(s.type)) {
-                visual.rect(s.x - 0.35, s.y - 0.35, 0.7, 0.7, { stroke: color, strokeWidth: 0.05, opacity: opacity, fill: 'transparent' });
+            // Overlay πληροφοριών
+            if (!canBuild) {
+                // Αν λείπει RCL, βάζουμε ένα κόκκινο badge
+                visual.text(`R${s.rcl}`, s.x, s.y + 0.1, {
+                    color: '#ff4444',
+                    font: 0.2,
+                    backgroundPadding: 0.1,
+                    backgroundColor: '#000000'
+                });
             } else {
-                visual.circle(s.x, s.y, { radius: 0.4, stroke: color, strokeWidth: 0.05, opacity: opacity, fill: 'transparent' });
+                // Αν είναι διαθέσιμο προς χτίσιμο, δείχνουμε το priority score
+                visual.text(s.score.toFixed(0), s.x, s.y + 0.2, {
+                    color: '#ffffff',
+                    font: 0.2,
+                    opacity: 0.5
+                });
             }
+        }
 
-            if (!isBuilt) {
-                if (!canBuild) {
-                    visual.text(`R${s.rcl}`, s.x, s.y, { color: '#ff0000', size: 0.4 });
-                } else {
-                    visual.text(s.score.toFixed(0), s.x, s.y + 0.2, { color: color, size: 0.3, opacity: 0.8 });
-                }
-            }
+        // Αν υπάρχουν δρόμοι στο blueprint, τους συνδέουμε οπτικά
+        if (visual.connectRoads) {
+            visual.connectRoads({ opacity: 0.3 });
         }
     },
 
@@ -257,12 +275,56 @@ const constructionManager = {
         Memory.rooms[room.name].construction.builtStructures = found;
     }
     ,checkRecoveryContainer:function(room) {
-        // TODO έλεγχος αν έχει χτιστεί το recovery Container και εισαγωγή του στο memory του δωματίου
-        return ;
+        if (room.memory.recoveryContainerId) {
+            const existing= Game.getObjectById(room.memory.recoveryContainerId);
+            if (existing) {
+                return false;
+            }
+            delete room.memory.recoveryContainerId;
+        }
+        // εντοπίζουμε το 1o spawn
+        const spawn=room.find(FIND_MY_SPAWNS)[0];
+        if (!spawn) {
+            return false;
+        }
+        const containers=spawn.pos.findInRange(FIND_STRUCTURES,1,
+            {
+                filter : s=>s.structureType===STRUCTURE_CONTAINER
+            }
+        );
+        if (containers.length>0 ) {
+            room.memory.recoveryContainerId=containers[0].id;
+            console.log("["+room.name+"] RecoveryContainer found.");
+            return true;
+        }
+
+        return false;
     } 
     , checkControllerContainer:function(room) {
-        // TODO έλεγχος αν έχει χτιστεί το controller Container και εισαγωγή του στο memory του δωματίου
-        return;
+        if (room.memory.controllerContainerId) {
+                    const existing= Game.getObjectById(room.memory.controllerContainerId);
+                    if (existing) {
+                        return false;
+                    }
+                    delete room.memory.controllerContainerId;
+                }
+                // εντοπίζουμε το 1o spawn
+                const controller=room.controller;
+                if (!controller) {
+                    return false;
+                }
+                const containers=controller.pos.findInRange(FIND_STRUCTURES,4,
+                    {
+                        filter : s=>s.structureType===STRUCTURE_CONTAINER
+                    }
+                );
+                if (containers.length>0 ) {
+                    room.memory.controllerContainerId=containers[0].id;
+                    console.log("["+room.name+"] Controller Container found.")
+                    return true;
+                }
+
+                return false;
     }
 };
 

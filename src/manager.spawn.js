@@ -57,6 +57,8 @@ const respawController = {
      * Κύρια λογική προτεραιοτήτων
      */
     decideAndSpawnCreep: function(spawn, roomName, population, populationLimit) {
+
+
         const room = spawn.room;
         const rcl = room.controller ? room.controller.level : 1;
 
@@ -306,12 +308,17 @@ const respawController = {
     needSimpleHarvester: function(room, population, populationMax) {
         const current = population[ROLES.SIMPLE_HARVESTER];
         if (current >= populationMax.SIMPLE_HARVESTER) return false;
+        if (!room.storage) return true;
         const noEnergyEco = population[ROLES.STATIC_HARVESTER] === 0 || population[ROLES.HAULER] === 0;
         return noEnergyEco && current < 1;
     },
 
     needHauler: function(room, population, populationMax) {
-        return population[ROLES.HAULER] < populationMax.HAULER;
+        const hasDropPoint =room.storage ||
+            room.find(FIND_STRUCTURES, {
+                                                    filter: s => s.structureType === STRUCTURE_CONTAINER
+                                                }).length > 0;;
+        return hasDropPoint && population[ROLES.HAULER] < populationMax.HAULER ;
     },
 
     needUpgrader: function(population, populationMax) {
@@ -331,15 +338,31 @@ const respawController = {
         const freeSource = sources.find(s => !assigned.includes(s.id));
         if (!freeSource) return false;
 
-        const energy = spawn.room.energyCapacityAvailable;
+        const energy = spawn.room.energyCapacityAvailable-300;
         let body = [WORK, WORK, CARRY, MOVE];
-        if (energy >= 600) body = [WORK, WORK, WORK, WORK, WORK, CARRY, MOVE];
+        if (energy >= 600) {
+            body = [WORK, WORK, WORK, WORK, WORK, CARRY, MOVE]
+        } else {
+            while (energy>=100 ) {
+            body.push[WORK];
+            energy-=100;
+            }
+        }
 
-        return spawn.spawnCreep(body, `Static_${Game.time}`, { memory: { role: ROLES.STATIC_HARVESTER, sourceId: freeSource.id, homeRoom: roomName } }) === OK;
+
+        return spawn.spawnCreep(body, `Static_${roomName}_${Game.time}`, { memory: { role: ROLES.STATIC_HARVESTER, sourceId: freeSource.id, homeRoom: roomName } }) === OK;
     },
 
-    createSimpleHarvester: function(spawn, roomName) {
-        return spawn.spawnCreep([WORK, CARRY, MOVE], `Simple_${Game.time}`, { memory: { role: ROLES.SIMPLE_HARVESTER, homeRoom: roomName } }) === OK;
+    createSimpleHarvester: function(spawn, roomName,maxEnergy=1000) {
+        let energy = Math.min(spawn.room.energyCapacityAvailable, maxEnergy);
+                let body = [];
+                while (energy >= 200) {
+                    body.push(WORK,CARRY, MOVE);
+                    energy -= 200;
+                }
+                body.sort();
+
+        return spawn.spawnCreep(body, `Simple_${Game.time}`, { memory: { role: ROLES.SIMPLE_HARVESTER, homeRoom: roomName } }) === OK;
     },
 
     createHauler: function(spawn, roomName, rcl, maxEnergy = 1000) {
@@ -445,19 +468,37 @@ function initPopulation(roomName) {
     if (!room) return;
     const sourceCount = room.find(FIND_SOURCES).length;
     if (!room.memory.populationLimits) room.memory.populationLimits = {};
-    
-    room.memory.populationLimits.SIMPLE_HARVESTER = 1;
-    room.memory.populationLimits.STATIC_HARVESTER = sourceCount;
-    room.memory.populationLimits.HAULER = 1 + 2 * sourceCount / 3;
-    if (room.controller.level === 8) {
-        room.memory.populationLimits.UPGRADER = 0;
-        room.memory.populationLimits.BUILDER = 1;
-    } else {
-        room.memory.populationLimits.UPGRADER = 1;
-        if (room.storage && room.storage.store[RESOURCE_ENERGY] > 500000) {
-            room.memory.populationLimits.BUILDER = sourceCount + 2;
+    if (room.storage) {
+
+        room.memory.populationLimits.SIMPLE_HARVESTER = 1;
+        room.memory.populationLimits.STATIC_HARVESTER = sourceCount;
+        room.memory.populationLimits.HAULER = 1 + 2 * sourceCount / 3;
+        if (room.controller.level === 8) {
+            room.memory.populationLimits.UPGRADER = 0;
+            room.memory.populationLimits.BUILDER = 1;
         } else {
-            room.memory.populationLimits.BUILDER = sourceCount;
+            room.memory.populationLimits.UPGRADER = 1;
+            if (room.storage && room.storage.store[RESOURCE_ENERGY] > 500000) {
+                room.memory.populationLimits.BUILDER = sourceCount + 2;
+            } else {
+                room.memory.populationLimits.BUILDER = sourceCount;
+            }
+        }
+    }
+    else {
+        room.memory.populationLimits.SIMPLE_HARVESTER = 1 + 2 * sourceCount / 3;
+        room.memory.populationLimits.STATIC_HARVESTER = sourceCount;
+        room.memory.populationLimits.HAULER = 1;
+        if (room.controller.level === 8) {
+            room.memory.populationLimits.UPGRADER = 1;
+            room.memory.populationLimits.BUILDER = 1;
+        } else {
+            room.memory.populationLimits.UPGRADER = 1;
+            if (room.storage && room.storage.store[RESOURCE_ENERGY] > 500000) {
+                room.memory.populationLimits.BUILDER = sourceCount + 2;
+            } else {
+                room.memory.populationLimits.BUILDER = sourceCount;
+            }
         }
     }
     room.memory.populationLimits.lastRcl = room.controller.level;

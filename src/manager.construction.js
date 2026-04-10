@@ -143,7 +143,7 @@ const constructionManager = {
             const posKey = `${s.x},${s.y}`;
             return !builtStructures[posKey] &&
                 s.rcl <= currentRCL &&
-				
+
                 !this.siteExistsAt(currentSites, s.x, s.y);
         });
 		
@@ -259,10 +259,20 @@ const constructionManager = {
     },
 
     siteExistsAt: function (sites, x, y) {
-        const answer= sites.some(s => s.pos.x === x && s.pos.y === y);
-		if (answer===true)
-			console.log("Βρέθηκε άλλο κτίριο στη θεση ("+x+","+y+")");
-		return answer;
+        // Ψάχνουμε αν υπάρχει ήδη κάποιο construction site στη συγκεκριμένη θέση
+        const siteAtPos = sites.find(s => s.pos.x === x && s.pos.y === y);
+
+        if (!siteAtPos) return false;
+
+        // Αν το site που βρέθηκε είναι Road ή Rampart, επιστρέφουμε false
+        // ώστε ο manager να προσπαθήσει να χτίσει το "κύριο" κτίριο από πάνω.
+        if (siteAtPos.structureType === STRUCTURE_ROAD || siteAtPos.structureType === STRUCTURE_RAMPART) {
+            return false;
+        }
+
+        // Αν υπάρχει οτιδήποτε άλλο, επιστρέφουμε true για να μην τοποθετηθεί νέο site
+        console.log("Βρέθηκε άλλο κτίριο (site) στη θεση (" + x + "," + y + ")");
+        return true;
     },
 
     updateBuiltStructures: function (room) {

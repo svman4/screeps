@@ -33,8 +33,8 @@ const constructionManager = {
         OBSERVER: 20,
         ROAD: 10,
         RAMPART: 1,
-        WALL: 5
-    },
+        CONSTRUCTEDWALL:3
+         },
 
     /**
      * Επίπεδα RCL ανά ποσότητα κτιρίων (π.χ. το 1ο spawn στο rcl 1, το 2ο στο rcl 7)
@@ -98,7 +98,7 @@ const constructionManager = {
             // Προσθέτουμε χαμηλό opacity για να φαίνεται σαν "φάντασμα" (blueprint)
             if (screepsType) {
                 visual.structure(s.x, s.y, screepsType, {
-                    opacity: canBuild ? 0.4 : 0.15
+                    opacity: canBuild ? 0.8 : 0.15
                 });
             }
 
@@ -108,8 +108,8 @@ const constructionManager = {
                 visual.text(`R${s.rcl}`, s.x, s.y + 0.1, {
                     color: '#ff4444',
                     font: 0.2,
-                    backgroundPadding: 0.1,
-                    backgroundColor: '#000000'
+                    backgroundPadding: 0.0,
+                    backgroundColor: '#101010'
                 });
             } else {
                 // Αν είναι διαθέσιμο προς χτίσιμο, δείχνουμε το priority score
@@ -155,7 +155,9 @@ const constructionManager = {
             if (result === OK) {
                 console.log(`${room.name} - 🔨 Construction: ${validStructure.type} at [${validStructure.x}, ${validStructure.y}] (Score: ${validStructure.score.toFixed(1)}, RCL Req: ${validStructure.rcl})`);
                 return true;
-            }
+            } else if (result===ERR_INVALID_TARGET) {
+                console.log(`${room.name} - 🔨 Error in Construction: ${validStructure.type} at [${validStructure.x}, ${validStructure.y}] (Score: ${validStructure.score.toFixed(1)}, RCL Req: ${validStructure.rcl})`);
+                }
         }
         return false;
     },

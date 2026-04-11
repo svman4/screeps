@@ -308,7 +308,9 @@ const respawController = {
     needSimpleHarvester: function(room, population, populationMax) {
         const current = population[ROLES.SIMPLE_HARVESTER];
         if (current >= populationMax.SIMPLE_HARVESTER) return false;
-        if (!room.storage) return true;
+        if (room.storage) {
+            return false;
+        }
         const noEnergyEco = population[ROLES.STATIC_HARVESTER] === 0 || population[ROLES.HAULER] === 0;
         return noEnergyEco && current < 1;
     },

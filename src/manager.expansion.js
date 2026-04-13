@@ -183,6 +183,10 @@ class ExpansionManager {
         delete mem.enemyInfo;
         delete mem.scoutNeeded;
     }
+	canIExpand() {
+		const myRoomNames = _.filter(Game.rooms, r => r.controller && r.controller.my).length;
+		return Game.gcl.level > myRoomNames;
+	}
 }
 
 module.exports = new ExpansionManager();

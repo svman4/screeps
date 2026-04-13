@@ -125,7 +125,7 @@ const respawController = {
 
         // --- C. CLAIMERS ---
         const claimTarget = _.findKey(Memory.rooms, (r) => r.type === 'claim_target');
-        if (claimTarget && this.isRoomWithinRange(roomName, claimTarget, 2)) {
+        if (claimTarget && this.isRoomWithinRange(roomName, claimTarget, 1)) {
             const existingClaimer = _.find(Game.creeps, c =>
                 c.memory.role === ROLES.CLAIMER &&
                 c.memory.targetRoom === claimTarget
@@ -182,8 +182,7 @@ const respawController = {
         return false;
     },
 
-    // ... (Οι υπόλοιπες μέθοδοι create*, supportNeighbors, κτλ παραμένουν ίδιες με το αρχικό σου αρχείο) ...
-
+    
     supportNeighbors: function(spawn, roomName) {
         const room = spawn.room;
         let neighborRooms = Memory.rooms[roomName]?.neighbors;
@@ -332,7 +331,7 @@ const respawController = {
     createSupporter: function(spawn, homeRoom, targetRoom, maxEnergy = 1000) {
         let energy = Math.min(spawn.room.energyCapacityAvailable, maxEnergy);
         let body = [];
-        while (energy >= 250) { body.push(WORK, CARRY, MOVE); energy -= 200; }
+        while (energy >= 250) { body.push(WORK, CARRY, MOVE, MOVE); energy -= 250; }
         return spawn.spawnCreep(body.sort(), `Supporter_${homeRoom}_${targetRoom}_${Game.time}`, { memory: { role: ROLES.SUPPORTER, homeRoom: homeRoom, targetRoom: targetRoom } }) === OK;
     },
 
@@ -342,7 +341,7 @@ const respawController = {
 
     createClaimer: function(spawn, homeRoom, targetRoom, maxPreferredEnergy = 2000) {
         let energy = Math.min(spawn.room.energyCapacityAvailable, maxPreferredEnergy);
-        let body = [MOVE, CLAIM]; // Basic
+        let body = [WORK,MOVE,CARRY,CARRY,MOVE,MOVE, CLAIM]; // Basic
         return spawn.spawnCreep(body, `Claimer_${homeRoom}_${targetRoom}_${Game.time}`, { memory: { role: ROLES.CLAIMER, homeRoom: homeRoom, targetRoom: targetRoom } });
     },
 

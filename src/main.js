@@ -40,7 +40,8 @@ var pixels=require('manager.pixels');
 };
 global.roomBlueprints = {
    
-    E15S11:require('E15S11')
+    E15S11:require('E15S11'),
+    E15S12:require('E15S12')
     
 
     

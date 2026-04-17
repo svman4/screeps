@@ -1,8 +1,11 @@
 const BaseLayout = require('construction.layout.BaseLayout');
 const { PRIORITIES, STRUCTURE_RCL_STEPS, DEFAULTS_RCL } = require('construction.constants');
+const RoadPlanner = require('construction.roadPlanner');
 
 /**
  * FILE LAYOUT CLASS
+ * Υλοποίηση που διαβάζει από τα στατικά αρχεία blueprints και χρησιμοποιεί
+ * τον RoadPlanner για τη δυναμική ιεράρχηση των δρόμων.
  */
 class FileLayout extends BaseLayout {
     constructor(roomName) {
@@ -24,8 +27,9 @@ class FileLayout extends BaseLayout {
         
         const rawData = global.roomBlueprints[roomName];
         const center = rawData.buildings.center || { x: 25, y: 25 };
+		
         const DISTANCE_FACTOR = 0.1;
-
+   
         const processedBlueprint = [];
 
         for (const [type, positions] of Object.entries(rawData.buildings)) {
@@ -33,9 +37,19 @@ class FileLayout extends BaseLayout {
 
             positions.forEach((pos, index) => {
                 const typeUpper = type.toUpperCase();
-                const basePriority = PRIORITIES[typeUpper] || 0;
+                let basePriority = PRIORITIES[typeUpper] || 0;
+                let rclReq;
+
+                // Ειδική μεταχείριση για δρόμους μέσω του RoadPlanner
+                if (type === 'road') {
+                    const roadMeta = RoadPlanner.getRoadMetadata(pos.x, pos.y, rawData);
+                    rclReq = roadMeta.rcl;
+                    basePriority += roadMeta.bonus;
+                } else {
+                    rclReq = this.calculateRCLRequirement(type, index);
+                }
+
                 const distance = Math.max(Math.abs(pos.x - center.x), Math.abs(pos.y - center.y));
-                const rclReq = this.calculateRCLRequirement(type, index);
 
                 processedBlueprint.push({
                     type: type,
@@ -55,6 +69,9 @@ class FileLayout extends BaseLayout {
         this.blueprint = processedBlueprint;
     }
 
+    /**
+     * Υπολογίζει το απαιτούμενο RCL βάσει της σειράς εμφάνισης στο blueprint.
+     */
     calculateRCLRequirement(type, index) {
         if (STRUCTURE_RCL_STEPS[type]) {
             const steps = STRUCTURE_RCL_STEPS[type];

@@ -1,6 +1,9 @@
 require('RoomVisual');
-const BaseLayout=require('construction.layout.BaseLayout');
-const FileLayout=require('construction.layout.FileLayout');
+const BaseLayout = require('construction.layout.BaseLayout');
+const FileLayout = require('construction.layout.FileLayout');
+const { MAX_CONSTRUCTION_SITE } = require('construction.constants');
+const RoadPlanner = require('construction.roadPlanner');
+
 /**
  * SCAN INTERVALS & CONSTANTS
  */
@@ -8,25 +11,6 @@ const SCAN_INTERVALS = {
     UPDATE_BUILT_CACHE: 10,
     CHECK_CONSTRUCTION_SITES: 5
 };
-
-const PRIORITIES = {
-    SPAWN: 130, TOWER: 120, EXTENSION: 110, STORAGE: 100,
-    CONTAINER: 110, TERMINAL: 80, LINK: 70, LAB: 60,
-    FACTORY: 50, POWER_SPAWN: 40, NUKER: 30, OBSERVER: 20,
-    ROAD: 10, RAMPART: 1, CONSTRUCTEDWALL: 3
-};
-
-const STRUCTURE_RCL_STEPS = {
-    'spawn': [1, 7, 8],
-    'tower': [3, 5, 7, 8, 8, 8],
-    'extension': { 1: 0, 2: 5, 3: 10, 4: 20, 5: 30, 6: 40, 7: 50, 8: 60 },
-    'link': [5, 5, 6, 7, 8, 8],
-    'lab': [6, 6, 6, 7, 7, 8, 8, 8, 8, 8],
-    'container': { 1: 3, 4: 5 },
-};
-
-
-
 
 /**
  * CONSTRUCTION MANAGER CLASS
@@ -54,55 +38,153 @@ class ConstructionManager {
         // Cache update
         if (Game.time % SCAN_INTERVALS.UPDATE_BUILT_CACHE === 0) {
             this.updateBuiltCache();
+            this.checkSpecialContainers();
         }
 
         // Build logic
         if (Game.time % SCAN_INTERVALS.CHECK_CONSTRUCTION_SITES === 0) {
-            this.tryBuild();
+            this.processConstruction();
         }
 
-        // Visuals
-        if (Memory.debug && Memory.debug.construction) {
-            this.drawVisuals();
-        }
+        // Οπτική απεικόνιση
+        this.drawVisuals();
     }
 
     updateBuiltCache() {
-        const found = {};
-        this.room.find(FIND_STRUCTURES).forEach(s => {
-            found[`${s.pos.x},${s.pos.y}`] = s.structureType;
+        const structures = this.room.find(FIND_STRUCTURES);
+        const builtMap = {};
+        structures.forEach(s => {
+            builtMap[`${s.pos.x},${s.pos.y}`] = s.structureType;
         });
-        Memory.rooms[this.roomName].construction.builtStructures = found;
-        
-        // Helper checks (recovery/controller containers)
-        this.checkSpecialContainers();
+        Memory.rooms[this.roomName].construction.builtStructures = builtMap;
     }
 
-    tryBuild() {
-        const maxSites = (this.room.storage) ? 3 : 1;
-        const currentSites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
-        if (currentSites.length >= maxSites) return;
+    /**
+     * Κύρια μέθοδος επεξεργασίας κατασκευών.
+     */
+    processConstruction() {
+        // Υπολογίζουμε πόσα sites υπάρχουν ήδη
+        let sites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
+        const maxSites = MAX_CONSTRUCTION_SITE || 5;
+        
+        if (sites.length >= maxSites) return;
 
         const builtMap = Memory.rooms[this.roomName].construction.builtStructures || {};
-        const plan = this.layout.getPlanForRCL(this.room.controller.level, builtMap);
+        const rcl = this.room.controller.level;
+        
+        // Φέρνουμε όλα τα κτίρια που πρέπει να χτιστούν για το τρέχον RCL
+        const fullPlan = this.layout.getPlanForRCL(rcl, builtMap);
+        if (fullPlan.length === 0) return;
 
-        for (const s of plan) {
-            if (this.siteExistsAt(currentSites, s.x, s.y)) continue;
+        // 1. Προτεραιότητα σε Structures (Extensions, Spawns, Towers κλπ)
+        const structuresPlan = fullPlan.filter(s => s.type !== 'road' && s.type !== 'constructedWall' && s.type !== 'rampart');
+        if (structuresPlan.length > 0) {
+            this.handleStructureConstruction(structuresPlan, sites.length, maxSites);
+            sites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
+        }
 
-            const structureType = this.mapType(s.type);
-            const res = this.room.createConstructionSite(s.x, s.y, structureType);
-            if (res === OK) {
-                console.log(`🔨 [${this.roomName}] Building ${s.type} at ${s.x},${s.y}`);
-                break; // Χτίζουμε ένα ανά tick ελέγχου
+        // 2. Έλεγχος για άμυνα (Walls & Ramparts)
+        if (sites.length < maxSites) {
+            const defensePlan = fullPlan.filter(s => s.type === 'constructedWall' || s.type === 'rampart');
+            if (defensePlan.length > 0) {
+                this.handleDefenseConstruction(defensePlan, sites.length, maxSites);
+                sites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
+            }
+        }
+
+        // 3. Δρόμοι (μόνο αν περισσεύει χώρος για sites)
+        if (sites.length < maxSites) {
+            const roadsPlan = fullPlan.filter(s => s.type === 'road');
+            if (roadsPlan.length > 0) {
+                this.handleRoadConstruction(roadsPlan, sites.length, maxSites, rcl, builtMap);
             }
         }
     }
 
-    siteExistsAt(sites, x, y) {
-        const site = sites.find(s => s.pos.x === x && s.pos.y === y);
-        if (!site) return false;
-        // Επιτρέπουμε να "χτίζουμε" πάνω από δρόμους αν το blueprint έχει κάτι άλλο εκεί
-        return !(site.structureType === STRUCTURE_ROAD || site.structureType === STRUCTURE_RAMPART);
+    /**
+     * Υπορουτίνα για το χτίσιμο κτιρίων.
+     */
+    handleStructureConstruction(structuresPlan, currentSiteCount, maxSites) {
+        let addedSites = 0;
+        for (const target of structuresPlan) {
+            if (currentSiteCount + addedSites >= maxSites) break;
+
+            if (this.room.createConstructionSite(target.x, target.y, this.mapType(target.type)) === OK) {
+                addedSites++;
+            }
+        }
+    }
+
+    /**
+     * Υπορουτίνα για το χτίσιμο αμυντικών έργων (Walls/Ramparts).
+     */
+    handleDefenseConstruction(defensePlan, currentSiteCount, maxSites) {
+        let addedSites = 0;
+        for (const target of defensePlan) {
+            if (currentSiteCount + addedSites >= maxSites) break;
+
+            // Χρησιμοποιούμε τη mapType για να πάρουμε το σωστό STRUCTURE constant
+            if (this.room.createConstructionSite(target.x, target.y, this.mapType(target.type)) === OK) {
+                addedSites++;
+            }
+        }
+    }
+
+    /**
+     * Υπορουτίνα για το χτίσιμο δρόμων.
+     */
+    handleRoadConstruction(roadsPlan, currentSiteCount, maxSites, rcl, builtMap) {
+        let addedSites = 0;
+        for (const roadTarget of roadsPlan) {
+            if (currentSiteCount + addedSites >= maxSites) break;
+            
+            if (RoadPlanner.shouldBuildRoad(roadTarget, global.roomBlueprints[this.roomName], builtMap, rcl)) {
+                if (this.room.createConstructionSite(roadTarget.x, roadTarget.y, STRUCTURE_ROAD) === OK) {
+                    addedSites++;
+                }
+            }
+        }
+    }
+
+    checkSpecialContainers() {
+        this.checkRecoverContainer(this.room);
+        this.checkControllerContainer(this.room);
+    }
+
+    checkRecoverContainer(room) {
+        if (room.memory.recoveryContainerId) {
+            const existing = Game.getObjectById(room.memory.recoveryContainerId);
+            if (existing) return false;
+            delete room.memory.recoveryContainerId;
+        }
+        const spawn = room.find(FIND_MY_SPAWNS)[0];
+        if (!spawn) return false;
+        const containers = spawn.pos.findInRange(FIND_STRUCTURES, 1, {
+            filter: s => s.structureType === STRUCTURE_CONTAINER
+        });
+        if (containers.length > 0) {
+            room.memory.recoveryContainerId = containers[0].id;
+            return true;
+        }
+        return false;
+    }
+
+    checkControllerContainer(room) {
+        if (room.memory.controllerContainerId) {
+            const existing = Game.getObjectById(room.memory.controllerContainerId);
+            if (existing) return false;
+            delete room.memory.controllerContainerId;
+        }
+        const controller = room.controller;
+        if (!controller) return false;
+        const containers = controller.pos.findInRange(FIND_STRUCTURES, 4, {
+            filter: s => s.structureType === STRUCTURE_CONTAINER
+        });
+        if (containers.length > 0) {
+            room.memory.controllerContainerId = containers[0].id;
+            return true;
+        }
+        return false;
     }
 
     mapType(type) {
@@ -117,25 +199,52 @@ class ConstructionManager {
         return MAP[type];
     }
 
+    /**
+     * Εμφανίζει τα μελλοντικά κτίρια με βελτιωμένο UI (Badge style).
+     */
     drawVisuals() {
+        if (Memory.debug && Memory.debug.construction === false) return;
+        
         const visual = new RoomVisual(this.roomName);
         const builtMap = Memory.rooms[this.roomName].construction.builtStructures || {};
+        const currentRCL = this.room.controller.level;
         
-        this.layout.blueprint.forEach(s => {
-            if (builtMap[`${s.x},${s.y}`]) return;
-            const canBuild = s.rcl <= this.room.controller.level;
-            visual.structure(s.x, s.y, this.mapType(s.type), { opacity: canBuild ? 0.5 : 0.1 });
-        });
-    }
+        if (this.layout && this.layout.blueprint) {
+            this.layout.blueprint.forEach(s => {
+                if (builtMap[`${s.x},${s.y}`]) return;
 
-    checkSpecialContainers() {
-        // ... (υπάρχουσα λογική για recoveryContainerId και controllerContainerId)
+                const isAvailable = s.rcl <= currentRCL;
+                const opacity = isAvailable ? 0.6 : 0.2;
+                
+                // 1. Σχεδιασμός ειδώλου κτιρίου
+                visual.structure(s.x, s.y, this.mapType(s.type), { opacity: opacity });
+
+                // 2. Σχεδιασμός \"Badge\" για πληροφορίες
+                const rclColor = isAvailable ? '#00ff00' : '#ff4444';
+                const textColor = '#ffffff';
+                const label = `L${s.rcl} | ${s.score.toFixed(0)}`;
+                
+                // Υπολογισμός θέσης (λίγο πιο πάνω από το κτίριο)
+                const labelY = s.x % 2 === 0 ? s.y - 0.6 : s.y + 0.8;
+                
+                visual.rect(s.x - 0.65, labelY - 0.25, 1.3, 0.4, {
+                    fill: '#000000',
+                    opacity: opacity + 0.1,
+                    stroke: rclColor,
+                    strokeWidth: 0.05
+                });
+
+                visual.text(label, s.x, labelY + 0.05, {
+                    color: textColor,
+                    font: 'bold 0.25 verdana',
+                    opacity: opacity + 0.3,
+                    align: 'center'
+                });
+            });
+        }
     }
 }
 
-/**
- * EXPORT: Singleton-style interface για συμβατότητα με το loop
- */
 module.exports = {
     run: function(roomName) {
         const manager = new ConstructionManager(roomName);

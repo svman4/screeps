@@ -5,7 +5,7 @@ class To_be_recycled extends BaseRole {
     run() {
         if (this.travelToHomeRoom()) return;
         const container = Game.getObjectById(this.creep.room.memory.recoveryContainerId);
-		this.creep.say("BYE BYE");
+		
         if (container) {
             if (!this.creep.pos.inRangeTo(container, 0)) {
 				movementManager.smartMove(this.creep, container, 0);

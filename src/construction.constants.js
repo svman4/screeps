@@ -4,7 +4,7 @@
  */
 
 module.exports = {
-	MAX_CONSTRUCTION_SITE:5,
+	MAX_CONSTRUCTION_SITE:2,
     // Προτεραιότητες κατασκευής (Υψηλότερο = Πιο σημαντικό)
     PRIORITIES: {
         SPAWN: 130,

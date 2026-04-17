@@ -4,8 +4,7 @@ const RoadPlanner = require('construction.roadPlanner');
 
 /**
  * FILE LAYOUT CLASS
- * Υλοποίηση που διαβάζει από τα στατικά αρχεία blueprints και χρησιμοποιεί
- * τον RoadPlanner για τη δυναμική ιεράρχηση των δρόμων.
+ * Διαβάζει blueprints και υπολογίζει δυναμικά το RCL βάσει εγγύτητας στο κέντρο.
  */
 class FileLayout extends BaseLayout {
     constructor(roomName) {
@@ -15,62 +14,71 @@ class FileLayout extends BaseLayout {
     }
 
     loadFromFile(roomName) {
-        // Χρήση global cache για αποφυγή επανυπολογισμού σε κάθε tick
         if (!global.blueprintCache) global.blueprintCache = {};
-
-        if (global.blueprintCache[roomName]) {
-            this.blueprint = global.blueprintCache[roomName];
+        if (global.blueprintCache[this.roomName]) {
+            this.blueprint = global.blueprintCache[this.roomName];
             return;
         }
 
-        if (!global.roomBlueprints || !global.roomBlueprints[roomName]) return;
+        if (!global.roomBlueprints || !global.roomBlueprints[this.roomName]) return;
         
-        const rawData = global.roomBlueprints[roomName];
+        const rawData = global.roomBlueprints[this.roomName];
         const center = rawData.buildings.center || { x: 25, y: 25 };
-		
         const DISTANCE_FACTOR = 0.1;
-   
         const processedBlueprint = [];
 
+        // Προ-υπολογισμός RCL για κτίρια (εκτός δρόμων)
+        const buildingEntries = [];
+
         for (const [type, positions] of Object.entries(rawData.buildings)) {
-            if (type === 'center') continue;
+            if (type === 'center' || type === 'road') continue;
 
-            positions.forEach((pos, index) => {
-                const typeUpper = type.toUpperCase();
-                let basePriority = PRIORITIES[typeUpper] || 0;
-                let rclReq;
+            // Ταξινομούμε τις θέσεις κάθε τύπου κτιρίου με βάση την απόσταση από το κέντρο
+            const sortedPositions = [...positions].sort((a, b) => {
+                const distA = Math.abs(a.x - center.x) + Math.abs(a.y - center.y);
+                const distB = Math.abs(b.x - center.x) + Math.abs(b.y - center.y);
+                return distA - distB;
+            });
 
-                // Ειδική μεταχείριση για δρόμους μέσω του RoadPlanner
-                if (type === 'road') {
-                    const roadMeta = RoadPlanner.getRoadMetadata(pos.x, pos.y, rawData);
-                    rclReq = roadMeta.rcl;
-                    basePriority += roadMeta.bonus;
-                } else {
-                    rclReq = this.calculateRCLRequirement(type, index);
-                }
-
-                const distance = Math.max(Math.abs(pos.x - center.x), Math.abs(pos.y - center.y));
-
-                processedBlueprint.push({
-                    type: type,
+            sortedPositions.forEach((pos, index) => {
+                const rclReq = this.calculateRCLRequirement(type, index);
+                const distance = Math.abs(pos.x - center.x) + Math.abs(pos.y - center.y);
+                
+                buildingEntries.push({
+                    type,
                     x: pos.x,
                     y: pos.y,
                     rcl: rclReq,
-                    score: basePriority - (distance * DISTANCE_FACTOR)
+                    score: (PRIORITIES[type.toUpperCase()] || 0) - (distance * DISTANCE_FACTOR)
                 });
             });
         }
-        
-        // Ταξινόμηση βάσει score (Priority)
-        processedBlueprint.sort((a, b) => b.score - a.score);
-        
-        // Αποθήκευση στο cache και στο instance
-        global.blueprintCache[roomName] = processedBlueprint;
-        this.blueprint = processedBlueprint;
+
+        // Τώρα επεξεργαζόμαστε τους δρόμους, έχοντας ήδη τα RCL των κτιρίων
+        const roadPositions = rawData.buildings.road || [];
+        const roadEntries = roadPositions.map(pos => {
+            // Ο RoadPlanner λαμβάνει υπόψη τα RCL των κτιρίων που υπολογίσαμε παραπάνω
+            const roadMeta = RoadPlanner.getRoadMetadata(pos.x, pos.y, rawData, buildingEntries);
+            const distance = Math.abs(pos.x - center.x) + Math.abs(pos.y - center.y);
+            
+            return {
+                type: 'road',
+                x: pos.x,
+                y: pos.y,
+                rcl: roadMeta.rcl,
+                score: (PRIORITIES.ROAD || 0) + roadMeta.bonus - (distance * DISTANCE_FACTOR)
+            };
+        });
+
+        const finalBlueprint = [...buildingEntries, ...roadEntries];
+        finalBlueprint.sort((a, b) => b.score - a.score);
+
+        global.blueprintCache[this.roomName] = finalBlueprint;
+        this.blueprint = finalBlueprint;
     }
 
     /**
-     * Υπολογίζει το απαιτούμενο RCL βάσει της σειράς εμφάνισης στο blueprint.
+     * Υπολογίζει το RCL βάσει της σειράς (από το κέντρο προς τα έξω).
      */
     calculateRCLRequirement(type, index) {
         if (STRUCTURE_RCL_STEPS[type]) {

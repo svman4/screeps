@@ -1,6 +1,6 @@
 const BaseRole = require('role.base');
 const movementManager = require('manager.movement');
-
+const expansionManager = require('manager.expansion');
 class Scout extends BaseRole {
     run() {
         if (this.travelToTargetRoom()) return;

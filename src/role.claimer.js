@@ -1,6 +1,6 @@
 const BaseRole = require('role.base');
 const movementManager = require('manager.movement');
-
+const expansionManager = require('manager.expansion');
 class Claimer extends BaseRole {
     run() {
         if (this.travelToTargetRoom()) return;
@@ -25,7 +25,7 @@ class Claimer extends BaseRole {
             if (this.creep.pos.inRangeTo(controller, 1)) this.creep.attackController(controller);
             else movementManager.smartMove(this.creep, controller, 1);
         }
-        this.destroyHostiles();
+        this.creep.suicide();
     }
 }
 module.exports = Claimer;

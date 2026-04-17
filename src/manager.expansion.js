@@ -104,7 +104,7 @@ class ExpansionManager {
         if (isFree) {
             const sources = room.find(FIND_SOURCES);
             if (sources.length > 0) {
-                mem.type = (sources.length >= 2 && hasGCL) ? 'claim_target' : 'remote_mining';
+                mem.type = (sources.length >= 2 && hasGCL) ? 'remote_mining' : 'remote_mining';
                 mem.sources = sources.map(s => ({ id: s.id, x: s.pos.x, y: s.pos.y }));
                 mem.controllerPos = { x: controller.pos.x, y: controller.pos.y };
                 delete mem.enemyInfo;
@@ -185,7 +185,8 @@ class ExpansionManager {
     }
 	canIExpand() {
 		const myRoomNames = _.filter(Game.rooms, r => r.controller && r.controller.my).length;
-		return Game.gcl.level > myRoomNames;
+		//return Game.gcl.level > myRoomNames;
+		return false;
 	}
 }
 

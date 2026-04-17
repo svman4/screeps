@@ -143,7 +143,7 @@ const constructionManager = {
             const posKey = `${s.x},${s.y}`;
             return !builtStructures[posKey] &&
                 s.rcl <= currentRCL &&
-
+			//	s.type!=="road" &&
                 !this.siteExistsAt(currentSites, s.x, s.y);
         });
 		

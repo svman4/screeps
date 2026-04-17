@@ -14,7 +14,7 @@ const ROLES = {
     MINER: "miner"
 };
 
-const SUPPORTER_LIMIT_PER_ROOM = 1;
+const SUPPORTER_LIMIT_PER_ROOM = 3;
 const REMOTE_SPAWNING_STORE_LIMIT = 600000;
 const MAX_SCOUT_DISTANCE = 5;
 
@@ -125,7 +125,7 @@ const respawController = {
 
         // --- C. CLAIMERS ---
         const claimTarget = _.findKey(Memory.rooms, (r) => r.type === 'claim_target');
-        if (claimTarget && this.isRoomWithinRange(roomName, claimTarget, 1)) {
+        if (false && claimTarget && this.isRoomWithinRange(roomName, claimTarget, 1)) {
             const existingClaimer = _.find(Game.creeps, c =>
                 c.memory.role === ROLES.CLAIMER &&
                 c.memory.targetRoom === claimTarget
@@ -155,13 +155,13 @@ const respawController = {
 
             if (neighborMemory.type === 'initial_setup') {
                 const setupRoom = Game.rooms[targetNeighbor];
-                if (setupRoom?.controller?.my && setupRoom.controller.level > 4) {
+                if (setupRoom?.controller?.my && setupRoom.controller.level > 3) {
                     delete Memory.rooms[targetNeighbor].type;
                     continue;
                 }
                 const setupCreeps = _.filter(Game.creeps, c => c.memory.homeRoom === room.name && c.memory.targetRoom === targetNeighbor);
                 if (setupCreeps.filter(c => c.memory.role === ROLES.SUPPORTER).length < SUPPORTER_LIMIT_PER_ROOM) {
-                    return this.createSupporter(spawn, room.name, targetNeighbor) === OK;
+                    return this.createSupporter(spawn, room.name, targetNeighbor,3000) === OK;
                 }
             }
 
@@ -262,6 +262,7 @@ const respawController = {
     },
 
     isRoomWithinRange: function(fromRoom, toRoom, maxDist) {
+        // TODO να μετράει τα τετράγωνα που θα πρέπει να περάσει το creep και όχι γραμμικά.
         return Game.map.getRoomLinearDistance(fromRoom, toRoom) <= maxDist;
     },
 

@@ -38,245 +38,220 @@ class ConstructionManager {
         // Cache update
         if (Game.time % SCAN_INTERVALS.UPDATE_BUILT_CACHE === 0) {
             this.updateBuiltCache();
-            this.checkSpecialContainers();
         }
 
-        // Build logic
+        // Logic update (Slower)
         if (Game.time % SCAN_INTERVALS.CHECK_CONSTRUCTION_SITES === 0) {
             this.processConstruction();
         }
 
-        // Οπτική απεικόνιση
+        // Visuals (Every tick if enabled)
         this.drawVisuals();
     }
 
+    /**
+     * Ενημερώνει τη μνήμη με τα κτίρια που υπάρχουν ήδη στο δωμάτιο.
+     */
     updateBuiltCache() {
         const structures = this.room.find(FIND_STRUCTURES);
-        const builtMap = {};
+        const cache = {};
         structures.forEach(s => {
-            builtMap[`${s.pos.x},${s.pos.y}`] = s.structureType;
+            cache[`${s.pos.x},${s.pos.y}`] = s.structureType;
         });
-        Memory.rooms[this.roomName].construction.builtStructures = builtMap;
+        Memory.rooms[this.roomName].construction.builtStructures = cache;
     }
 
     /**
-     * Κύρια μέθοδος επεξεργασίας κατασκευών.
+     * Κεντρική διαχείριση κατασκευών.
      */
     processConstruction() {
-        // Υπολογίζουμε πόσα sites υπάρχουν ήδη
         let sites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
-        const maxSites = MAX_CONSTRUCTION_SITE || 5;
+        const maxSites = MAX_CONSTRUCTION_SITE || 2;
         
         if (sites.length >= maxSites) return;
 
         const builtMap = Memory.rooms[this.roomName].construction.builtStructures || {};
         const rcl = this.room.controller.level;
         
-        // Φέρνουμε όλα τα κτίρια που πρέπει να χτιστούν για το τρέχον RCL
+        // Φιλτράρουμε το blueprint για όσα λείπουν και είναι διαθέσιμα στο τρέχον RCL
         const fullPlan = this.layout.getPlanForRCL(rcl, builtMap);
         if (fullPlan.length === 0) return;
 
-        // 1. Προτεραιότητα σε Structures (Extensions, Spawns, Towers κλπ)
-        const structuresPlan = fullPlan.filter(s => s.type !== 'road' && s.type !== 'constructedWall' && s.type !== 'rampart');
-        if (structuresPlan.length > 0) {
-            this.handleStructureConstruction(structuresPlan, sites.length, maxSites);
-            sites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
+        // Διαχωρισμός και εκτέλεση ανά κατηγορία
+        let remainingQuota = maxSites - sites.length;
+
+        // 1. Κτίρια (Structures)
+        remainingQuota = this.buildStructures(fullPlan, remainingQuota);
+
+        // 2. Αμυντικά (Defenses)
+        if (remainingQuota > 0) {
+            remainingQuota = this.buildDefenses(fullPlan, remainingQuota);
         }
 
-        // 2. Έλεγχος για άμυνα (Walls & Ramparts)
-        if (sites.length < maxSites) {
-            const defensePlan = fullPlan.filter(s => s.type === 'constructedWall' || s.type === 'rampart');
-            if (defensePlan.length > 0) {
-                this.handleDefenseConstruction(defensePlan, sites.length, maxSites);
-                sites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
-            }
-        }
-
-        // 3. Δρόμοι (μόνο αν περισσεύει χώρος για sites)
-        if (sites.length < maxSites) {
-            const roadsPlan = fullPlan.filter(s => s.type === 'road');
-            if (roadsPlan.length > 0) {
-                this.handleRoadConstruction(roadsPlan, sites.length, maxSites, rcl, builtMap);
-            }
+        // 3. Δρόμοι (Roads)
+        if (remainingQuota > 0) {
+            this.buildRoads(fullPlan, remainingQuota, rcl, builtMap);
         }
     }
 
     /**
-     * Υπορουτίνα για το χτίσιμο κτιρίων.
+     * Φάση 1: Κανονικά κτίρια (Spawn, Extensions, Towers κλπ)
      */
-    handleStructureConstruction(structuresPlan, currentSiteCount, maxSites) {
-        let addedSites = 0;
-        for (const target of structuresPlan) {
-            if (currentSiteCount + addedSites >= maxSites) break;
+    buildStructures(fullPlan, quota) {
+        const structures = fullPlan.filter(s => s.type !== 'road' && s.type !== 'rampart' && s.type !== 'constructedWall');
+        let placed = 0;
 
-            if (this.room.createConstructionSite(target.x, target.y, this.mapType(target.type)) === OK) {
-                addedSites++;
+        for (const s of structures) {
+            if (placed >= quota) break;
+            if (this.createSite(s.x, s.y, s.type)) {
+                placed++;
             }
         }
+        return quota - placed;
     }
 
     /**
-     * Υπορουτίνα για το χτίσιμο αμυντικών έργων (Walls/Ramparts).
+     * Φάση 2: Αμυντικά έργα
      */
-    handleDefenseConstruction(defensePlan, currentSiteCount, maxSites) {
-        let addedSites = 0;
-        for (const target of defensePlan) {
-            if (currentSiteCount + addedSites >= maxSites) break;
+    buildDefenses(fullPlan, quota) {
+        const defenses = fullPlan.filter(s => s.type === 'rampart' || s.type === 'constructedWall');
+        let placed = 0;
 
-            // Χρησιμοποιούμε τη mapType για να πάρουμε το σωστό STRUCTURE constant
-            if (this.room.createConstructionSite(target.x, target.y, this.mapType(target.type)) === OK) {
-                addedSites++;
+        for (const s of defenses) {
+            if (placed >= quota) break;
+            if (this.createSite(s.x, s.y, s.type)) {
+                placed++;
             }
         }
+        return quota - placed;
     }
 
     /**
-     * Υπορουτίνα για το χτίσιμο δρόμων.
+     * Φάση 3: Οδοποιία
      */
-    handleRoadConstruction(roadsPlan, currentSiteCount, maxSites, rcl, builtMap) {
-        let addedSites = 0;
-        for (const roadTarget of roadsPlan) {
-            if (currentSiteCount + addedSites >= maxSites) break;
-            
-            if (RoadPlanner.shouldBuildRoad(roadTarget, global.roomBlueprints[this.roomName], builtMap, rcl)) {
-                if (this.room.createConstructionSite(roadTarget.x, roadTarget.y, STRUCTURE_ROAD) === OK) {
-                    addedSites++;
+    buildRoads(fullPlan, quota, rcl, builtMap) {
+        const roads = fullPlan.filter(s => s.type === 'road');
+        let placed = 0;
+
+        for (const s of roads) {
+            if (placed >= quota) break;
+
+            // Έλεγχος από τον RoadPlanner αν όντως πρέπει να χτιστεί τώρα ο δρόμος
+            if (RoadPlanner.shouldBuildRoad(s, {}, builtMap, rcl)) {
+                if (this.createSite(s.x, s.y, 'road')) {
+                    placed++;
                 }
             }
         }
-    }
-
-    checkSpecialContainers() {
-        this.checkRecoverContainer(this.room);
-        this.checkControllerContainer(this.room);
-    }
-
-    checkRecoverContainer(room) {
-        if (room.memory.recoveryContainerId) {
-            const existing = Game.getObjectById(room.memory.recoveryContainerId);
-            if (existing) return false;
-            delete room.memory.recoveryContainerId;
-        }
-        const spawn = room.find(FIND_MY_SPAWNS)[0];
-        if (!spawn) return false;
-        const containers = spawn.pos.findInRange(FIND_STRUCTURES, 1, {
-            filter: s => s.structureType === STRUCTURE_CONTAINER
-        });
-        if (containers.length > 0) {
-            room.memory.recoveryContainerId = containers[0].id;
-            return true;
-        }
-        return false;
-    }
-
-    checkControllerContainer(room) {
-        if (room.memory.controllerContainerId) {
-            const existing = Game.getObjectById(room.memory.controllerContainerId);
-            if (existing) return false;
-            delete room.memory.controllerContainerId;
-        }
-        const controller = room.controller;
-        if (!controller) return false;
-        const containers = controller.pos.findInRange(FIND_STRUCTURES, 4, {
-            filter: s => s.structureType === STRUCTURE_CONTAINER
-        });
-        if (containers.length > 0) {
-            room.memory.controllerContainerId = containers[0].id;
-            return true;
-        }
-        return false;
-    }
-
-    mapType(type) {
-        const MAP = {
-            'spawn': STRUCTURE_SPAWN, 'extension': STRUCTURE_EXTENSION, 'road': STRUCTURE_ROAD,
-            'constructedWall': STRUCTURE_WALL, 'rampart': STRUCTURE_RAMPART, 'link': STRUCTURE_LINK,
-            'storage': STRUCTURE_STORAGE, 'tower': STRUCTURE_TOWER, 'observer': STRUCTURE_OBSERVER,
-            'powerSpawn': STRUCTURE_POWER_SPAWN, 'extractor': STRUCTURE_EXTRACTOR, 'lab': STRUCTURE_LAB,
-            'terminal': STRUCTURE_TERMINAL, 'container': STRUCTURE_CONTAINER, 'nuker': STRUCTURE_NUKER,
-            'factory': STRUCTURE_FACTORY
-        };
-        return MAP[type];
+        return quota - placed;
     }
 
     /**
-     * Εμφανίζει το Blueprint με επαγγελματικό visual style (Badge & Path highlighting).
-     * Διαφορετικά χρώματα για Critical/Logistics δρόμους και σαφής ένδειξη RCL.
+     * Helper για τη δημιουργία Construction Site με error logging.
+     */
+    createSite(x, y, type) {
+        const structureType = this.mapType(type);
+        const res = this.room.createConstructionSite(x, y, structureType);
+        
+        if (res === OK) {
+            console.log(`[Construction] Placed ${type} at ${x},${y}`);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Μετατρέπει τα εσωτερικά strings σε Screeps constants.
+     */
+    mapType(type) {
+        const types = {
+            'spawn': STRUCTURE_SPAWN,
+            'extension': STRUCTURE_EXTENSION,
+            'road': STRUCTURE_ROAD,
+            'tower': STRUCTURE_TOWER,
+            'storage': STRUCTURE_STORAGE,
+            'container': STRUCTURE_CONTAINER,
+            'link': STRUCTURE_LINK,
+            'terminal': STRUCTURE_TERMINAL,
+            'lab': STRUCTURE_LAB,
+            'rampart': STRUCTURE_RAMPART,
+            'constructedWall': STRUCTURE_WALL,
+            'controller': STRUCTURE_CONTROLLER
+        };
+        return types[type] || type;
+    }
+
+    /**
+     * Visuals Logic - Διαχωρισμένο σε υπομεθόδους.
      */
     drawVisuals() {
         if (Memory.debug && Memory.debug.construction === false) return;
-        
+        if (!this.layout || !this.layout.blueprint) return;
+
         const visual = new RoomVisual(this.roomName);
         const builtMap = Memory.rooms[this.roomName].construction.builtStructures || {};
         const currentRCL = this.room.controller.level;
-        
-        if (!this.layout || !this.layout.blueprint) return;
 
-        // 1. Δημιουργούμε ένα Map για γρήγορο έλεγχο των επιτρεπόμενων κτιρίων
-        const allowedAtPos = {}; 
-        this.layout.blueprint.forEach(s => {
+        this.drawMismatchedStructures(visual, builtMap);
+        this.drawBlueprint(visual, builtMap, currentRCL);
+    }
+
+    drawMismatchedStructures(visual, builtMap) {
+        const allowedAtPos = {};
+        for (const s of this.layout.blueprint) {
             allowedAtPos[`${s.x},${s.y}`] = s;
-        });
+        }
 
-        // 2. ΕΝΤΟΠΙΣΜΟΣ ΛΑΘΟΣ ΚΤΙΡΙΩΝ (Alien/Wrong RCL)
         for (const coord in builtMap) {
             const [x, y] = coord.split(',').map(Number);
             const structureType = builtMap[coord];
             const blueprintItem = allowedAtPos[coord];
 
-            // Εξαιρέσεις (δεν ελέγχουμε δρόμους/walls/ramparts για λάθη εδώ)
-            if (structureType === STRUCTURE_ROAD || structureType === STRUCTURE_WALL || structureType === STRUCTURE_RAMPART) continue;
+            if (['road', 'constructedWall', 'rampart', 'controller'].includes(structureType)) continue;
 
-            // ΑΝ το κτίριο δεν υπάρχει στο blueprint Ή αν ο τύπος είναι λάθος
             if (!blueprintItem || blueprintItem.type !== structureType) {
-                // Μεγάλο Κόκκινο "X" και "REMOVE"
                 visual.line(x - 0.4, y - 0.4, x + 0.4, y + 0.4, { color: '#ff0000', width: 0.1, opacity: 0.9 });
                 visual.line(x + 0.4, y - 0.4, x - 0.4, y + 0.4, { color: '#ff0000', width: 0.1, opacity: 0.9 });
                 visual.text("⚠️ REMOVE", x, y + 0.6, { color: '#ff0000', font: 0.25, backgroundColor: '#000000', opacity: 0.8 });
-            } 
+            }
         }
+    }
 
-        // 3. ΣΧΕΔΙΑΣΜΟΣ BLUEPRINT (Ο προηγούμενος σχεδιασμός που σου άρεσε)
+    drawBlueprint(visual, builtMap, currentRCL) {
         this.layout.blueprint.forEach(s => {
-            // Αν είναι ήδη χτισμένο το ΣΩΣΤΟ κτίριο, δεν το δείχνουμε στο visual
             if (builtMap[`${s.x},${s.y}`] === s.type) return;
 
             const isAvailable = s.rcl <= currentRCL;
-            const opacity = isAvailable ? 0.6 : 0.2;
+            const opacity = isAvailable ? 0.5 : 0.15;
 
             if (s.type === 'road') {
-                let color = '#ffffff';
-                if (s.category === 'critical') color = '#ff0000';
-                else if (s.category === 'logistics') color = '#00ffff';
-                
-                visual.circle(s.x, s.y, { fill: color, radius: 0.15, opacity: opacity });
-                visual.text(s.rcl, s.x, s.y + 0.1, { color: color, font: '0.3 verdana', opacity: opacity + 0.2 });
+                const color = s.category === 'critical' ? '#ff0000' : (s.category === 'logistics' ? '#00ffff' : '#ffffff');
+                visual.circle(s.x, s.y, { fill: color, radius: 0.12, opacity: opacity });
             } else {
-                // Στυλ με Badge
                 visual.structure(s.x, s.y, this.mapType(s.type), { opacity: opacity });
-                
-                const rclColor = isAvailable ? '#00ff00' : '#ff4444';
-                const labelY = s.x % 2 === 0 ? s.y - 0.6 : s.y + 0.8;
-                
-                // Το μαύρο πλαίσιο (Badge)
-                visual.rect(s.x - 0.4, labelY - 0.2, 0.8, 0.35, {
-                    fill: '#000000',
-                    opacity: opacity,
-                    stroke: rclColor,
-                    strokeWidth: 0.03
-                });
-
-                // Το κείμενο RCL
-                visual.text(`L${s.rcl}`, s.x, labelY + 0.05, {
-                    color: '#ffffff',
-                    font: 'bold 0.2 verdana',
-                    opacity: opacity + 0.3
-                });
+                this.drawStructureBadge(visual, s.x, s.y, s.rcl, isAvailable, opacity);
             }
         });
     }
-}
 
+    drawStructureBadge(visual, x, y, rcl, isAvailable, opacity) {
+        const rclColor = isAvailable ? '#00ff00' : '#ff4444';
+        const labelY = x % 2 === 0 ? y - 0.6 : y + 0.8;
+
+        visual.rect(x - 0.4, labelY - 0.2, 0.8, 0.35, {
+            fill: '#000000',
+            opacity: opacity,
+            stroke: rclColor,
+            strokeWidth: 0.03
+        });
+
+        visual.text(`L${rcl}`, x, labelY + 0.05, {
+            color: '#ffffff',
+            font: 'bold 0.2 verdana',
+            opacity: opacity + 0.3
+        });
+    }
+}
 module.exports = {
     run: function(roomName) {
         const manager = new ConstructionManager(roomName);

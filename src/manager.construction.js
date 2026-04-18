@@ -200,7 +200,8 @@ class ConstructionManager {
     }
 
     /**
-     * Εμφανίζει τα μελλοντικά κτίρια με βελτιωμένο UI (Badge style).
+     * Εμφανίζει το Blueprint με επαγγελματικό visual style (Badge & Path highlighting).
+     * Διαφορετικά χρώματα για Critical/Logistics δρόμους και σαφής ένδειξη RCL.
      */
     drawVisuals() {
         if (Memory.debug && Memory.debug.construction === false) return;
@@ -209,39 +210,70 @@ class ConstructionManager {
         const builtMap = Memory.rooms[this.roomName].construction.builtStructures || {};
         const currentRCL = this.room.controller.level;
         
-        if (this.layout && this.layout.blueprint) {
-            this.layout.blueprint.forEach(s => {
-                if (builtMap[`${s.x},${s.y}`]) return;
+        if (!this.layout || !this.layout.blueprint) return;
 
-                const isAvailable = s.rcl <= currentRCL;
-                const opacity = isAvailable ? 0.6 : 0.2;
+        // 1. Δημιουργούμε ένα Map για γρήγορο έλεγχο των επιτρεπόμενων κτιρίων
+        const allowedAtPos = {}; 
+        this.layout.blueprint.forEach(s => {
+            allowedAtPos[`${s.x},${s.y}`] = s;
+        });
+
+        // 2. ΕΝΤΟΠΙΣΜΟΣ ΛΑΘΟΣ ΚΤΙΡΙΩΝ (Alien/Wrong RCL)
+        for (const coord in builtMap) {
+            const [x, y] = coord.split(',').map(Number);
+            const structureType = builtMap[coord];
+            const blueprintItem = allowedAtPos[coord];
+
+            // Εξαιρέσεις (δεν ελέγχουμε δρόμους/walls/ramparts για λάθη εδώ)
+            if (structureType === STRUCTURE_ROAD || structureType === STRUCTURE_WALL || structureType === STRUCTURE_RAMPART) continue;
+
+            // ΑΝ το κτίριο δεν υπάρχει στο blueprint Ή αν ο τύπος είναι λάθος
+            if (!blueprintItem || blueprintItem.type !== structureType) {
+                // Μεγάλο Κόκκινο "X" και "REMOVE"
+                visual.line(x - 0.4, y - 0.4, x + 0.4, y + 0.4, { color: '#ff0000', width: 0.1, opacity: 0.9 });
+                visual.line(x + 0.4, y - 0.4, x - 0.4, y + 0.4, { color: '#ff0000', width: 0.1, opacity: 0.9 });
+                visual.text("⚠️ REMOVE", x, y + 0.6, { color: '#ff0000', font: 0.25, backgroundColor: '#000000', opacity: 0.8 });
+            } 
+        }
+
+        // 3. ΣΧΕΔΙΑΣΜΟΣ BLUEPRINT (Ο προηγούμενος σχεδιασμός που σου άρεσε)
+        this.layout.blueprint.forEach(s => {
+            // Αν είναι ήδη χτισμένο το ΣΩΣΤΟ κτίριο, δεν το δείχνουμε στο visual
+            if (builtMap[`${s.x},${s.y}`] === s.type) return;
+
+            const isAvailable = s.rcl <= currentRCL;
+            const opacity = isAvailable ? 0.6 : 0.2;
+
+            if (s.type === 'road') {
+                let color = '#ffffff';
+                if (s.category === 'critical') color = '#ff0000';
+                else if (s.category === 'logistics') color = '#00ffff';
                 
-                // 1. Σχεδιασμός ειδώλου κτιρίου
+                visual.circle(s.x, s.y, { fill: color, radius: 0.15, opacity: opacity });
+                visual.text(s.rcl, s.x, s.y + 0.1, { color: color, font: '0.3 verdana', opacity: opacity + 0.2 });
+            } else {
+                // Στυλ με Badge
                 visual.structure(s.x, s.y, this.mapType(s.type), { opacity: opacity });
-
-                // 2. Σχεδιασμός \"Badge\" για πληροφορίες
-                const rclColor = isAvailable ? '#00ff00' : '#ff4444';
-                const textColor = '#ffffff';
-                const label = `L${s.rcl} | ${s.score.toFixed(0)}`;
                 
-                // Υπολογισμός θέσης (λίγο πιο πάνω από το κτίριο)
+                const rclColor = isAvailable ? '#00ff00' : '#ff4444';
                 const labelY = s.x % 2 === 0 ? s.y - 0.6 : s.y + 0.8;
                 
-                visual.rect(s.x - 0.65, labelY - 0.25, 1.3, 0.4, {
+                // Το μαύρο πλαίσιο (Badge)
+                visual.rect(s.x - 0.4, labelY - 0.2, 0.8, 0.35, {
                     fill: '#000000',
-                    opacity: opacity + 0.1,
+                    opacity: opacity,
                     stroke: rclColor,
-                    strokeWidth: 0.05
+                    strokeWidth: 0.03
                 });
 
-                visual.text(label, s.x, labelY + 0.05, {
-                    color: textColor,
-                    font: 'bold 0.25 verdana',
-                    opacity: opacity + 0.3,
-                    align: 'center'
+                // Το κείμενο RCL
+                visual.text(`L${s.rcl}`, s.x, labelY + 0.05, {
+                    color: '#ffffff',
+                    font: 'bold 0.2 verdana',
+                    opacity: opacity + 0.3
                 });
-            });
-        }
+            }
+        });
     }
 }
 

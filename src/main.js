@@ -1,5 +1,5 @@
 // main.js
-// Version 1.4.0
+// Version 1.1.0
 var spawnManager = require('manager.spawn');
 var defenceManager = require('manager.defense');
 var constructionManager = require('manager.construction');
@@ -73,7 +73,7 @@ module.exports.loop = function () {
             // HIGH PRIORITY - Πάντα τρέχουν
             militaryController.run(roomName);
             defenceManager.run(roomName);
-            spawnManager.run(roomName);
+            //spawnManager.run(roomName);
             logisticsManager.run(roomName);
             roleManager.run(roomName);
             
@@ -89,8 +89,9 @@ module.exports.loop = function () {
                  showRoomInfo(room);
              }
         }
-    }
-    
+    } 
+	
+    spawnManager.run();
     expansionManager.run();
     pixels.run();
     if (Game.time % 10 === 0) {

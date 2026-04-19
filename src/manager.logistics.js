@@ -1,6 +1,8 @@
 // manager.logistics.js
 const movementManager = require('manager.movement'); // <-- IMPORT
-
+/*
+version 1.0.0
+*/
 const PRIORITIES = {
     SPAWN_EXTENSION: 100,
     TOWER: 80,
@@ -460,7 +462,7 @@ const logisticsManager = {
                 this.completeTask(creep);
             }
         } else {
-            movementManager.smartMove(creep, source, 1); // <-- ΑΛΛΑΓΗ
+            movementManager.smartMove(creep, source, 1); 
         }
     },
 

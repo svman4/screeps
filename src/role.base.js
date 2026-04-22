@@ -4,6 +4,7 @@
  * Description: Η βασική κλάση από την οποία κληρονομούν όλοι οι ρόλοι των Creeps.
  * Περιλαμβάνει κοινές λειτουργίες κίνησης, συλλογής ενέργειας και διαχείρισης κύκλου ζωής.
  * * Changelog:
+ * 1.1.2 Εισαγωγή μεταβλητών CREEP_SPAWN_TIME αντί hardcoded τιμής 3.
  * 1.1.1 Εισαγωγή getSpawningDuration
  * 1.1.0: Μετονομασία checkForRecycle -> manageLifecycle
  * 1.1.0: Μετονομασία getMinimunTicketToLive -> getRetirementThreshold
@@ -44,7 +45,7 @@ class BaseRole {
         // Έλεγχος ορίου ζωής (Ticks to Live)
         if (this.creep.ticksToLive < this.getRetirementThreshold() && recycleContainerId) {
             this.creep.memory.role = "to_be_recycled";
-            console.log(`${this.creep.name}: Retirement age reached. Moving to recycle.`);
+           //console.log(`${this.creep.name}: Retirement age reached. Moving to recycle.`);
             return true;
         }
         
@@ -259,7 +260,7 @@ class BaseRole {
 	*/
 	getSpawningDuration() {
 		if (!this.creep || !this.creep.body) return 0;
-		return this.creep.body.length * 3;
+		return this.creep.body.length * CREEP_SPAWN_TIME;
 	} // end of getSpawningDuration
 }
 

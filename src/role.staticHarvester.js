@@ -1,10 +1,11 @@
 /**
  * ROLE: Static Harvester
- * VERSION: 2.1.0
+ * VERSION: 2.1.1
  * DESCRIPTION: Εξειδικευμένος ρόλος για μόνιμη εγκατάσταση πάνω από πηγές (Sources).
  * Διαχειρίζεται αυτόματα τον χρόνο αντικατάστασής του (Lead Time) υπολογίζοντας 
  * το Spawning και το Travel time.
  * * CHANGELOG:
+ * 2.1.1: Εισαγωγή μεταβλητών CREEP_LIFE_TIME αντί hardcoded τιμής 1500.
  * 2.1.0: Μετονομασία recordTravelTime σε calculateReplacementLeadTime.
  * 2.1.0: Εισαγωγή manageReplacementSignal για αυτοματοποιημένο spawning request.
  * 2.0.0: Μετατροπή σε Class-based ρόλο (κληρονομικότητα από BaseRole).
@@ -31,7 +32,11 @@ class StaticHarvester extends BaseRole {
         }
 
         if (container) {
-            if (!this.creep.pos.inRangeTo(container, 0)) movementManager.smartMove(this.creep, container, 0);
+            if (!this.creep.pos.inRangeTo(container, 0)) {
+				movementManager.smartMove(this.creep, container, 0);
+				return;
+			}
+			
         } else if (!this.creep.pos.inRangeTo(source, 1)) {
             movementManager.smartMove(this.creep, source, 1);
             return;
@@ -42,7 +47,7 @@ class StaticHarvester extends BaseRole {
 		// Έλεγχος αν πρέπει να δοθεί σήμα για παραγωγή αντικαταστάτη
         if (this.creep.memory.leadTime && (this.creep.ticksToLive < this.creep.memory.leadTime)) {
             
-			console.log(`${this.creep.name}: Requesting replacement. Lead time was ${this.creep.memory.leadTime} ticks.`);
+			console.log(`TODO ${this.creep.name}: Requesting replacement. Lead time was ${this.creep.memory.leadTime} ticks.`);
 			// Διαγράφουμε το travelTime ώστε να μην ξαναστείλει το σήμα στο επόμενο tick
             
 			delete this.creep.memory.leadTime;
@@ -55,11 +60,12 @@ class StaticHarvester extends BaseRole {
     } // end of run()
 	/**
      * Υπολογίζει πόσα ticks χρειάστηκε το creep για να φτάσει από το Spawn στην πηγή.
-     * Θεωρεί ότι το Creep γεννήθηκε με 1500 ticks ζωής.
+     * Θεωρεί ότι το Creep γεννήθηκε με 1500(CREEP_LIFE_TIME) ticks ζωής.
      */
     calculateReplacementLeadTime() { 
-        const travelTime = 1500 - this.creep.ticksToLive;
-        this.creep.memory.travelTime = travelTime+this.getSpawningDuration();
+        const travelTime = CREEP_LIFE_TIME - this.creep.ticksToLive;
+		//console.log(this.creep.name+" travel time "+travelTime);
+        this.creep.memory.leadTime = travelTime+this.getSpawningDuration();
         delete this.creep.memory.init;
     }
 

@@ -1,3 +1,14 @@
+/**
+ * ROLE: Static Harvester
+ * VERSION: 2.1.0
+ * DESCRIPTION: Εξειδικευμένος ρόλος για μόνιμη εγκατάσταση πάνω από πηγές (Sources).
+ * Διαχειρίζεται αυτόματα τον χρόνο αντικατάστασής του (Lead Time) υπολογίζοντας 
+ * το Spawning και το Travel time.
+ * * CHANGELOG:
+ * 2.1.0: Μετονομασία recordTravelTime σε calculateReplacementLeadTime.
+ * 2.1.0: Εισαγωγή manageReplacementSignal για αυτοματοποιημένο spawning request.
+ * 2.0.0: Μετατροπή σε Class-based ρόλο (κληρονομικότητα από BaseRole).
+ */
 const BaseRole = require('role.base');
 const movementManager = require('manager.movement');
 
@@ -25,7 +36,38 @@ class StaticHarvester extends BaseRole {
             movementManager.smartMove(this.creep, source, 1);
             return;
         }
+		if (this.creep.memory.init===true) { 
+			this.calculateReplacementLeadTime();
+		}
+		// Έλεγχος αν πρέπει να δοθεί σήμα για παραγωγή αντικαταστάτη
+        if (this.creep.memory.leadTime && (this.creep.ticksToLive < this.creep.memory.leadTime)) {
+            
+			console.log(`${this.creep.name}: Requesting replacement. Lead time was ${this.creep.memory.leadTime} ticks.`);
+			// Διαγράφουμε το travelTime ώστε να μην ξαναστείλει το σήμα στο επόμενο tick
+            
+			delete this.creep.memory.leadTime;
+            
+            // TODO: Προσθήκη logic στο Spawn Manager για να διαβάζει αυτό το flag
+            this.creep.memory.needsReplacement = true; 
+            
+        }
         this.creep.harvest(source);
+    } // end of run()
+	/**
+     * Υπολογίζει πόσα ticks χρειάστηκε το creep για να φτάσει από το Spawn στην πηγή.
+     * Θεωρεί ότι το Creep γεννήθηκε με 1500 ticks ζωής.
+     */
+    calculateReplacementLeadTime() { 
+        const travelTime = 1500 - this.creep.ticksToLive;
+        this.creep.memory.travelTime = travelTime+this.getSpawningDuration();
+        delete this.creep.memory.init;
     }
-}
+
+    /**
+     * Απενεργοποίηση αυτόματης ανακύκλωσης για στατικούς harvesters.
+     */
+    getRetirementThreshold() {
+        return 0;
+    }
+} //end of class
 module.exports = StaticHarvester;

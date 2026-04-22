@@ -1,5 +1,5 @@
 const movementManager = require('manager.movement');
-const minTickToLive = 30;
+
 
 const roleManager = {
     // Lazy loading των κλάσεων για εξοικονόμηση CPU αν χρειαστεί
@@ -20,24 +20,22 @@ const roleManager = {
     run: function() {
         for (const name in Game.creeps) {
             const creep = Game.creeps[name];
-            if (creep.spawning) continue;
-
-            if (creep.ticksToLive < minTickToLive && creep.room.memory.recoveryContainerId) {
-                creep.memory.role = "to_be_recycled";
-            }
+            if (creep.spawning) continue;            
 
             const RoleClass = this.roleClasses[creep.memory.role];
-            
+           
             if (RoleClass) {
                 const roleInstance = new RoleClass(creep);
                 try {
-                    roleInstance.run();
+					roleInstance.run();
+					roleInstance.manageLifecycle(creep.room.memory.recoveryContainerId);
+                    
                 } catch (e) {
                     console.log(`Error in role ${creep.memory.role} for ${creep.name}:`, e);
                 }
             }
         }
-    },
+    } // end of run
 };
 
 module.exports = roleManager;

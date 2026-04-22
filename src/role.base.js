@@ -1,10 +1,60 @@
+/**
+ * ROLE: Base Class
+ * Version: 1.1.1
+ * Description: Η βασική κλάση από την οποία κληρονομούν όλοι οι ρόλοι των Creeps.
+ * Περιλαμβάνει κοινές λειτουργίες κίνησης, συλλογής ενέργειας και διαχείρισης κύκλου ζωής.
+ * * Changelog:
+ * 1.1.1 Εισαγωγή getSpawningDuration
+ * 1.1.0: Μετονομασία checkForRecycle -> manageLifecycle
+ * 1.1.0: Μετονομασία getMinimunTicketToLive -> getRetirementThreshold
+ * 1.0.1: Διόρθωση bug με NULL reference
+ */
+
 const movementManager = require('manager.movement');
 
 class BaseRole {
+    /**
+     * @param {Creep} creep - Το creep που ελέγχεται από αυτή την κλάση.
+     */
     constructor(creep) {
         this.creep = creep;
     }
 
+    /**
+     * Επιστρέφει το όριο των ticks κάτω από το οποίο το creep θεωρείται 
+     * πολύ γέρικο για να συνεχίσει τη δουλειά του.
+     * @returns {number}
+     */
+    getRetirementThreshold() {
+        return 30;
+    }
+
+    /**
+     * Διαχειρίζεται τον κύκλο ζωής του creep.
+     * Εάν το TTL είναι χαμηλό και υπάρχει σημείο ανακύκλωσης, αλλάζει το role.
+     * @param {string} recycleContainerId - Το ID του container δίπλα στο Spawn.
+     * @returns {boolean} True αν το creep μπήκε σε διαδικασία ανακύκλωσης.
+     */
+    manageLifecycle(recycleContainerId) {
+        // Αν το creep είναι ήδη σε φάση ανακύκλωσης, επιστρέφουμε true
+        if (this.creep.memory.role === "to_be_recycled") {
+            return true;
+        }
+
+        // Έλεγχος ορίου ζωής (Ticks to Live)
+        if (this.creep.ticksToLive < this.getRetirementThreshold() && recycleContainerId) {
+            this.creep.memory.role = "to_be_recycled";
+            console.log(`${this.creep.name}: Retirement age reached. Moving to recycle.`);
+            return true;
+        }
+        
+        return false;
+    }
+
+    /**
+     * Μεταφέρει το creep στο Home Room που ορίζεται στο memory.
+     * @returns {boolean} True αν το creep κινείται προς το Home Room.
+     */
     travelToHomeRoom() {
         const homeRoom = this.creep.memory.homeRoom;
         if (this.creep.room.name !== homeRoom || this.isAtEdge()) {
@@ -14,6 +64,10 @@ class BaseRole {
         return false;
     }
 
+    /**
+     * Μεταφέρει το creep στο Target Room που ορίζεται στο memory.
+     * @returns {boolean} True αν το creep κινείται προς το Target Room.
+     */
     travelToTargetRoom() {
         const targetRoom = this.creep.memory.targetRoom;
         if (!targetRoom) return false;
@@ -24,11 +78,19 @@ class BaseRole {
         return false;
     }
 
+    /**
+     * Ελέγχει αν το creep βρίσκεται στις άκρες του δωματίου (exit tiles).
+     * @returns {boolean}
+     */
     isAtEdge() {
         const { x, y } = this.creep.pos;
         return x === 0 || x === 49 || y === 0 || y === 49;
     }
 
+    /**
+     * Προσπαθεί να βρει ενέργεια από Containers, Dropped Resources, Ruins ή Harvesting.
+     * @returns {boolean} True αν βρέθηκε και εκτελείται δράση συλλογής.
+     */
     getEnergy() {
         if (this.getEnergyFromContainersorStorage()) return true;
         if (this.getEnergyFromDroppedEnergy()) return true;
@@ -36,6 +98,9 @@ class BaseRole {
         return this.gotoHarvesting();
     }
 
+    /**
+     * Ανάληψη ενέργειας από Containers ή Storage.
+     */
     getEnergyFromContainersorStorage(resource = RESOURCE_ENERGY) {
         const target = this.creep.pos.findClosestByPath(FIND_STRUCTURES, {
             filter: s => (s.structureType === STRUCTURE_CONTAINER || s.structureType === STRUCTURE_STORAGE) &&
@@ -49,6 +114,9 @@ class BaseRole {
         return false;
     }
 
+    /**
+     * Συλλογή οποιουδήποτε ορυκτού (εκτός ενέργειας) από Containers.
+     */
     getAnyMineralFromContainers() {
         const target = this.creep.pos.findClosestByPath(FIND_STRUCTURES, {
             filter: s => (s.structureType === STRUCTURE_CONTAINER) && 
@@ -65,6 +133,9 @@ class BaseRole {
         return false;
     }
 
+    /**
+     * Συλλογή ενέργειας που βρίσκεται κάτω στο έδαφος.
+     */
     getEnergyFromDroppedEnergy() {
         const dropped = this.creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES, {
             filter: r => r.resourceType === RESOURCE_ENERGY && r.amount > 40
@@ -77,6 +148,9 @@ class BaseRole {
         return false;
     }
 
+    /**
+     * Συλλογή ενέργειας από ερείπια (Ruins).
+     */
     getEnergyFromRuins() {
         const ruin = this.creep.pos.findClosestByPath(FIND_RUINS, { filter: s => s.store[RESOURCE_ENERGY] > 40 });
         if (ruin) {
@@ -87,6 +161,9 @@ class BaseRole {
         return false;
     }
 
+    /**
+     * Μετάβαση και εξόρυξη από πηγή ενέργειας.
+     */
     gotoHarvesting() {
         const source = this.creep.pos.findClosestByPath(FIND_SOURCES_ACTIVE);
         if (source) {
@@ -97,6 +174,9 @@ class BaseRole {
         return false;
     }
 
+    /**
+     * Γέμισμα Spawn και Extensions.
+     */
     fillSpawnExtension() {
         const target = this.creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {
             filter: s => (s.structureType === STRUCTURE_EXTENSION || s.structureType === STRUCTURE_SPAWN) &&
@@ -110,6 +190,9 @@ class BaseRole {
         return false;
     }
 
+    /**
+     * Κτίσιμο κτιρίων με προτεραιότητα (όχι δρόμοι πρώτα).
+     */
     buildStructures() {
         let targets = this.creep.room.find(FIND_CONSTRUCTION_SITES, { filter: s => s.structureType !== STRUCTURE_ROAD });
         if (targets.length === 0) targets = this.creep.room.find(FIND_CONSTRUCTION_SITES, { filter: s => s.structureType === STRUCTURE_ROAD });
@@ -125,6 +208,9 @@ class BaseRole {
         return false;
     }
 
+    /**
+     * Αναβάθμιση του Controller του δωματίου.
+     */
     upgradeController() {
         if (this.creep.room.controller) {
             if (this.creep.pos.inRangeTo(this.creep.room.controller, 2)) this.creep.upgradeController(this.creep.room.controller);
@@ -134,12 +220,16 @@ class BaseRole {
         return false;
     }
 
+    /**
+     * Παραμερισμός αν το creep εμποδίζει κάποιο άλλο creep με υψηλότερη προτεραιότητα.
+     */
     checkYield() {
         const priorityRoles = ['LDHarvester', 'hauler', 'supporter'];
         const blocker = this.creep.pos.findInRange(FIND_MY_CREEPS, 1).find(
             c => c.id !== this.creep.id && priorityRoles.includes(c.memory.role) && c.fatigue === 0
         );
         if (!blocker) return false;
+        
         if (movementManager.isBlockingPath(this.creep)) {
             const directions = [TOP, TOP_RIGHT, RIGHT, BOTTOM_RIGHT, BOTTOM, BOTTOM_LEFT, LEFT, TOP_LEFT];
             for (let dir of directions) {
@@ -161,7 +251,16 @@ class BaseRole {
             }
         }
         return false;
-    }
+    } // end of checkYield()
+	/**
+	* Υπολογίζει πόσα ticks χρειάστηκαν για την κατασκευή του Creep.
+	* @param {Creep} creep - Το αντικείμενο του creep.
+	* @returns {number} Ο συνολικός χρόνος σε ticks.
+	*/
+	getSpawningDuration() {
+		if (!this.creep || !this.creep.body) return 0;
+		return this.creep.body.length * 3;
+	} // end of getSpawningDuration
 }
 
 module.exports = BaseRole;

@@ -46,7 +46,7 @@ class PopulationManager {
         if (storage) {
            // console.log("population on Storage strategy");
             limits[ROLES.SIMPLE_HARVESTER] = 0;
-            limits[ROLES.HAULER] = Math.ceil(sourceCount+1);
+            limits[ROLES.HAULER] = Math.ceil(sourceCount);
             
             if (controllerLevel === 8) {
                 limits[ROLES.UPGRADER] = 1;

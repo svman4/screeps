@@ -1,8 +1,12 @@
 /*
 main.js
- Version 1.1.0
+ Version 1.1.1
  TODO Μέχρι να φτιαχτεί το storage όλα τα container Που δεν είναι σε source να γίνονται storageContainer. ΘΑ λειτουργεί σαν το storage.
  TODO εφόσον υπάρχει έστω 1 storageContainer να φτιάχνονται static harvester, haulers, σαν να υπάρχει storage δλδ. Μόλις χτιστέι αληθινό storage τότε να γίνεται διάσπαση σε controllerContainer και recoveryContainer
+ TODO παρατηρείται ότι τα creep φτιάχνονται πάντα από ένα room ενώ το δωμάτιο που χρειάζεται το creep έχει την ενέργεια που απαιτείται.
+ TODO οι static Harverster δε χρειάζεται να φεύγουν απο το source(δε χρειάζεται να γίνεται to_be_recycled). 
+ TODO οι static Harverster αν γίνεται να ενημερώνουν για δημιουργία νέου staticHarvester για τη συγκεκκριμένη πηγή αλλά αυτοί να συνεχίζουν.
+ TODO να βρεθεί τρόπος να ακυρώσουμε το τρόπο εισαγωγής των blueprint να μη χρειάζεται να κάνουμε global μεταβλητές.
  
  */
 var spawnManager = require('manager.spawn');
@@ -45,7 +49,9 @@ var pixels=require('manager.pixels');
 };
 global.roomBlueprints = {
    
-    E7S7:require('E7S7'),
+    E14S12:require('E14S12'),
+    E15S11:require('E15S11'),
+    E15S12:require('E15S12'),
     
     
 
@@ -101,8 +107,9 @@ module.exports.loop = function () {
     if (Game.time % 10 === 0) {
         var endCpu = Game.cpu.getUsed();
         var cpuUsed = (endCpu - startCpu).toFixed(3);
-    
-        console.log(`CPU Bucket: ${Game.cpu.bucket} | Creeps: ${Object.keys(Game.creeps).length} | cpusUser: ${cpuUsed} | ${Game.time}`);
+        if(cpuUsed>10) {
+            console.log(`CPU Bucket: ${Game.cpu.bucket} | Creeps: ${Object.keys(Game.creeps).length} | cpusUser: ${cpuUsed} | ${Game.time}`);
+        }
     }
      } catch (error) {
         console.log(`🔴 ΣΦΑΛΜΑ: ${error.message}`);

@@ -1,9 +1,15 @@
+/*
+    version 1.2.0
+*/
 require('RoomVisual');
 const BaseLayout = require('construction.layout.BaseLayout');
 const FileLayout = require('construction.layout.FileLayout');
 const { MAX_CONSTRUCTION_SITE } = require('construction.constants');
 const RoadPlanner = require('construction.roadPlanner');
 
+
+// TODO να εντοπίζει το controller container και να το βάζει στο memory.
+// TODO να εντπίζει το recovery container και να το βάζει στη μνήμη.
 /**
  * SCAN INTERVALS & CONSTANTS
  */
@@ -58,6 +64,7 @@ class ConstructionManager {
         structures.forEach(s => {
             cache[`${s.pos.x},${s.pos.y}`] = s.structureType;
         });
+        
         Memory.rooms[this.roomName].construction.builtStructures = cache;
     }
 

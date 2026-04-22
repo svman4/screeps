@@ -25,8 +25,9 @@ const roleManager = {
             if (creep.ticksToLive < minTickToLive && creep.room.memory.recoveryContainerId) {
                 creep.memory.role = "to_be_recycled";
             }
-
+//console.log("1"+creep.memory.role);
             const RoleClass = this.roleClasses[creep.memory.role];
+            
             if (RoleClass) {
                 const roleInstance = new RoleClass(creep);
                 try {

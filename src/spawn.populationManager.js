@@ -14,14 +14,14 @@ class PopulationManager {
         const sourceCount = room.find(FIND_SOURCES).length;
         const controllerLevel = room.controller.level;
         const storage = room.storage;
-        
+        //console.log("Check population limit for room "+room.name);
         // Αρχικοποίηση ορίων
         let limits = {
-            [ROLES.SIMPLE_HARVESTER]: 0,
+            [ROLES.SIMPLE_HARVESTER]: 1,
             [ROLES.STATIC_HARVESTER]: sourceCount,
-            [ROLES.HAULER]: 0,
+            [ROLES.HAULER]: 1,
             [ROLES.UPGRADER]: 1,
-            [ROLES.BUILDER]: sourceCount,
+            [ROLES.BUILDER]: 1,
             isRecovery: false
         };
 
@@ -32,30 +32,50 @@ class PopulationManager {
         const hasHaulers = _.some(roomCreeps, c => c.memory.role === ROLES.HAULER);
 
         if (!hasHarvesters || !hasHaulers) {
+            console.log("Emergency population initialization");
             limits.isRecovery = true;
             limits[ROLES.SIMPLE_HARVESTER] = Math.ceil(sourceCount * 1.5);
-            limits[ROLES.HAULER] = 1;
+            limits[ROLES.HAULER] = 0;
             limits[ROLES.UPGRADER] = 0;
-            limits[ROLES.BUILDER] = 0;
+            limits[ROLES.BUILDER] = 1;
             return limits;
         }
-
+        const storageContainerCount=room.memory.storageContainer?room.memory.storageContainer.length:0;
+        //console.log(storageContainerCount)
         // 2. ΚΑΝΟΝΙΚΗ ΣΤΡΑΤΗΓΙΚΗ ΑΝΑ RCL
         if (storage) {
+           // console.log("population on Storage strategy");
             limits[ROLES.SIMPLE_HARVESTER] = 0;
-            limits[ROLES.HAULER] = Math.ceil(1 + (2 * sourceCount / 3));
+            limits[ROLES.HAULER] = Math.ceil(sourceCount+1);
             
             if (controllerLevel === 8) {
                 limits[ROLES.UPGRADER] = 1;
                 limits[ROLES.BUILDER] = 1;
             } else {
-                limits[ROLES.UPGRADER] = (storage.store[RESOURCE_ENERGY] > 300000) ? 3 : 1;
+                limits[ROLES.UPGRADER] = (storage.store[RESOURCE_ENERGY] > 300000) ? 1 : 1;
                 limits[ROLES.BUILDER] = (storage.store[RESOURCE_ENERGY] > 500000) ? sourceCount + 2 : sourceCount;
             }
-        } else {
+        } else if (storageContainerCount>0) {
+            
+            // Αν υπάρχουν storageContainer
+            console.log("population on StorageContainer strategy");
+            limits[ROLES.SIMPLE_HARVESTER] = 0;
+            limits[ROLES.HAULER] = Math.ceil(sourceCount +1);
+            
+            if (controllerLevel === 8) {
+                limits[ROLES.UPGRADER] = 1;
+                limits[ROLES.BUILDER] = 1;
+            } else {
+                limits[ROLES.UPGRADER] = sourceCount;
+                limits[ROLES.BUILDER] = sourceCount+2;
+                
+            }
+        }else {
             // Early Game (No storage)
-            limits[ROLES.SIMPLE_HARVESTER] = (controllerLevel < 3) ? sourceCount : 0;
-            limits[ROLES.HAULER] = 1;
+            limits[ROLES.UPGRADER] =  1;
+            limits[ROLES.BUILDER] =  1;
+            limits[ROLES.SIMPLE_HARVESTER] = sourceCount+1;
+            limits[ROLES.HAULER] = 0;
         }
 
         return limits;

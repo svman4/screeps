@@ -5,13 +5,15 @@
  * ΠΕΡΙΓΡΑΦΗ: Κεντρικός διαχειριστής παραγωγής. Χρησιμοποιεί το populationManager 
  * για τον έλεγχο κατάρρευσης οικονομίας (Recovery Mode).
  */
-
+//TODO να δημιουργεί miners στα δωμάτια εφόσον έχει χτιστεί extractor 
+//TODO ta haulers να δημιουργούνται μετά το rcl=3
+// TODO τα static harvester να είναι όσο πιο μεγάλα γίνεται(έως 5 work body)
 // --- ΕΣΩΤΕΡΙΚΕΣ ΣΤΑΘΕΡΕΣ ΔΙΑΧΕΙΡΙΣΤΗ ---
 const TICKS_UPDATE_REQUESTS = 10;   // Συχνότητα ελέγχου αναγκών
-const TICKS_UPDATE_LIMITS = 20;     // Συχνότητα επικαιροποίησης ορίων πληθυσμού
+const TICKS_UPDATE_LIMITS = 100;     // Συχνότητα επικαιροποίησης ορίων πληθυσμού
 const TICKS_LOG_DEBUG = 20;         // Συχνότητα εμφάνισης debug logs
 const TICKS_CLEANUP_MEMORY = 50;    // Συχνότητα καθαρισμού νεκρών creeps
-const ENERGY_THRESHOLD_NORMAL = 0.8; // Απαιτούμενο ποσοστό ενέργειας για μη κρίσιμα creeps
+const ENERGY_THRESHOLD_NORMAL = 0.95; // Απαιτούμενο ποσοστό ενέργειας για μη κρίσιμα creeps
 const CRITICAL_PRIORITY_LEVEL = 15; // Επίπεδο προτεραιότητας που θεωρείται "Emergency"
 
 // --- ΕΞΩΤΕΡΙΚΕΣ ΣΥΝΔΕΣΕΙΣ ---
@@ -223,8 +225,8 @@ class SpawnManager {
             case ROLES.UPGRADER:
             case ROLES.BUILDER:
                 let bParts = 0;
-                while (this.getBodyCost(body) + 200 <= maxEnergy && bParts < 15) {
-                    body.push(WORK, CARRY, MOVE);
+                while (this.getBodyCost(body) + 250 <= maxEnergy && bParts < 15) {
+                    body.push(WORK, CARRY, MOVE,MOVE);
                     bParts++;
                 }
                 break;

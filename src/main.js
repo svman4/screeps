@@ -1,5 +1,10 @@
-// main.js
-// Version 1.1.0
+/*
+main.js
+ Version 1.1.0
+ TODO Μέχρι να φτιαχτεί το storage όλα τα container Που δεν είναι σε source να γίνονται storageContainer. ΘΑ λειτουργεί σαν το storage.
+ TODO εφόσον υπάρχει έστω 1 storageContainer να φτιάχνονται static harvester, haulers, σαν να υπάρχει storage δλδ. Μόλις χτιστέι αληθινό storage τότε να γίνεται διάσπαση σε controllerContainer και recoveryContainer
+ 
+ */
 var spawnManager = require('manager.spawn');
 var defenceManager = require('manager.defense');
 var constructionManager = require('manager.construction');
@@ -40,9 +45,8 @@ var pixels=require('manager.pixels');
 };
 global.roomBlueprints = {
    
-    E15S11:require('E15S11'),
-    E15S12:require('E15S12'),
-    E14S12:require('E14S12')
+    E7S7:require('E7S7'),
+    
     
 
     
@@ -75,7 +79,7 @@ module.exports.loop = function () {
             defenceManager.run(roomName);
             //spawnManager.run(roomName);
             logisticsManager.run(roomName);
-            roleManager.run(roomName);
+
             
             // MEDIUM PRIORITY - Τρέχουν πιο σπάνια
             constructionManager.run(roomName);
@@ -90,7 +94,7 @@ module.exports.loop = function () {
              }
         }
     } 
-	
+    roleManager.run();	
     spawnManager.run();
     expansionManager.run();
     pixels.run();

@@ -1,5 +1,5 @@
 // manager.logistics.js
-const movementManager = require('manager.movement'); // <-- IMPORT
+const movementManager = require('manager.movement'); 
 /*
 version 1.0.0
 */

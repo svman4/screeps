@@ -31,7 +31,7 @@ module.exports = {
         'extension': { 1: 0, 2: 5, 3: 10, 4: 20, 5: 30, 6: 40, 7: 50, 8: 60 },
         'link': [5, 5, 6, 7, 8, 8],
         'lab': [6, 6, 6, 7, 7, 8, 8, 8, 8, 8],
-        'container': { 1: 3, 4: 5 },
+        'container': { 1: 4, 4: 5 },
     },
 
     // Προεπιλεγμένα RCL ξεκλειδώματος αν δεν ορίζεται στα steps
@@ -44,7 +44,10 @@ module.exports = {
         constructedWall: 4, 
         tower: 3, 
         storage: 4, 
-        link: 5 
+        link: 5 ,
+        terminal:6,
+        extractor:6,
+        factory:7
     }
 	
 };

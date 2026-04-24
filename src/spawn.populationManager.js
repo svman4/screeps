@@ -52,7 +52,7 @@ class PopulationManager {
                 limits[ROLES.UPGRADER] = 1;
                 limits[ROLES.BUILDER] = 1;
             } else {
-                limits[ROLES.UPGRADER] = (storage.store[RESOURCE_ENERGY] > 300000) ? 1 : 1;
+                limits[ROLES.UPGRADER] = 1;
                 limits[ROLES.BUILDER] = (storage.store[RESOURCE_ENERGY] > 500000) ? sourceCount + 2 : sourceCount;
             }
         } else if (storageContainerCount>0) {

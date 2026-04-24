@@ -8,7 +8,7 @@ const PRIORITIES = {
     TOWER: 80,
     CONTROLLER_CONTAINER: 70,
     LAB: 40,
-    TERMINAL: 40,
+    TERMINAL: 5,
     NUKER: 35 , 
     FACTORY: 35, 
     POWER_SPAWN: 35,
@@ -24,7 +24,7 @@ const PRIORITIES = {
 };
 
 const TARGET_FULL_PERCENT = { 
-    TERMINAL: 0.8,
+    TERMINAL: 0.3,
     STORAGE: 0.8,
     TOWER: 0.8,
     CONTROLLER_CONTAINER: 0.6,

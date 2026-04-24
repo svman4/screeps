@@ -1,9 +1,11 @@
 /**
  * Construction Constants & Configuration
  * Shared across different layout managers.
+ * Version 1.0.1
  */
 
 module.exports = {
+	
 	MAX_CONSTRUCTION_SITE:2,
     // Προτεραιότητες κατασκευής (Υψηλότερο = Πιο σημαντικό)
     PRIORITIES: {
@@ -31,9 +33,9 @@ module.exports = {
         'extension': { 1: 0, 2: 5, 3: 10, 4: 20, 5: 30, 6: 40, 7: 50, 8: 60 },
         'link': [5, 5, 6, 7, 8, 8],
         'lab': [6, 6, 6, 7, 7, 8, 8, 8, 8, 8],
-        'container': { 1: 4, 4: 5 },
+        'container': { 3: 4, 4: 5 },
     },
-
+	
     // Προεπιλεγμένα RCL ξεκλειδώματος αν δεν ορίζεται στα steps
     DEFAULTS_RCL: { 
         road: 3, 
@@ -48,6 +50,13 @@ module.exports = {
         terminal:6,
         extractor:6,
         factory:7
-    }
+    },
+	MEMORY_KEYS: {
+		ROOT: 'construction',
+        STRUCTURES: 'builtStructures',
+        RECOVERY: 'recoveryContainerId',
+        CONTROLLER: 'controllerContainerId',
+        ROAD_PLAN: 'roadPlannerData'
+    } // end of MEMORY_KEYS
 	
 };

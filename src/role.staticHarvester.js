@@ -12,7 +12,7 @@
  */
 const BaseRole = require('role.base');
 const movementManager = require('manager.movement');
-const NEED_REPLACEMENT_FLAG='needReplacementFlag';
+const {NEED_REPLACEMENT_FLAG}=require('spawn.constants');
 class StaticHarvester extends BaseRole {
     run() {
         if (!this.creep.memory.sourceId) {

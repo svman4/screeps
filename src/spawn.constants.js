@@ -41,8 +41,9 @@ const PRIORITY = {
     [ROLES.SUPPORTER]: 80,
     [ROLES.SCOUT]: 100
 };
+const NEED_REPLACEMENT_FLAG="needReplacementFlag";
 
-module.exports = {
+module.exports = {NEED_REPLACEMENT_FLAG,
     ROLES,
     BODY_ENERGY_LIMITS,
     PRIORITY

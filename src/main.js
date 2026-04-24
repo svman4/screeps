@@ -1,9 +1,9 @@
 /*
 main.js
- Version 1.2.0
+ Version 1.3.0
  TODO παρατηρείται ότι τα creep φτιάχνονται πάντα από ένα room ενώ το δωμάτιο που χρειάζεται το creep έχει την ενέργεια που απαιτείται.
  
- TODO οι static Harverster αν γίνεται να ενημερώνουν για δημιουργία νέου staticHarvester για τη συγκεκκριμένη πηγή αλλά αυτοί να συνεχίζουν.
+ 
  */
 var spawnManager = require('manager.spawn');
 var defenceManager = require('manager.defense');

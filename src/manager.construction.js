@@ -12,6 +12,9 @@
     - Ολοκλήρωση της μεθόδου updateSpecialContainer για εντοπισμό Recovery & Controller Containers.
     - Πλήρης ενσωμάτωση των MEMORY_KEYS από το αρχείο constants.
     - Κατάργηση hardcoded strings στη διαχείριση μνήμης.
+	
+	TODO να βρίσκει τα site των container των πηγών και να τους δίνει προτεραιότητα. Να είναι αυτά που χτίζονται στο rcl=2
+	TODO αρχίζουν οι δρόμοι να χτίζονται στο rcl 1. Επιλέγονται οι σωστοί, αλλά όχι στο rcl=1
 */
 
 require('RoomVisual');
@@ -50,7 +53,7 @@ class ConstructionManager {
             };
         }
 		
-    }
+    } // end of initMemory()
 
     run() {
         if (!this.room || !this.room.controller || !this.room.controller.my) return;

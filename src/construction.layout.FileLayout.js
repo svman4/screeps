@@ -57,7 +57,7 @@ class FileLayout extends BaseLayout {
             return require(`blueprints.${roomName}`);
         } catch (e) {
             // Καταγραφή του σφάλματος στην κονσόλα για ευκολότερο debugging
-//            console.log(`[FileLayout] Error loading blueprint for ${roomName}: File 'blueprints.${roomName}' not found or contains errors.</span>`);
+            console.log(`[FileLayout] Error loading blueprint for ${roomName}: File 'blueprints.${roomName}' not found or contains errors.</span>`);
             return null;
         }
     } // end of loadRawData

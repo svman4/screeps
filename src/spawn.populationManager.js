@@ -1,7 +1,8 @@
 /**
  * MODULE: Population Manager
  * ΠΕΡΙΓΡΑΦΗ: Διαχειρίζεται τα όρια πληθυσμού και την κατάσταση Recovery ανά δωμάτιο.
- * VERSION 1.0.0
+ * VERSION 1.1.0
+   1.1.0 Ακύρωση λειτουργίας storageContainer. 
  */
 const { ROLES } = require('spawn.constants');
 
@@ -34,17 +35,15 @@ class PopulationManager {
         if (!hasHarvesters || !hasHaulers) {
             console.log("Emergency population initialization");
             limits.isRecovery = true;
-            limits[ROLES.SIMPLE_HARVESTER] = Math.ceil(sourceCount * 1.5);
+            limits[ROLES.SIMPLE_HARVESTER] = Math.ceil(sourceCount * 1.0);
             limits[ROLES.HAULER] = 0;
             limits[ROLES.UPGRADER] = 0;
             limits[ROLES.BUILDER] = 1;
             return limits;
         }
-        const storageContainerCount=room.memory.storageContainer?room.memory.storageContainer.length:0;
-        //console.log(storageContainerCount)
         // 2. ΚΑΝΟΝΙΚΗ ΣΤΡΑΤΗΓΙΚΗ ΑΝΑ RCL
         if (storage) {
-           // console.log("population on Storage strategy");
+           
             limits[ROLES.SIMPLE_HARVESTER] = 0;
             limits[ROLES.HAULER] = Math.ceil(sourceCount);
             
@@ -55,26 +54,11 @@ class PopulationManager {
                 limits[ROLES.UPGRADER] = 1;
                 limits[ROLES.BUILDER] = (storage.store[RESOURCE_ENERGY] > 500000) ? sourceCount + 2 : sourceCount;
             }
-        } else if (storageContainerCount>0) {
-            
-            // Αν υπάρχουν storageContainer
-            console.log("population on StorageContainer strategy");
-            limits[ROLES.SIMPLE_HARVESTER] = 0;
-            limits[ROLES.HAULER] = Math.ceil(sourceCount +1);
-            
-            if (controllerLevel === 8) {
-                limits[ROLES.UPGRADER] = 1;
-                limits[ROLES.BUILDER] = 1;
-            } else {
-                limits[ROLES.UPGRADER] = sourceCount;
-                limits[ROLES.BUILDER] = sourceCount+2;
-                
-            }
-        }else {
+        } else {
             // Early Game (No storage)
             limits[ROLES.UPGRADER] =  1;
-            limits[ROLES.BUILDER] =  1;
-            limits[ROLES.SIMPLE_HARVESTER] = sourceCount+1;
+            limits[ROLES.BUILDER] =  0;
+            limits[ROLES.SIMPLE_HARVESTER] = sourceCount+2;
             limits[ROLES.HAULER] = 0;
         }
 

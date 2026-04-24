@@ -12,7 +12,7 @@
  */
 const BaseRole = require('role.base');
 const movementManager = require('manager.movement');
-
+const NEED_REPLACEMENT_FLAG='needReplacementFlag';
 class StaticHarvester extends BaseRole {
     run() {
         if (!this.creep.memory.sourceId) {
@@ -53,7 +53,7 @@ class StaticHarvester extends BaseRole {
 			delete this.creep.memory.leadTime;
             
             // TODO: Προσθήκη logic στο Spawn Manager για να διαβάζει αυτό το flag
-            this.creep.memory.needsReplacement = true; 
+            this.creep.memory[NEED_REPLACEMENT_FLAG] = true; 
             
         }
         this.creep.harvest(source);

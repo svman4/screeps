@@ -1,13 +1,9 @@
 /*
 main.js
- Version 1.1.1
- TODO Μέχρι να φτιαχτεί το storage όλα τα container Που δεν είναι σε source να γίνονται storageContainer. ΘΑ λειτουργεί σαν το storage.
- TODO εφόσον υπάρχει έστω 1 storageContainer να φτιάχνονται static harvester, haulers, σαν να υπάρχει storage δλδ. Μόλις χτιστέι αληθινό storage τότε να γίνεται διάσπαση σε controllerContainer και recoveryContainer
+ Version 1.2.0
  TODO παρατηρείται ότι τα creep φτιάχνονται πάντα από ένα room ενώ το δωμάτιο που χρειάζεται το creep έχει την ενέργεια που απαιτείται.
  
  TODO οι static Harverster αν γίνεται να ενημερώνουν για δημιουργία νέου staticHarvester για τη συγκεκκριμένη πηγή αλλά αυτοί να συνεχίζουν.
- TODO να βρεθεί τρόπος να ακυρώσουμε το τρόπο εισαγωγής των blueprint να μη χρειάζεται να κάνουμε global μεταβλητές.
- 
  */
 var spawnManager = require('manager.spawn');
 var defenceManager = require('manager.defense');
@@ -47,16 +43,9 @@ var pixels=require('manager.pixels');
     
     return answer;
 };
-global.roomBlueprints = {
-   
-    E14S12:require('E14S12'),
-    E15S11:require('E15S11'),
-    E15S12:require('E15S12'),
-    
-    
 
-    
-};
+
+
 // Βοηθητική συνάρτηση για οπτική πληροφόρηση
 
 

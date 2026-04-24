@@ -41,11 +41,15 @@ class ConstructionManager {
 
     initMemory() {
         if (!Memory.rooms[this.roomName]) Memory.rooms[this.roomName] = {};
-        if (!Memory.rooms[this.roomName][MEMORY_KEYS.ROOT]) {
+        if (!Memory.debug) Memory.debug={};
+		if (!Memory.debug[MEMORY_KEYS.ROOT]) Memory.debug[MEMORY_KEYS.ROOT]=false;
+		
+		if (!Memory.rooms[this.roomName][MEMORY_KEYS.ROOT]) {
             Memory.rooms[this.roomName][MEMORY_KEYS.ROOT] = { 
                 [MEMORY_KEYS.STRUCTURES]: {} 
             };
         }
+		
     }
 
     run() {
@@ -89,10 +93,8 @@ class ConstructionManager {
 
         // Αν και τα δύο είναι ζωντανά, σταματάμε εδώ για εξοικονόμηση CPU
         if (currentRecovery && currentController) {
-			console.log(currentRecovery.id);
-            return; 
-        }
-		console.log("updateSpecialContainer "+this.room.name);
+	        return; 
+        }	
         const allStructures = structures || this.room.find(FIND_STRUCTURES);
         const containers = allStructures.filter(s => s.structureType === STRUCTURE_CONTAINER);
         if (containers.length === 0) return;

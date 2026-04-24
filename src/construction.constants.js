@@ -56,7 +56,8 @@ module.exports = {
         STRUCTURES: 'builtStructures',
         RECOVERY: 'recoveryContainerId',
         CONTROLLER: 'controllerContainerId',
-        ROAD_PLAN: 'roadPlannerData'
+        ROAD_PLAN: 'roadPlannerData',
+		BLUE_PRINT: 'blueprint'
     } // end of MEMORY_KEYS
 	
 };

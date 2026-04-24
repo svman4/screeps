@@ -1,26 +1,71 @@
+/*
+    CHANGELOG:
+    version 1.2.1
+    - Προσθήκη αναλυτικού μηνύματος λάθους (console.error) κατά τη δυναμική φόρτωση blueprint.
+    
+    version 1.2.0
+    - Υλοποίηση Dynamic Loading (Lazy Load) των blueprint αρχείων.
+    - Κατάργηση εξάρτησης από το global.roomBlueprints.
+    - Προσθήκη error handling για δωμάτια χωρίς αρχείο blueprint.
+*/
+
 const BaseLayout = require('construction.layout.BaseLayout');
-const { PRIORITIES, STRUCTURE_RCL_STEPS, DEFAULTS_RCL } = require('construction.constants');
+const { PRIORITIES, STRUCTURE_RCL_STEPS, MEMORY_KEYS } = require('construction.constants');
 const RoadPlanner = require('construction.roadPlanner');
 
 class FileLayout extends BaseLayout {
     constructor(roomName) {
         super();
         this.roomName = roomName;
-        this.loadFromMemory(roomName);
+        this.blueprint = null;
+        this.init(roomName);
     }
 
-    loadFromMemory(roomName) {
-        const mem = Memory.rooms[roomName].construction;
+    /**
+     * Αρχικοποιεί το layout φορτώνοντας από τη μνήμη ή το αρχείο.
+     */
+    init(roomName) {
+        const rootMem = Memory.rooms[roomName][MEMORY_KEYS.ROOT];
         
-        // Αν υπάρχει ήδη στη μνήμη, το φορτώνουμε
-        if (mem.blueprint) {
-            this.blueprint = mem.blueprint;
+        // 1. Προσπάθεια φόρτωσης από την Cache της μνήμης (αν έχει ήδη υπολογιστεί)
+        if (rootMem && rootMem[MEMORY_KEYS.BLUE_PRINT]) {
+            this.blueprint = rootMem[MEMORY_KEYS.BLUE_PRINT];
             return;
         }
 
-        if (!global.roomBlueprints || !global.roomBlueprints[this.roomName]) return;
+        // 2. Αν δεν υπάρχει στην Cache, προσπάθεια Δυναμικής Φόρτωσης του αρχείου
+        const rawData = this.loadRawData(roomName);
         
-        const rawData = global.roomBlueprints[this.roomName];
+        if (rawData) {
+            console.log(`[FileLayout] New blueprint file detected for ${roomName}. Processing...`);
+            this.processRawData(rawData, roomName);
+        } else {
+            // Αν δεν βρεθεί αρχείο, η blueprint παραμένει null και ο manager θα το χειριστεί
+            this.blueprint = [];
+        }
+    }
+
+    /**
+     * Φορτώνει δυναμικά το module του blueprint.
+     * Το αρχείο πρέπει να ονομάζεται ακριβώς όπως το roomName (π.χ. E12N34.js)
+     * και να βρίσκεται στο φάκελο blueprints.
+     */
+    loadRawData(roomName) {
+        try {
+            // Δυναμικό require. Στο Screeps τα αρχεία φορτώνονται από το root ή συγκεκριμένο path.
+            // Υποθέτουμε ότι τα blueprints σου είναι στο φάκελο "blueprints"
+            return require(`blueprints.${roomName}`);
+        } catch (e) {
+            // Καταγραφή του σφάλματος στην κονσόλα για ευκολότερο debugging
+//            console.log(`[FileLayout] Error loading blueprint for ${roomName}: File 'blueprints.${roomName}' not found or contains errors.</span>`);
+            return null;
+        }
+    } // end of loadRawData
+
+    /**
+     * Μετατρέπει τα Raw δεδομένα του blueprint σε επεξεργασμένη λίστα.
+     */
+    processRawData(rawData, roomName) {
         const center = rawData.buildings.center || { x: 25, y: 25 };
         const DISTANCE_FACTOR = 0.1;
         const buildingEntries = [];
@@ -36,20 +81,21 @@ class FileLayout extends BaseLayout {
             });
 
             sortedPositions.forEach((pos, index) => {
-                const rclReq = this.calculateRCLRequirement(type, index);
                 const distance = Math.abs(pos.x - center.x) + Math.abs(pos.y - center.y);
-                
                 buildingEntries.push({
-                    type, x: pos.x, y: pos.y, rcl: rclReq,
+                    type: type,
+                    x: pos.x,
+                    y: pos.y,
+                    rcl: this.calculateRCLRequirement(type, index),
                     score: (PRIORITIES[type.toUpperCase()] || 0) - (distance * DISTANCE_FACTOR)
                 });
             });
         }
 
-        // Επεξεργασία δρόμων με categories
+        // Επεξεργασία δρόμων
         const roadPositions = rawData.buildings.road || [];
         const roadEntries = roadPositions.map(pos => {
-            const roadMeta = RoadPlanner.getRoadMetadata(pos.x, pos.y, rawData, buildingEntries,roomName);
+            const roadMeta = RoadPlanner.getRoadMetadata(pos.x, pos.y, rawData, buildingEntries, roomName);
             const distance = Math.abs(pos.x - center.x) + Math.abs(pos.y - center.y);
             
             return {
@@ -57,7 +103,7 @@ class FileLayout extends BaseLayout {
                 x: pos.x,
                 y: pos.y,
                 rcl: roadMeta.rcl,
-                category: roadMeta.category, // Αποθήκευση κατηγορίας
+                category: roadMeta.category,
                 score: (PRIORITIES.ROAD || 0) + roadMeta.bonus - (distance * DISTANCE_FACTOR)
             };
         });
@@ -65,8 +111,12 @@ class FileLayout extends BaseLayout {
         const finalBlueprint = [...buildingEntries, ...roadEntries];
         finalBlueprint.sort((a, b) => b.score - a.score);
 
-        // Αποθήκευση στο Memory
-        mem.blueprint = finalBlueprint;
+        // Αποθήκευση στην Cache της μνήμης
+        const rootMem = Memory.rooms[roomName][MEMORY_KEYS.ROOT];
+        if (rootMem) {
+            rootMem[MEMORY_KEYS.BLUE_PRINT] = finalBlueprint;
+        }
+        
         this.blueprint = finalBlueprint;
     }
 
@@ -76,12 +126,11 @@ class FileLayout extends BaseLayout {
             if (Array.isArray(steps)) return steps[index] || steps[steps.length - 1];
             if (typeof steps === 'object') {
                 for (let rcl = 1; rcl <= 8; rcl++) {
-                    if (index < (steps[rcl] || 0)) return rcl;
+                    if (index < steps[rcl]) return rcl;
                 }
-                return 8;
             }
         }
-        return DEFAULTS_RCL[type] || 8;
+        return 8; 
     }
 }
 

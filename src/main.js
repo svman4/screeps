@@ -2,9 +2,11 @@
 main.js
  Version 1.3.0
  TODO παρατηρείται ότι τα creep φτιάχνονται πάντα από ένα room ενώ το δωμάτιο που χρειάζεται το creep έχει την ενέργεια που απαιτείται.
- 
- 
+ TODO στο rcl=3 να χτίζονται τα container των sources Και του controller, το container του recovery στο 4 ή και πιο μετά.
+ TODO παρατηρείται πως χτίζονται οι δρόμοι των source-->storage αλλά όχι ο δρόμος του controller
+ TODO το σώμα των staticHarvester να είναι το μέγιστο δυνατό ανά available energy (έως 6 work body)
  */
+ 
 var spawnManager = require('manager.spawn');
 var defenceManager = require('manager.defense');
 var constructionManager = require('manager.construction');

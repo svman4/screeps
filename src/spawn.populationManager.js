@@ -37,7 +37,7 @@ class PopulationManager {
             limits.isRecovery = true;
             limits[ROLES.SIMPLE_HARVESTER] = Math.ceil(sourceCount * 1.0);
             limits[ROLES.HAULER] = 0;
-            limits[ROLES.UPGRADER] = 0;
+            limits[ROLES.UPGRADER] = 1;
             limits[ROLES.BUILDER] = 1;
             return limits;
         }

@@ -33,10 +33,11 @@ class PopulationManager {
         const hasHaulers = _.some(roomCreeps, c => c.memory.role === ROLES.HAULER);
 
         if (!hasHarvesters || !hasHaulers) {
+			// TODO δε μου αρέσει ο τρόπος που μπαινει σε emergency. Στα πρώτα βήματα εννοείται πως δεν υπάρχουν haulers. 
             console.log("Emergency population initialization");
             limits.isRecovery = true;
             limits[ROLES.SIMPLE_HARVESTER] = Math.ceil(sourceCount * 1.0);
-            limits[ROLES.HAULER] = 0;
+            limits[ROLES.HAULER] = 1;
             limits[ROLES.UPGRADER] = 1;
             limits[ROLES.BUILDER] = 1;
             return limits;
@@ -54,7 +55,13 @@ class PopulationManager {
                 limits[ROLES.UPGRADER] = 1;
                 limits[ROLES.BUILDER] = (storage.store[RESOURCE_ENERGY] > 500000) ? sourceCount + 2 : sourceCount;
             }
-        } else {
+        } else if (true) { 
+			// Όταν έχει χτιστεί extension ή τουλάχιστον 1 container
+			limits[ROLES.UPGRADER] =  1;
+            limits[ROLES.BUILDER] =  1;
+            limits[ROLES.SIMPLE_HARVESTER] = sourceCount;
+            limits[ROLES.HAULER] = 1;
+		} else {
             // Early Game (No storage)
             limits[ROLES.UPGRADER] =  1;
             limits[ROLES.BUILDER] =  0;

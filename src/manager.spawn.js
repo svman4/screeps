@@ -235,8 +235,8 @@ class SpawnManager {
                 break;
             case ROLES.HAULER:
                 let hParts = 0;
-                while (this.getBodyCost(body) + 100 <= maxEnergy && hParts < 20) {
-                    body.push(CARRY,  MOVE);
+                while (this.getBodyCost(body) + 150 <= maxEnergy && hParts < 20) {
+                    body.push(CARRY, CARRY, MOVE);
                     hParts++;
                 }
                 break;

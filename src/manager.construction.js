@@ -14,7 +14,7 @@
     - Κατάργηση hardcoded strings στη διαχείριση μνήμης.
 */
 
-require('RoomVisual');
+const ConstructionVisualizer = require('construction.visualizer');
 const BaseLayout = require('construction.layout.BaseLayout');
 const FileLayout = require('construction.layout.FileLayout');
 const RoadPlanner = require('construction.roadPlanner');
@@ -37,6 +37,7 @@ class ConstructionManager {
         this.room = Game.rooms[roomName];
         this.initMemory();
         this.layout = new FileLayout(roomName);
+		this.visualizer = new ConstructionVisualizer(roomName);
     }
 
     initMemory() {
@@ -137,7 +138,7 @@ class ConstructionManager {
         let sites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
         const maxSites = MAX_CONSTRUCTION_SITE || 2;
         if (sites.length >= maxSites) return;
-
+		
         const constructionMem = Memory.rooms[this.roomName][MEMORY_KEYS.ROOT];
         const builtMap = constructionMem[MEMORY_KEYS.STRUCTURES] || {};
         const rcl = this.room.controller.level;
@@ -219,68 +220,16 @@ class ConstructionManager {
         if (Memory.debug && Memory.debug.construction === false) return;
         if (!this.layout || !this.layout.blueprint) return;
 
-        const visual = new RoomVisual(this.roomName);
-        const builtMap = Memory.rooms[this.roomName][MEMORY_KEYS.ROOT][MEMORY_KEYS.STRUCTURES] || {};
-        const currentRCL = this.room.controller.level;
+        const currentRCL = this.room.controller ? this.room.controller.level : 0;
+        
+        // Ανάκτηση του builtMap από τη μνήμη (όπως γίνεται και στην processConstruction)
+        const constructionMem = Memory.rooms[this.roomName][MEMORY_KEYS.ROOT] || {};
+        const builtMap = constructionMem[MEMORY_KEYS.STRUCTURES] || {};
 
-        this.drawMismatchedStructures(visual, builtMap);
-        this.drawBlueprint(visual, builtMap, currentRCL);
-    }
-
-    drawMismatchedStructures(visual, builtMap) {
-        const allowedAtPos = {};
-        for (const s of this.layout.blueprint) {
-            allowedAtPos[`${s.x},${s.y}`] = s;
-        }
-
-        for (const coord in builtMap) {
-            const [x, y] = coord.split(',').map(Number);
-            const structureType = builtMap[coord];
-            const blueprintItem = allowedAtPos[coord];
-
-            if (['road', 'constructedWall', 'rampart', 'controller'].includes(structureType)) continue;
-
-            if (!blueprintItem || blueprintItem.type !== structureType) {
-                visual.line(x - 0.4, y - 0.4, x + 0.4, y + 0.4, { color: '#ff0000', width: 0.1, opacity: 0.9 });
-                visual.line(x + 0.4, y - 0.4, x - 0.4, y + 0.4, { color: '#ff0000', width: 0.1, opacity: 0.9 });
-                visual.text("⚠️ REMOVE", x, y + 0.6, { color: '#ff0000', font: 0.25, backgroundColor: '#000000', opacity: 0.8 });
-            }
-        }
-    }
-
-    drawBlueprint(visual, builtMap, currentRCL) {
-        this.layout.blueprint.forEach(s => {
-            if (builtMap[`${s.x},${s.y}`] === s.type) return;
-
-            const isAvailable = s.rcl <= currentRCL;
-            const opacity = isAvailable ? 0.5 : 0.15;
-
-            if (s.type === 'road') {
-                const color = s.category === 'critical' ? '#ff0000' : (s.category === 'logistics' ? '#00ffff' : '#ffffff');
-                visual.circle(s.x, s.y, { fill: color, radius: 0.12, opacity: opacity });
-            } else {
-                visual.structure(s.x, s.y, this.mapType(s.type), { opacity: opacity });
-                this.drawStructureBadge(visual, s.x, s.y, s.rcl, isAvailable, opacity);
-            }
-        });
-    }
-
-    drawStructureBadge(visual, x, y, rcl, isAvailable, opacity) {
-        const rclColor = isAvailable ? '#00ff00' : '#ff4444';
-        const labelY = x % 2 === 0 ? y - 0.6 : y + 0.8;
-
-        visual.rect(x - 0.4, labelY - 0.2, 0.8, 0.35, {
-            fill: '#000000',
-            opacity: opacity,
-            stroke: rclColor,
-            strokeWidth: 0.03
-        });
-
-        visual.text(`L${rcl}`, x, labelY + 0.05, {
-            color: '#ffffff',
-            font: 'bold 0.2 verdana',
-            opacity: opacity + 0.3
-        });
+        // Κλήση του visualizer με το σωστό object
+        this.visualizer.drawBlueprint(this.layout.blueprint, builtMap, currentRCL);
+        
+        
     }
 }
 

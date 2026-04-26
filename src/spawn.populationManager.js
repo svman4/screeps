@@ -47,7 +47,7 @@ class PopulationManager {
             hasContainers: containers.length > 0,
             hasConstruction: room.find(FIND_CONSTRUCTION_SITES).length > 0
         };
-    }
+    } // end of _getContext
 
     /**
      * Ελέγχει αν το δωμάτιο βρίσκεται σε κατάσταση έκτακτης ανάγκης.
@@ -99,10 +99,14 @@ class PopulationManager {
         if (context.level < 8) {
             if (energy > 200000) limits[ROLES.BUILDER] = 3;
             if (energy > 500000) limits[ROLES.BUILDER] = 5;
-        }
+        } else {
+			if (context.hasConstruction) { 
+				limits[ROLES.BUILDER] = 3;
+			}
+		}
 
         return limits;
-    }
+    } // end of _getStorageLimits
 
     /**
      * Στρατηγική όταν υπάρχουν Containers αλλά όχι Storage.
@@ -111,7 +115,7 @@ class PopulationManager {
         return {
             [ROLES.SIMPLE_HARVESTER]: 0,
             [ROLES.STATIC_HARVESTER]: context.sources,
-            [ROLES.HAULER]: context.sources + 1,
+            [ROLES.HAULER]: context.sources ,
             [ROLES.UPGRADER]: 1,
             [ROLES.BUILDER]: 3, // Αυξημένοι builders λόγω έλλειψης storage
             isRecovery: false
@@ -130,7 +134,7 @@ class PopulationManager {
             [ROLES.BUILDER]: 2,
             isRecovery: false
         };
-    }
+    } // end of _getEarlyGameLimits
 
     /**
      * Ενημερώνει το Memory του δωματίου.

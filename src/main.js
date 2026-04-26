@@ -44,11 +44,7 @@ var pixels=require('manager.pixels');
     }
     
     return answer;
-};
-
-
-
-// Βοηθητική συνάρτηση για οπτική πληροφόρηση
+}; // Βοηθητική συνάρτηση για οπτική πληροφόρηση
 
 
 module.exports.loop = function () {

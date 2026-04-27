@@ -47,12 +47,12 @@ class StaticHarvester extends BaseRole {
 		// Έλεγχος αν πρέπει να δοθεί σήμα για παραγωγή αντικαταστάτη
         if (this.creep.memory.leadTime && (this.creep.ticksToLive < this.creep.memory.leadTime)) {
             
-			console.log(`TODO ${this.creep.name}: Requesting replacement. Lead time was ${this.creep.memory.leadTime} ticks.`);
+			console.log(`${this.creep.name}: Requesting replacement. Lead time was ${this.creep.memory.leadTime} ticks.`);
 			// Διαγράφουμε το travelTime ώστε να μην ξαναστείλει το σήμα στο επόμενο tick
             
 			delete this.creep.memory.leadTime;
             
-            // TODO: Προσθήκη logic στο Spawn Manager για να διαβάζει αυτό το flag
+            
             this.creep.memory[NEED_REPLACEMENT_FLAG] = true; 
             
         }
@@ -65,7 +65,7 @@ class StaticHarvester extends BaseRole {
     calculateReplacementLeadTime() { 
         const travelTime = CREEP_LIFE_TIME - this.creep.ticksToLive;
 		//console.log(this.creep.name+" travel time "+travelTime);
-        this.creep.memory.leadTime = travelTime+this.getSpawningDuration();
+        this.creep.memory.leadTime = travelTime+this.getSpawningDuration()+5;
         delete this.creep.memory.init;
     }
 

@@ -1,5 +1,10 @@
 /*
     CHANGELOG:
+    version 1.5.1
+    - [BUGFIX] Διόρθωση της calculateRCL. Πλέον διαβάζει σωστά τα arrays (RCL unlock levels) και όχι ως μέγιστα όρια.
+    - [BUGFIX] Ενσωμάτωση του DEFAULTS_RCL για κτίρια που δεν είναι σε steps (π.χ. Storage, Terminal).
+    - [REFACTOR] Προσθήκη ταξινόμησης στα object keys (π.χ. extensions) για εγγυημένη σειρά ελέγχου.
+    
     version 1.5.0
     - Refactored processRoads to strictly follow the requested hierarchy:
         1. Source to Center paths (RCL 2, High Bonus).
@@ -13,7 +18,8 @@
     - Implemented processLinks logic: Controller, Storage, and distance-based Source links.
 */
 
-const { PRIORITIES, STRUCTURE_RCL_STEPS } = require('construction.constants');
+// Προστέθηκε το DEFAULTS_RCL στο destructuring
+const { PRIORITIES, STRUCTURE_RCL_STEPS, DEFAULTS_RCL } = require('construction.constants');
 const RoadPlanner = require('construction.roadPlanner');
 
 class Scorer {
@@ -30,7 +36,7 @@ class Scorer {
         this.processLinks(rawData, buildingEntries, context);
         this.processRoads(rawData, buildingEntries, roomName, context);
         
-        // Τελευταίο βήμα: Όλα τα υπόλοιπα structures (Spawns, Towers, κλπ)
+        // Τελευταίο βήμα: Όλα τα υπόλοιπα structures (Spawns, Towers, Storage κλπ)
         this.processStructures(rawData, buildingEntries, context);
 
         return buildingEntries;
@@ -194,19 +200,18 @@ class Scorer {
     static processStructures(rawData, buildingEntries, context) {
         if (!rawData.buildings) return;
         const { center } = context;
-
-        // Δημιουργία ενός Set με τα ήδη επεξεργασμένα coordinates για ταχύτητα
-        const processedCoords = new Set(buildingEntries.map(e => `${e.x},${e.y}`));
-
+		
+        const ignoredStructures = ['center', 'road', 'extension', 'container', 'link'];
+        
         for (const [type, positions] of Object.entries(rawData.buildings)) {
-            // Παράκαμψη metadata και δρόμων (οι δρόμοι έχουν δικό τους process)
-            if (type === 'center' || type === 'road') continue;
+            
+			// Παράκαμψη metadata και δρόμων (έχουν δικό τους process)
+			if (ignoredStructures.includes(type)) {
+				continue;
+			}
 
             positions.forEach((pos, index) => {
-                // Έλεγχος αν το κτίριο σε αυτή τη θέση έχει ήδη υπολογιστεί
-                if (processedCoords.has(`${pos.x},${pos.y}`)) return;
-
-                const rcl = this.calculateRCL(type, index + 1);
+                const rcl = this.calculateRCL(type, index+1);
                 const distToCenter = Math.abs(pos.x - center.x) + Math.abs(pos.y - center.y);
                 
                 buildingEntries.push({
@@ -245,7 +250,7 @@ class Scorer {
      */
     static getContext(roomName, rawData) {
         const room = Game.rooms[roomName];
-        let center = (rawData.buildings && rawData.buildings.center && rawData.buildings.center[0]) || { x: 25, y: 25 };
+        let center = (rawData.buildings && rawData.buildings.center) || { x: 25, y: 25 };
         let sources = [];
         let controller = null;
 
@@ -259,14 +264,35 @@ class Scorer {
         return { center, sources, controller, roomName };
     }
 
+    /**
+     * Υπολογίζει το απαιτούμενο RCL για το N-οστό κτίριο ενός συγκεκριμένου τύπου.
+     */
     static calculateRCL(type, count) {
         const steps = STRUCTURE_RCL_STEPS[type];
-        if (!steps) return 8;
-        if (Array.isArray(steps)) {
-            for (let rcl = 1; rcl <= 8; rcl++) if (count <= steps[rcl - 1]) return rcl;
-        } else {
-            for (const [rcl, maxCount] of Object.entries(steps)) if (count <= maxCount) return parseInt(rcl);
+
+        // 1. Έλεγχος αν ο τύπος δεν υπάρχει στα steps (π.χ. storage, terminal, factory).
+        // Σε αυτή την περίπτωση τραβάμε από τα DEFAULTS_RCL. Αν ούτε εκεί υπάρχει, βάζουμε 8.
+        if (!steps) {
+            return DEFAULTS_RCL[type] || 8;
         }
+
+        // 2. Αν είναι Array (π.χ. 'spawn': [1, 7, 8])
+        // Το index του array αντιστοιχεί στο count-1 (το 1ο spawn είναι στο index 0).
+        // Η τιμή μέσα στο array είναι το RCL που ξεκλειδώνει.
+        if (Array.isArray(steps)) {
+            if (count > steps.length) return 8; // Ασφάλεια αν ζητηθούν παραπάνω κτίρια
+            return steps[count - 1]; 
+        } 
+        
+        // 3. Αν είναι Object (π.χ. 'extension': { 1: 0, 2: 5, 3: 10... })
+        // Ταξινομούμε τα RCL keys (1, 2, 3...) για να ελέγχουμε από το μικρότερο στο μεγαλύτερο.
+        const rclKeys = Object.keys(steps).map(Number).sort((a, b) => a - b);
+        
+        for (const rcl of rclKeys) {
+            if (count <= steps[rcl]) return rcl;
+        }
+
+        // Αν φτάσαμε εδώ, ο αριθμός ξεπερνά τα όρια, επιστρέφουμε 8
         return 8;
     }
 }

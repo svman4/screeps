@@ -228,7 +228,7 @@ class ConstructionManager {
 
         // Κλήση του visualizer με το σωστό object
         this.visualizer.drawBlueprint(this.layout.blueprint, builtMap, currentRCL);
-        
+                
         
     }
 }

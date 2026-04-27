@@ -4,8 +4,12 @@ main.js
 	έγινε σχόλιο η expansion.run()
  Version 1.3.0
  TODO παρατηρείται ότι τα creep φτιάχνονται πάντα από ένα room ενώ το δωμάτιο που χρειάζεται το creep έχει την ενέργεια που απαιτείται.
- 
- 
+ TODO Στο rcl=3 να φτιάχνεται το πρώτο remote room. Static harverster και remoteHauler χωρίς preserve. Στο 4 μετά τη δημιουργία του storage το δεύτερο
+ ΘΑ πρέπει να φτιάχνονται δρόμοι άμεσα ή σε επόμενα rcl?
+ TODO αλλαγή από builder/upgrader σε taskManager.
+ -Δημιουργία role worker
+ TODO έλεγχος construction. 
+    - Τα rcl στα structures που δεν έχουν χτιστεί ακόμα φαίνεται να είναι λάθος. 
  */
 var spawnManager = require('manager.spawn');
 var defenceManager = require('manager.defense');

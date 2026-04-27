@@ -99,6 +99,7 @@ class PopulationManager {
         if (context.level < 8) {
             if (energy > 200000) limits[ROLES.BUILDER] = 3;
             if (energy > 500000) limits[ROLES.BUILDER] = 5;
+            
         } else {
 			if (context.hasConstruction) { 
 				limits[ROLES.BUILDER] = 3;

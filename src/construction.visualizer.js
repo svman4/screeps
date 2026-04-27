@@ -23,22 +23,22 @@ class ConstructionVisualizer {
      */
     drawBlueprint(blueprint, builtMap, currentRCL) {
         if (!blueprint || !Array.isArray(blueprint)) return;
-
+        
         for (const s of blueprint) {
-            // Αν το κτίριο είναι ήδη χτισμένο στη σωστή θέση, δεν το σχεδιάζουμε στο blueprint
-            if (builtMap[`${s.x},${s.y}`] === s.type) continue;
+             // Αν το κτίριο είναι ήδη χτισμένο στη σωστή θέση, δεν το σχεδιάζουμε στο blueprint
+             if (builtMap[`${s.x},${s.y}`] === s.type) continue;
+                 const isAvailable = s.rcl <= currentRCL;
+             const opacity = isAvailable ? 1 : 1;
 
-            const isAvailable = s.rcl <= currentRCL;
-            const opacity = isAvailable ? 1 : 1;
-
-            if (s.type === 'road') {
-                this.drawRoad(s, opacity);
-            } else {
-                this.drawStructure(s, isAvailable, opacity);
-            }
-        }
+             if (s.type === 'road') {
+                 this.drawRoad(s, opacity);
+             } else {
+                 this.drawStructure(s, isAvailable, opacity);
+             }
+         }
         
         this.drawHeader(currentRCL);
+        
     }
 
     /**

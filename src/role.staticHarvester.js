@@ -65,7 +65,7 @@ class StaticHarvester extends BaseRole {
     calculateReplacementLeadTime() { 
         const travelTime = CREEP_LIFE_TIME - this.creep.ticksToLive;
 		//console.log(this.creep.name+" travel time "+travelTime);
-        this.creep.memory.leadTime = travelTime+this.getSpawningDuration();
+        this.creep.memory.leadTime = travelTime+this.getSpawningDuration()+5;
         delete this.creep.memory.init;
     }
 

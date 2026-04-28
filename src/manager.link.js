@@ -3,7 +3,7 @@
  * VERSION: 1.2.0
  * DESCRIPTION: Διαχειρίζεται την αυτόματη μεταφορά ενέργειας μεταξύ των Links.
  */
-
+const LIMIT_FOR_START_TRANSFER=400;
 class LinkManager {
     /**
      * @param {Room} room - Το αντικείμενο του δωματίου που διαχειρίζεται ο manager.
@@ -16,7 +16,7 @@ class LinkManager {
        // console.log("Link number "+this.links.length);
         this.categories = this.categorizeLinks();
         
-        // TODO: Εκτύπωση categories στη κονσόλα (Ολοκληρώθηκε)
+        // Εκτύπωση categories στη κονσόλα
        //  this.debugCategories(); 
     }
 
@@ -35,24 +35,25 @@ class LinkManager {
      * Κύρια λογική εκτέλεσης.
      */
     run() {
+        
         if (this.links.length < 2) return; 
 
         const { senders, storageLink, controllerLink } = this.categories;
 
         for (const sender of senders) {
-            // Έλεγχος αν ο Sender έχει ενέργεια (τουλάχιστον 200 για να αξίζει το transfer fee)
-            if (sender.store.getUsedCapacity(RESOURCE_ENERGY) < 200 || sender.cooldown > 0) {
+            // Έλεγχος αν ο Sender έχει ενέργεια (τουλάχιστον LIMIT_FOR_START_TRANSFER για να αξίζει το transfer fee)
+            if (sender.store.getUsedCapacity(RESOURCE_ENERGY) < LIMIT_FOR_START_TRANSFER || sender.cooldown > 0) {
                 continue;
             }
 
             // ΠΡΟΤΕΡΑΙΟΤΗΤΑ 1: Controller (Upgrading)
-            if (controllerLink && controllerLink.store.getFreeCapacity(RESOURCE_ENERGY) >= 400) {
+            if (controllerLink && controllerLink.store.getFreeCapacity(RESOURCE_ENERGY) >= LIMIT_FOR_START_TRANSFER) {
                 sender.transferEnergy(controllerLink);
                 continue; 
             }
 
             // ΠΡΟΤΕΡΑΙΟΤΗΤΑ 2: Storage
-            if (storageLink && storageLink.id !== sender.id && storageLink.store.getFreeCapacity(RESOURCE_ENERGY) >= 200) {
+            if (storageLink && storageLink.id !== sender.id && storageLink.store.getFreeCapacity(RESOURCE_ENERGY) >= LIMIT_FOR_START_TRANSFER) {
                 sender.transferEnergy(storageLink);
                 continue;
             }

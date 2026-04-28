@@ -8,8 +8,10 @@ main.js
  ΘΑ πρέπει να φτιάχνονται δρόμοι άμεσα ή σε επόμενα rcl?
  TODO αλλαγή από builder/upgrader σε taskManager.
  -Δημιουργία role worker
- TODO έλεγχος construction. 
-    - Τα rcl στα structures που δεν έχουν χτιστεί ακόμα φαίνεται να είναι λάθος. 
+ - Πρέπει ο upgrader να παίρνει από το link. 
+TODO στο population manager να ελέγχει και το αν υπάρχουν Link Καθώς αυτό επηρεάζει και την παραγωγή hauler
+TODO θα πρέπει να ελέγχουμε γενικότερα αν χρησιμοποιούνται Link για τη παραγωγή του αντίστοιχου σώματος στο staticHarvester. Ειδικά στο earlyGame
+TODO να κάνουμε τους haulers να αδειάζουν το storageLink αν είναι γεμάτο.
  */
 var spawnManager = require('manager.spawn');
 var defenceManager = require('manager.defense');
@@ -20,6 +22,7 @@ const militaryController = require('manager.military');
 var roleManager = require('manager.role');
 var market=require('manager.market');
 var pixels=require('manager.pixels');
+var linkManager=require('manager.link');
  global.RoomInfo = function() {
     let answer = "\n--- 🏰 Controller Progress Report ---\n";
     
@@ -36,7 +39,6 @@ var pixels=require('manager.pixels');
             answer += `Room ${room.name}: [Lvl ${controller.level}] - Max Level ✨\n`;
             continue;
         }
-
         const remaining = controller.progressTotal - controller.progress;
         const progressPercent = (controller.progress / controller.progressTotal) * 100;
         
@@ -78,6 +80,8 @@ module.exports.loop = function () {
             logisticsManager.run(roomName);
 
             
+			linkManager.run(roomName)
+
             // MEDIUM PRIORITY - Τρέχουν πιο σπάνια
             constructionManager.run(roomName);
 

@@ -226,7 +226,8 @@ class SpawnManager {
                 body = [MOVE];
                 break;
             case ROLES.STATIC_HARVESTER:
-                body = [MOVE, WORK, WORK]; 
+                
+                body = [MOVE,CARRY, WORK, WORK]; 
                 let workParts = 2;
                 while (this.getBodyCost(body) + 100 <= maxEnergy && workParts < 5) {
                     body.push(WORK);

@@ -65,10 +65,10 @@ class Scorer {
             if (isControllerLink) {
                 bonus = 100;
             } else if (isStorageLink) {
-                bonus = 90;
+                bonus = 40;
             } else if (isSourceLink) {
                 // Προτεραιότητα στις απομακρυσμένες πηγές
-                bonus = 50 + (distToCenter * 0.5); 
+                bonus = 80 + (distToCenter * 0.5); 
             }
 
             tempLinks.push({ x: pos.x, y: pos.y, dist: distToCenter, bonus: bonus });

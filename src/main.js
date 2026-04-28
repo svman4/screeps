@@ -11,6 +11,7 @@ main.js
  - Πρέπει ο upgrader να παίρνει από το link. 
 TODO στο population manager να ελέγχει και το αν υπάρχουν Link Καθώς αυτό επηρεάζει και την παραγωγή hauler
 TODO θα πρέπει να ελέγχουμε γενικότερα αν χρησιμοποιούνται Link για τη παραγωγή του αντίστοιχου σώματος στο staticHarvester. Ειδικά στο earlyGame
+TODO να κάνουμε τους haulers να αδειάζουν το storageLink αν είναι γεμάτο.
  */
 var spawnManager = require('manager.spawn');
 var defenceManager = require('manager.defense');
@@ -79,7 +80,7 @@ module.exports.loop = function () {
             logisticsManager.run(roomName);
 
             
-			linkManager.run(room)
+			linkManager.run(roomName)
 
             // MEDIUM PRIORITY - Τρέχουν πιο σπάνια
             constructionManager.run(roomName);

@@ -87,18 +87,37 @@ class BaseRole {
         const { x, y } = this.creep.pos;
         return x === 0 || x === 49 || y === 0 || y === 49;
     }
-
+ 
     /**
      * Προσπαθεί να βρει ενέργεια από Containers, Dropped Resources, Ruins ή Harvesting.
      * @returns {boolean} True αν βρέθηκε και εκτελείται δράση συλλογής.
      */
     getEnergy() {
+		if (this.getEnergyFromLink()) return true;
         if (this.getEnergyFromContainersorStorage()) return true;
         if (this.getEnergyFromDroppedEnergy()) return true;
         if (this.getEnergyFromRuins()) return true;
         return this.gotoHarvesting();
     }
+	getEnergyFromLink(resource = RESOURCE_ENERGY) {
+    // Αναζήτηση για links σε απόσταση 3 tiles από το creep
+    const link = this.creep.pos.findInRange(FIND_MY_STRUCTURES, 3, {
+        filter: (s) => s.structureType === STRUCTURE_LINK && s.store[resource] > 0
+    })[0]; // Παίρνουμε το πρώτο link που θα βρεθεί
 
+    if (link) {
+        // Αν είμαστε ήδη δίπλα, κάνουμε withdraw
+        if (this.creep.pos.isNearTo(link)) {
+            this.creep.withdraw(link, resource);
+        } else {
+            // Αν όχι, κινούμαστε προς αυτό
+            movementManager.smartMove(this.creep, link, 1);
+        }
+        return true; // Επιστρέφει true για να σταματήσει η αναζήτηση άλλων πηγών
+    }
+    
+    return false;
+}
     /**
      * Ανάληψη ενέργειας από Containers ή Storage.
      */

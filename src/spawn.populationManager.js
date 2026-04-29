@@ -87,10 +87,11 @@ s
 	} // end of _getCarryParts
 	_GetCarryPartsForSource(roomState,source,center) {
 		const distance=10; // TODO Να υπολογίζει την απόσταση μεταξύ source-center
-		return _getCarryParts(roomState,distance);
+		let energyPerTick = source.energyCapacity / ENERGY_REGEN_TIME;
+		return _getCarryParts(energyPerTick,distance);
+		
 	} // end of _GetCarryPartsForSource
-	_getCarryParts(roomState,Distance) {
-		const EPT=SOURCE_ENERGY_PER_TICK.roomState;
+	_getCarryParts(EPT,roomState,Distance) {
 		return EPT*Distance*2/CARRY_PART_CAPACITY;
 	} // end of _getCarryPartsPerSource
 	_getWorkParts(room) {

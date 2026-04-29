@@ -12,6 +12,7 @@
  * 
  * TODO ΝΑ υπολογίζει πόσα body parts χρειάζεται ανά ρόλο. Η Δημιουργία των creeps να εξαρτάται από τα body Parts και όχι από το πληθυσμό.
  * - Η manager.spawn θα πρέπει να αλλάξει ώστε να δημιουργεί creeps βάση των body parts.
+ * TODO να γίνει έλεγχος της emergency. ξεκινάει simpleHarvester επειδή έχει πεθάνει ο μοναδικός hauler Και δεν εντοπίζει άλλο.
  */
 const { ROLES } = require('spawn.constants');
 
@@ -88,7 +89,7 @@ class PopulationManager {
         let limits = {
             [ROLES.SIMPLE_HARVESTER]: 0,
             [ROLES.STATIC_HARVESTER]: context.sources,
-            [ROLES.HAULER]: context.sources-1,
+            [ROLES.HAULER]: context.sources,
             [ROLES.UPGRADER]: 1,
             [ROLES.BUILDER]: 1,
             isRecovery: false

@@ -88,7 +88,7 @@ class StaticHarvester extends BaseRole {
         // Lead Time = Travel Time + Spawning Time + Buffer
         const travelTime = CREEP_LIFE_TIME - this.creep.ticksToLive;
         const spawnTime = this.getSpawningDuration();
-        const buffer = 15; // Μικρό περιθώριο ασφαλείας
+        const buffer = 0; // Μικρό περιθώριο ασφαλείας
         
         this.creep.memory.leadTime = travelTime + spawnTime + buffer;
         delete this.creep.memory.init;

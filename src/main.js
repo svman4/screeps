@@ -12,6 +12,7 @@ main.js
 TODO στο population manager να ελέγχει και το αν υπάρχουν Link Καθώς αυτό επηρεάζει και την παραγωγή hauler
 TODO θα πρέπει να ελέγχουμε γενικότερα αν χρησιμοποιούνται Link για τη παραγωγή του αντίστοιχου σώματος στο staticHarvester. Ειδικά στο earlyGame
 TODO να κάνουμε τους haulers να αδειάζουν το storageLink αν είναι γεμάτο.
+ TODO φαίνεται να χρησιμοποεί μόνο το ένα spawn ενώ υπάρχουν πολλαπλά..
  */
 var spawnManager = require('manager.spawn');
 var defenceManager = require('manager.defense');

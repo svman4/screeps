@@ -12,17 +12,26 @@
  * 
  * TODO ΝΑ υπολογίζει πόσα body parts χρειάζεται ανά ρόλο. Η Δημιουργία των creeps να εξαρτάται από τα body Parts και όχι από το πληθυσμό.
  * - Η manager.spawn θα πρέπει να αλλάξει ώστε να δημιουργεί creeps βάση των body parts.
- * TODO να γίνει έλεγχος της emergency. ξεκινάει simpleHarvester επειδή έχει πεθάνει ο μοναδικός hauler Και δεν εντοπίζει άλλο.
  */
 const { ROLES } = require('spawn.constants');
-
+const CARRY_PART_CAPACITY=50;
+const CARRY_PART_FOR_EXTENSIONS=10;
+const ROOM_STATE={
+	RESERVED:"reserved",
+	NEURAL:"neural",
+	CLAIM:"reserved"
+};
+const SOURCE_ENERGY_PER_TICK={
+	ROOM_STATE.RESERVED:10,
+	ROOM_STATE.NEURAL:5
+};
 class PopulationManager {
     /**
      * Κύρια μέθοδος υπολογισμού ορίων.
      */
     calculateLimits(room) {
         const context = this._getContext(room);
-
+s
         // 1. Έλεγχος για Recovery Mode (Αν έχει "σπάσει" η οικονομία)
         if (this._isEmergency(room, context)) {
             return this._getRecoveryLimits(context);
@@ -39,7 +48,7 @@ class PopulationManager {
         } else {
             return this._getEarlyGameLimits(context);
         }
-    }
+    } // end of calculateLimits(room)
 
     /**
      * Συγκεντρώνει όλα τα απαραίτητα δεδομένα για τους υπολογισμούς.
@@ -51,7 +60,8 @@ class PopulationManager {
         const links=room.find(FIND_STRUCTURES,{
             filter: s => s.structureType === STRUCTURE_LINK
         });
-        
+        const carryParts=this._getCarryParts(room,links);
+		const workParts=this._getWorksParts(room);
         return {
             room: room,
             sources: room.find(FIND_SOURCES).length,
@@ -59,14 +69,41 @@ class PopulationManager {
             storage: room.storage,
             hasContainers: containers.length > 0,
             LinkCount:links.length,
-            hasConstruction: room.find(FIND_CONSTRUCTION_SITES).length > 0
+            hasConstruction: room.find(FIND_CONSTRUCTION_SITES).length > 0,
+			carryParts:carryParts,
+			workParts:workParts;
         };
     } // end of _getContext
-
+	
+	_getCarryParts(room,links) {
+		// TODO να υπολογίζει πόσα carryParts χρειάζονται για το δωμάτιο room.
+		const roomState=ROOM_STATE.CLAIM;
+		let carryParts=CARRY_PART_FOR_EXTENSIONS;
+		
+		//Για κάθε πηγή source
+		
+		carryParts+=_getCarryPartsPerSource(roomState,source,storage);
+		return carryParts;
+	} // end of _getCarryParts
+	_GetCarryPartsForSource(roomState,source,center) {
+		const distance=10; // TODO Να υπολογίζει την απόσταση μεταξύ source-center
+		return _getCarryParts(roomState,distance);
+	} // end of _GetCarryPartsForSource
+	_getCarryParts(roomState,Distance) {
+		const EPT=SOURCE_ENERGY_PER_TICK.roomState;
+		return EPT*Distance*2/CARRY_PART_CAPACITY;
+	} // end of _getCarryPartsPerSource
+	_getWorkParts(room) {
+		// TODO να υπολογίζει πόσα workParts είναι βέλτιστα για το δωμάτιο room.
+		return 16;
+	}  // end of _getWorkParts
     /**
      * Ελέγχει αν το δωμάτιο βρίσκεται σε κατάσταση έκτακτης ανάγκης.
      */
     _isEmergency(room, context) {
+		/*
+			TODO όταν μπούμε σε στρατηγική link, έχουμε ένα hauler. Όταν πεθάνει το room μπαίνει σε emergency. ΑΠΑΙΤΕΙΤΑΙ ΕΛΕΓΧΟΣ
+		*/
         const roomCreeps = _.filter(Game.creeps, c => c.memory.homeRoom === room.name);
         
         const hasHarvesters = _.some(roomCreeps, c => 
@@ -80,10 +117,8 @@ class PopulationManager {
 
         return !hasHarvesters || (needsHauler && !hasHaulers);
     }// end of _isEmergency
-    /**
-     * Στρατηγική όταν υπάρχει Storage (Mid-Late Game).
-     */
-    _getLinkLimits(context) {
+
+	_getLinkLimits(context) {
        // console.log("population in linkLimits strategy");
         const energy = context.storage.store[RESOURCE_ENERGY];
         let limits = {

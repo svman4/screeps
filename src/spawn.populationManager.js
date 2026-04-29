@@ -1,12 +1,17 @@
 /**
  * MODULE: Population Manager
  * ΠΕΡΙΓΡΑΦΗ: Διαχειρίζεται τα όρια πληθυσμού και την κατάσταση Recovery ανά δωμάτιο.
+ * Version 1.5.0
+ * - Δημιουργία Link. 
  * VERSION 1.4.0
  * - Refactored σε εξειδικευμένες μεθόδους για ευαναγνωσία.
  * - Ενσωμάτωση Builder-as-Upgrader στρατηγικής.
  * 1.2.0 Προσθήκη λειτουργία containers. 
  * - Αν υπάρχει έστω και ένα container τότε αλλάζει η διαχείριση του πληθυσμού.
  * 1.1.0 Ακύρωση λειτουργίας storageContainer. 
+ * 
+ * TODO ΝΑ υπολογίζει πόσα body parts χρειάζεται ανά ρόλο. Η Δημιουργία των creeps να εξαρτάται από τα body Parts και όχι από το πληθυσμό.
+ * - Η manager.spawn θα πρέπει να αλλάξει ώστε να δημιουργεί creeps βάση των body parts.
  */
 const { ROLES } = require('spawn.constants');
 
@@ -23,6 +28,9 @@ class PopulationManager {
         }
 
         // 2. Επιλογή στρατηγικής βάσει υποδομών
+        if(context.LinkCount!==0) {
+         return this._getLinkLimits(context);   
+        }
         if (context.storage) {
             return this._getStorageLimits(context);
         } else if (context.hasContainers) {
@@ -39,12 +47,17 @@ class PopulationManager {
         const containers = room.find(FIND_STRUCTURES, {
             filter: s => s.structureType === STRUCTURE_CONTAINER
         });
+        const links=room.find(FIND_STRUCTURES,{
+            filter: s => s.structureType === STRUCTURE_LINK
+        });
+        
         return {
             room: room,
             sources: room.find(FIND_SOURCES).length,
             level: room.controller.level,
             storage: room.storage,
             hasContainers: containers.length > 0,
+            LinkCount:links.length,
             hasConstruction: room.find(FIND_CONSTRUCTION_SITES).length > 0
         };
     } // end of _getContext
@@ -65,7 +78,35 @@ class PopulationManager {
         const hasHaulers = _.some(roomCreeps, c => c.memory.role === ROLES.HAULER);
 
         return !hasHarvesters || (needsHauler && !hasHaulers);
-    }
+    }// end of _isEmergency
+    /**
+     * Στρατηγική όταν υπάρχει Storage (Mid-Late Game).
+     */
+    _getLinkLimits(context) {
+       // console.log("population in linkLimits strategy");
+        const energy = context.storage.store[RESOURCE_ENERGY];
+        let limits = {
+            [ROLES.SIMPLE_HARVESTER]: 0,
+            [ROLES.STATIC_HARVESTER]: context.sources,
+            [ROLES.HAULER]: context.sources-1,
+            [ROLES.UPGRADER]: 1,
+            [ROLES.BUILDER]: 1,
+            isRecovery: false
+        };
+
+        // Αυξάνουμε τους Builders (που κάνουν και Upgrade) αν έχουμε πλεόνασμα ενέργειας
+        if (context.level < 8) {
+            if (energy > 200000) limits[ROLES.BUILDER] = 3;
+            if (energy > 500000) limits[ROLES.BUILDER] = 5;
+            
+        } else {
+			if (context.hasConstruction) { 
+				limits[ROLES.BUILDER] = 3;
+			}
+		}
+
+        return limits;
+    } // end of _getStorageLimits
 
     /**
      * Όρια για Recovery Mode.
@@ -85,6 +126,7 @@ class PopulationManager {
      * Στρατηγική όταν υπάρχει Storage (Mid-Late Game).
      */
     _getStorageLimits(context) {
+        console.log("population in storage strategy");
         const energy = context.storage.store[RESOURCE_ENERGY];
         let limits = {
             [ROLES.SIMPLE_HARVESTER]: 0,

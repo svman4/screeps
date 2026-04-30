@@ -207,14 +207,25 @@ class SpawnManager {
     }
 
     spawnCreep(spawn, request) {
+		/*
+		 Η διαθέσιμη ενέργεια.
+		*/
         const energyAvailable = spawn.room.energyAvailable;
+		/*
+			Η χωρητικότητα ενέργειας που υπάρχει στο δωμάτιο
+		*/
         const energyCapacity = spawn.room.energyCapacityAvailable;
         
         // Χρήση της σταθεράς CRITICAL_PRIORITY_LEVEL για έλεγχο άμεσης παραγωγής
         const isCritical = request.priority <= CRITICAL_PRIORITY_LEVEL;
-        if (!isCritical && energyAvailable < energyCapacity * ENERGY_THRESHOLD_NORMAL) {
-            return ERR_NOT_ENOUGH_ENERGY;
-        }
+        // 1. Βρες το όριο ενέργειας για τον συγκεκριμένο ρόλο από τις σταθερές σου
+		const roleLimit = BODY_ENERGY_LIMITS[request.role] || BODY_ENERGY_LIMITS['default'];
+
+		// 2. Έλεγχος: Αν το δωμάτιο δεν έχει ακόμα την ενέργεια που απαιτείται για το πλήρες σώμα του ρόλου, 
+		// και το creep δεν είναι κρίσιμο, τότε περίμενε.
+		if (!isCritical && energyAvailable < roleLimit && energyAvailable < energyCapacity) {
+			return ERR_NOT_ENOUGH_ENERGY;
+}
 
         const body = this.calculateBody(request.role, energyAvailable);
         if (!body || body.length === 0) return ERR_INVALID_ARGS;
@@ -238,6 +249,7 @@ class SpawnManager {
 
     calculateBody(role, energy) {
         const limit = BODY_ENERGY_LIMITS[role] || BODY_ENERGY_LIMITS['default'] || energy;
+		
         const maxEnergy = Math.min(energy, limit);
         let body = [];
         

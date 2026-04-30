@@ -1,9 +1,15 @@
 /**
  * MANAGER: Link Network
- * VERSION: 1.2.0
+ * VERSION: 1.3.0
  * DESCRIPTION: Διαχειρίζεται την αυτόματη μεταφορά ενέργειας μεταξύ των Links.
+ * * CHANGES 1.3.0:
+ * - Προσθήκη εγγραφής του Storage Link ID στο Room Memory (storageLinkId).
+ * - Δυνατότητα αναγνώρισης του Link από το Logistics Manager για αυτόματη εκκένωση/τροφοδοσία.
  */
-const LIMIT_FOR_START_TRANSFER=400;
+
+const LIMIT_FOR_START_TRANSFER = 400;
+const STORAGE_LINK_ID = "storageLinkId";
+
 class LinkManager {
     /**
      * @param {Room} room - Το αντικείμενο του δωματίου που διαχειρίζεται ο manager.
@@ -13,11 +19,7 @@ class LinkManager {
         this.links = room.find(FIND_MY_STRUCTURES, {
             filter: { structureType: STRUCTURE_LINK }
         });
-       // console.log("Link number "+this.links.length);
         this.categories = this.categorizeLinks();
-        
-        // Εκτύπωση categories στη κονσόλα
-       //  this.debugCategories(); 
     }
 
     /**
@@ -35,13 +37,12 @@ class LinkManager {
      * Κύρια λογική εκτέλεσης.
      */
     run() {
-        
         if (this.links.length < 2) return; 
 
         const { senders, storageLink, controllerLink } = this.categories;
 
         for (const sender of senders) {
-            // Έλεγχος αν ο Sender έχει ενέργεια (τουλάχιστον LIMIT_FOR_START_TRANSFER για να αξίζει το transfer fee)
+            // Έλεγχος αν ο Sender έχει ενέργεια και δεν είναι σε cooldown
             if (sender.store.getUsedCapacity(RESOURCE_ENERGY) < LIMIT_FOR_START_TRANSFER || sender.cooldown > 0) {
                 continue;
             }
@@ -61,7 +62,7 @@ class LinkManager {
     }
 
     /**
-     * Κατηγοριοποιεί τα links βάσει θέσης.
+     * Κατηγοριοποιεί τα links βάσει θέσης και ενημερώνει τη μνήμη.
      */
     categorizeLinks() {
         const senders = [];
@@ -75,16 +76,21 @@ class LinkManager {
         for (const link of this.links) {
             let isSpecial = false;
 
+            // Link κοντά στον Controller (Receiver)
             if (controller && link.pos.inRangeTo(controller, 4)) {
                 controllerLink = link;
                 receivers.push(link);
                 isSpecial = true;
             } 
+            // Link κοντά στο Storage (Hub)
             else if (storage && link.pos.inRangeTo(storage, 2)) {
                 storageLink = link;
                 isSpecial = true;
+                // Ενημέρωση Memory για χρήση από άλλους managers (π.χ. Logistics)
+                this.room.memory[STORAGE_LINK_ID] = storageLink.id;
             }
 
+            // Αν δεν είναι ειδικό Link, θεωρείται Sender (από Sources)
             if (!isSpecial) {
                 senders.push(link);
             }
@@ -94,7 +100,7 @@ class LinkManager {
     }
 }
 
-module.exports = {
+module.exports = {STORAGE_LINK_ID,
     run: function(roomName) {
         const room = Game.rooms[roomName];
         if (!room) return;

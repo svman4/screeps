@@ -1,26 +1,28 @@
 // manager.logistics.js
 const movementManager = require('manager.movement'); 
+const{STORAGE_LINK_ID}=require('manager.link');
 /*
-version 1.0.0
+version 1.1.0
+- Added high priority for Storage Link emptying using room.memory.storageLinkId
 */
 const PRIORITIES = {
+    STORAGE_LINK: 105, // Υψηλότερη προτεραιότητα από Spawn/Extension για να αδειάζει αμέσως το δίκτυο
     SPAWN_EXTENSION: 100,
-    TOWER: 80,
-    CONTROLLER_CONTAINER: 70,
-    LAB: 40,
-    TERMINAL: 5,
-    NUKER: 35 , 
-    FACTORY: 35, 
-    POWER_SPAWN: 35,
-    STORAGE: 10,
-    
     DROP_ENERGY: 100,
     SOURCE_CONTAINER: 90,
     RECOVERY_CONTAINER: 85,
+    TOWER: 80,
     RUIN: 80,
+    STORAGE_SOURCE: 76,
+    STORAGE_LINK_NORMAL: 75, // Backup priority
+    CONTROLLER_CONTAINER: 70,
+    LAB: 40,
     TERMINAL_SOURCE: 40,
-    STORAGE_LINK: 75,
-    STORAGE_SOURCE: 76
+    NUKER: 35, 
+    FACTORY: 35, 
+    POWER_SPAWN: 35,
+    STORAGE: 10,
+    TERMINAL: 5
 };
 
 const TARGET_FULL_PERCENT = { 
@@ -189,18 +191,27 @@ const logisticsManager = {
     findSourcesForTarget: function(room, target) {
         const sources = [];
         
+        // 1. Dropped Energy
         room.find(FIND_DROPPED_RESOURCES, {
             filter: r => r.resourceType === RESOURCE_ENERGY && r.amount > 200
         }).forEach(energy => sources.push({
             id: energy.id, type: 'dropped', priority: PRIORITIES.DROP_ENERGY, obj: energy
         }));
    
+        // 2. Structures
         room.find(FIND_STRUCTURES).forEach(s => {
             let priority = 0;
             let condition = false;
             if (s.id === target.id) return;
 
             switch (s.structureType) {
+                case STRUCTURE_LINK:
+                    // Αν είναι το Storage Link, δίνουμε μέγιστη προτεραιότητα για να αδειάσει
+                    if (room.memory[STORAGE_LINK_ID] === s.id && s.store[RESOURCE_ENERGY] > 0) {
+                        priority = PRIORITIES.STORAGE_LINK;
+                        condition = true;
+                    }
+                    break;
                 case STRUCTURE_CONTAINER:
                     if (s.store[RESOURCE_ENERGY] > 100 && this.isContainerNearSource(s)) {
                         priority = PRIORITIES.SOURCE_CONTAINER;
@@ -214,12 +225,6 @@ const logisticsManager = {
                 case STRUCTURE_TERMINAL:
                     if (s.my && s.store[RESOURCE_ENERGY] > 1000) {
                         priority = PRIORITIES.TERMINAL_SOURCE; 
-                        condition = true;
-                    }
-                    break;
-                case STRUCTURE_LINK:
-                    if (room.memory.storageLinkId === s.id && s.store[RESOURCE_ENERGY] > 100) {
-                        priority = PRIORITIES.STORAGE_LINK;
                         condition = true;
                     }
                     break;
@@ -237,6 +242,7 @@ const logisticsManager = {
             }
         });
         
+        // 3. Ruins
         room.find(FIND_RUINS, {
             filter: ruin => ruin.store[RESOURCE_ENERGY] > 50
         }).forEach(ruin => sources.push({
@@ -251,7 +257,7 @@ const logisticsManager = {
         const storage = room.storage;
         
         this.findSourcesForTarget(room, {id: null}).forEach(source => {
-            if (source.type === 'dropped' || source.type === 'ruin') {
+            if (source.type === 'dropped' || source.type === 'ruin' || (room.memory[STORAGE_LINK_ID] === source.id)) {
                 sources.push(source);
             }
         });
@@ -263,6 +269,12 @@ const logisticsManager = {
             let condition = false;
 
             switch (s.structureType) {
+                case STRUCTURE_LINK:
+                    if (room.memory[STORAGE_LINK_ID] === s.id && s.store[RESOURCE_ENERGY] > 0) {
+                        priority = PRIORITIES.STORAGE_LINK;
+                        condition = true;
+                    }
+                    break;
                 case STRUCTURE_CONTAINER:
                     if (s.store[RESOURCE_ENERGY] > 100 && this.isContainerNearSource(s)) {
                         priority = PRIORITIES.SOURCE_CONTAINER;
@@ -270,12 +282,6 @@ const logisticsManager = {
                     }
                     else if (room.memory.recoveryContainerId === s.id && s.store[RESOURCE_ENERGY] > 100) {
                         priority = PRIORITIES.RECOVERY_CONTAINER;
-                        condition = true;
-                    }
-                    break;
-                case STRUCTURE_LINK:
-                    if (room.memory.storageLinkId === s.id && s.store[RESOURCE_ENERGY] > 100) {
-                        priority = PRIORITIES.STORAGE_LINK;
                         condition = true;
                     }
                     break;
@@ -385,7 +391,7 @@ const logisticsManager = {
 
         let bestTask = null;
         let bestScore = -Infinity;
-        const topTasks = tasks.slice(0, 10); 
+        const topTasks = tasks.slice(0, 15); // Αυξήθηκε λίγο το εύρος για να πιάνει τα νέα link tasks
 
         for (const task of topTasks) {
             const reservation = reservations[task.id];
@@ -440,8 +446,6 @@ const logisticsManager = {
         }
     },
 
-    // --- ΚΙΝΗΣΗ ΜΕ ΧΡΗΣΗ TOY movementManager ---
-
     collectFromSource: function(creep, assignment) {
         const source = Game.getObjectById(assignment.sourceId);
         
@@ -495,7 +499,7 @@ const logisticsManager = {
                 this.completeTask(creep);
             }
         } else {
-            movementManager.smartMove(creep, target, 1); // <-- ΑΛΛΑΓΗ
+            movementManager.smartMove(creep, target, 1);
         }
     },
 
@@ -503,11 +507,12 @@ const logisticsManager = {
         switch (sourceType) {
             case 'dropped': return source.amount > 20;
             case 'ruin': return source.store[RESOURCE_ENERGY] > 20;
+            case 'link': // Προσθήκη για το Link
             case 'container':
             case 'recoveryContainer':
             case 'terminal':
             case 'storageLink':
-            case 'storage': return source.store[RESOURCE_ENERGY] > 50;
+            case 'storage': return source.store[RESOURCE_ENERGY] > 0; // Αδειάζουμε μέχρι τέλους
             default: return false;
         }
     },
@@ -516,6 +521,7 @@ const logisticsManager = {
         switch (sourceType) {
             case 'dropped': return creep.pickup(source);
             case 'ruin':
+            case 'link': // Προσθήκη για το Link
             case 'container':
             case 'recoveryContainer':
             case 'terminal':
@@ -537,7 +543,6 @@ const logisticsManager = {
             delete reservations[assignments[creep.name].taskId];
             delete assignments[creep.name];
             
-            // Clean move memory
             delete creep.memory._lastPos;
             delete creep.memory._stuckCount;
 
@@ -572,7 +577,7 @@ const logisticsManager = {
         visual.text(`Tasks: ${tasks.length}`, 1, y++, { align: 'left', color: '#ffff00' });
         
         tasks.slice(0, 5).forEach((task, index) => {
-            const info = `${task.taskType}: ${task.sourceType}->${task.targetType} (prio:${task.priority})`;
+            const info = `${task.taskType}: ${task.sourceId === room.memory.storageLinkId ? 'STORAGE_LINK' : task.sourceType}->${task.targetType} (prio:${task.priority})`;
             visual.text(info, 1, y++, { align: 'left', color: '#ffffff' });
         });
     }

@@ -1,9 +1,13 @@
 /**
  * MODULE: Global Spawn Manager
- * VERSION: 2.4.0
+ * VERSION: 2.5.0
  * TYPE: Modular Class-based Singleton
  * ΠΕΡΙΓΡΑΦΗ: Κεντρικός διαχειριστής παραγωγής. Χρησιμοποιεί το populationManager 
  * για τον έλεγχο κατάρρευσης οικονομίας (Recovery Mode).
+ * * CHANGE LOG:
+ * 2.5.0: Εφαρμογή προτεραιότητας Local Spawning. Τα creeps πλέον προτιμούν το δικό τους δωμάτιο
+ * και χρησιμοποιούν remote spawns μόνο ως fallback (εκτός από Harvesters/Haulers).
+ * 2.4.0: Εισαγωγή PopulationManager integration.
  */
 // --- ΕΣΩΤΕΡΙΚΕΣ ΣΤΑΘΕΡΕΣ ΔΙΑΧΕΙΡΙΣΤΗ ---
 const TICKS_UPDATE_REQUESTS = 10;   // Συχνότητα ελέγχου αναγκών
@@ -175,15 +179,31 @@ class SpawnManager {
         }
     }
 
+    /**
+     * Κεντρική μέθοδος επιλογής του καταλληλότερου Spawn.
+     * Δίνει προτεραιότητα στο homeRoom του αιτήματος.
+     * @param {Object} request - Το αίτημα παραγωγής από την ουρά.
+     * @param {StructureSpawn[]} freeSpawns - Λίστα με τα διαθέσιμα (μη απασχολημένα) spawns.
+     * @returns {StructureSpawn|null}
+     */
     findBestSpawn(request, freeSpawns) {
-        return freeSpawns.find(s => {
-            if (request.role === ROLES.STATIC_HARVESTER || request.role === ROLES.HAULER) {
-                return s.room.name === request.homeRoom;
-            }
-            if (s.room.name === request.homeRoom) return true;
-            const route = Game.map.findRoute(s.room.name, request.homeRoom);
-            return route !== ERR_NO_PATH && route.length <= 1;
-        });
+        // 1. ΑΠΟΛΥΤΗ ΠΡΟΤΕΡΑΙΟΤΗΤΑ: Αναζήτηση στο homeRoom
+        const localSpawn = freeSpawns.find(s => s.room.name === request.homeRoom);
+        if (localSpawn) {
+            return localSpawn;
+        }
+
+        // 2. FALLBACK: Αν το τοπικό Spawn είναι απασχολημένο, ελέγχουμε γειτονικά δωμάτια
+        // Εξαιρούμε STATIC_HARVESTER και HAULER για να αποφύγουμε μεγάλα ταξίδια χωρίς νόημα
+        if (request.role !== ROLES.STATIC_HARVESTER && request.role !== ROLES.HAULER) {
+            return freeSpawns.find(s => {
+                const route = Game.map.findRoute(s.room.name, request.homeRoom);
+                // Επιτρέπουμε παραγωγή μόνο από δωμάτια σε απόσταση 1 tick
+                return route !== ERR_NO_PATH && route.length <= 1;
+            });
+        }
+
+        return null;
     }
 
     spawnCreep(spawn, request) {

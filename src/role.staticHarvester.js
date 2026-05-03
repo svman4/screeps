@@ -164,7 +164,13 @@ class StaticHarvester extends BaseRole {
         if (source.energy > 0) {
             this.creep.harvest(source);
         }
-    }
+    } // end of performHarvest
+	/**
+		Ο staticHarvester θέλουμε να εργάζεται μέχρι το τελευταίο tick.
+	*/
+	getRetirementThreshold() { 
+		return 0;
+	}
 }
 
 module.exports = StaticHarvester;

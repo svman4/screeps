@@ -26,13 +26,13 @@ const PRIORITIES = {
 };
 
 const TARGET_FULL_PERCENT = { 
-    TERMINAL: 0.3,
+    TERMINAL: 0.01,
     STORAGE: 0.8,
     TOWER: 0.8,
     CONTROLLER_CONTAINER: 0.6,
-    FACTORY: 0.5,
-    LAB: 1,
-    NUKER : 1,
+    FACTORY: 0.01,
+    LAB: 0.01,
+    NUKER : 0.01,
     POWER_SPAWN : 1 
 };
 

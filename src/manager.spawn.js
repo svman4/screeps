@@ -278,7 +278,7 @@ class SpawnManager {
 			let uParts = 0;
                 while (this.getBodyCost(body) + 350 <= maxEnergy && uParts < 15) {
                     body.push(WORK,WORK, CARRY, MOVE,MOVE);
-                    bParts++;
+                    uParts++;
                 }
                 break;
 			case ROLES.SIMPLE_HARVESTER:

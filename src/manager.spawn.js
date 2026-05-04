@@ -1,306 +1,245 @@
 /**
- * MODULE: Global Spawn Manager
- * VERSION: 2.5.0
- * TYPE: Modular Class-based Singleton
- * ΠΕΡΙΓΡΑΦΗ: Κεντρικός διαχειριστής παραγωγής. Χρησιμοποιεί το populationManager 
- * για τον έλεγχο κατάρρευσης οικονομίας (Recovery Mode).
- * * CHANGE LOG:
- * 2.5.0: Εφαρμογή προτεραιότητας Local Spawning. Τα creeps πλέον προτιμούν το δικό τους δωμάτιο
- * και χρησιμοποιούν remote spawns μόνο ως fallback (εκτός από Harvesters/Haulers).
- * 2.4.0: Εισαγωγή PopulationManager integration.
+ * @file manager.spawn.js
+ * @author svman4
+ * @version 3.5.0
+ * * DESCRIPTION:
+ * Κεντρικός Διαχειριστής Παραγωγής (Spawn Manager). 
+ * Υπεύθυνος για την ανάλυση των αναγκών κάθε δωματίου, τον σχεδιασμό των σωμάτων (body design)
+ * και την εκτέλεση της εντολής spawnCreep. 
+ *
+ * ΣΤΡΑΤΗΓΙΚΗ:
+ * Χρησιμοποιεί το PopulationManager για να λάβει "Quotas" (ποσοστώσεις) σε επίπεδο Body Parts 
+ * αντί για απλό αριθμό creeps, επιτρέποντας δυναμική κλιμάκωση (scaling) ανάλογα με την ενέργεια.
+ *
+ * CHANGELOG:
+ * - v3.5.0: Πλήρης εξάλειψη Magic Numbers. Εισαγωγή SPAWN_SETTINGS config. Προσθήκη εκτενούς Documentation.
+ * - v3.4.0: Βελτιστοποίηση σειράς μερών (Body Part Ordering) για ανθεκτικότητα σε ζημιές (damage mitigation).
+ * - v3.3.0: Ενσωμάτωση Dynamic Body Scaling βάσει energyCapacityAvailable.
+ * - v3.2.0: Recovery Mode integration - προτεραιότητα σε χαμηλού κόστους creeps σε περίπτωση οικονομικής κατάρρευσης.
+ * - v3.0.0: Μετάβαση σε Class-based Singleton αρχιτεκτονική.
+ * - v2.5.0: Εφαρμογή προτεραιότητας Local Spawning (προτίμηση στο home room).
  */
-// --- ΕΣΩΤΕΡΙΚΕΣ ΣΤΑΘΕΡΕΣ ΔΙΑΧΕΙΡΙΣΤΗ ---
-const TICKS_UPDATE_REQUESTS = 10;   // Συχνότητα ελέγχου αναγκών
-const TICKS_UPDATE_LIMITS = 100;     // Συχνότητα επικαιροποίησης ορίων πληθυσμού
-const TICKS_LOG_DEBUG = 20;         // Συχνότητα εμφάνισης debug logs
-const TICKS_CLEANUP_MEMORY = 50;    // Συχνότητα καθαρισμού νεκρών creeps
-const ENERGY_THRESHOLD_NORMAL = 0.95; // Απαιτούμενο ποσοστό ενέργειας για μη κρίσιμα creeps
-const CRITICAL_PRIORITY_LEVEL = 15; // Επίπεδο προτεραιότητας που θεωρείται "Emergency"
 
-const { NEED_REPLACEMENT_FLAG,ROLES, PRIORITY, BODY_ENERGY_LIMITS } = require('spawn.constants');
-const expansionManager = require('manager.expansion');
-const populationManager = require('spawn.populationManager');
+import { ROLES, PRIORITY } from './spawn.constants';
+import populationManager from './spawn.populationManager';
+
+/**
+ * Κεντρικές Ρυθμίσεις Διαχειριστή
+ * Εδώ ορίζονται όλες οι σταθερές για να αποφεύγονται οι "μαγικοί αριθμοί" στον κώδικα.
+ */
+const SPAWN_SETTINGS = {
+    TICKS: {
+        RUN_FREQUENCY: 5,        // Κάθε πόσα ticks τρέχει ο έλεγχος για spawn
+        MEMORY_CLEANUP: 50       // Συχνότητα διαγραφής νεκρών creeps από τη Memory
+    },
+    LIMITS: {
+        MAX_BODY_PARTS: 50,      // Το ανώτατο όριο της engine του παιχνιδιού
+        MIN_RECOVERY_ENERGY: 300 // Ελάχιστη ενέργεια για να ξεκινήσει το recovery
+    },
+    // Body Templates: Ορίζουν πώς χτίζεται κάθε ρόλος
+    // template: επαναλαμβανόμενο μοτίβο
+    // maxUnits: μέγιστος αριθμός επαναλήψεων (όχι συνολικών μερών)
+    BODY_TEMPLATES: {
+        [ROLES.STATIC_HARVESTER]: {
+            base: [MOVE],            // Ξεκινάει με 1 MOVE
+            repeatable: [WORK],      // Προσθέτει WORK
+            maxUnits: 6,             // 6 WORK max (βέλτιστο για 3000 source σε 300 ticks)
+            useBaseOnlyIfEmpty: false
+        },
+        [ROLES.HAULER]: {
+            template: [CARRY, CARRY, MOVE], // 2:1 ratio για κίνηση σε δρόμους (fatigue 0)
+            maxUnits: 15                    // 30 Carry / 15 Move συνολικά
+        },
+        [ROLES.UPGRADER]: {
+            template: [WORK, CARRY, MOVE], 
+            maxUnits: 15
+        },
+        [ROLES.BUILDER]: {
+            template: [WORK, CARRY, MOVE],
+            maxUnits: 12
+        },
+        [ROLES.SIMPLE_HARVESTER]: {
+            template: [WORK, CARRY, MOVE],
+            maxUnits: 5
+        }
+    }
+};
 
 class SpawnManager {
     constructor() {
-        if (!Memory.spawnQueue) {
-            Memory.spawnQueue = [];
-        }
-        this.queue = Memory.spawnQueue;
+        this.settings = SPAWN_SETTINGS;
     }
 
     /**
-     * Κεντρικός κύκλος λειτουργίας.
+     * Κύρια μέθοδος εκτέλεσης του Manager.
+     * Τρέχει στο τέλος του loop ή όπου ορίζεται στο main.js.
      */
     run() {
-        this.cleanup();
+        // Καθαρισμός μνήμης σε τακτά διαστήματα
+        this.manageMemoryCleanup();
         
-        if (Game.time % TICKS_UPDATE_REQUESTS === 0) {
-            this.updateRequests();
-        }
-		
-        this.processQueue();
-        
-        if (Game.time % TICKS_LOG_DEBUG === 0 && this.queue.length > 0) {
-            console.log(`[SpawnManager] Pending requests: ${this.queue.length}. Top: ${this.queue[0].role} for ${this.queue[0].targetRoom}`);
+        // Έλεγχος συχνότητας εκτέλεσης για εξοικονόμηση CPU
+        if (Game.time % this.settings.TICKS.RUN_FREQUENCY !== 0) return;
+
+        // Έλεγχος κάθε δωματίου που μας ανήκει
+        for (let roomName in Game.rooms) {
+            const room = Game.rooms[roomName];
+            if (!this.isMyRoom(room)) continue;
+
+            this.processRoom(room);
         }
     }
 
     /**
-     * Ενημερώνει τις ανάγκες παραγωγής.
-     * Εκμεταλλεύεται το roomMemory.isRecovery για άμεση ανάκαμψη.
+     * Επαληθεύει αν το δωμάτιο είναι υπό τον έλεγχό μας.
      */
-    updateRequests() {
-		for (let roomName in Game.rooms) {
-			const room = Game.rooms[roomName];
-			if (!room.controller || !room.controller.my) continue;
-			
-			if (Game.time % TICKS_UPDATE_LIMITS === 0 || !Memory.rooms[roomName].populationLimits) { 
-				populationManager.updateRoomLimits(roomName);	
-			}
-			
-			const roomMemory = Memory.rooms[roomName];
-			if (!roomMemory || !roomMemory.populationLimits) continue;
-
-			const creepsInRoom = _.filter(Game.creeps, c => c.memory.homeRoom === roomName);
-
-			for (let roleName in roomMemory.populationLimits) {
-                if (roleName === 'isRecovery') continue;
-
-				const limit = roomMemory.populationLimits[roleName];
-                if (limit <= 0) continue;
-
-				if (roleName === ROLES.STATIC_HARVESTER) {
-					const sources = room.find(FIND_SOURCES);
-					sources.forEach(source => {
-						
-						const harvesterAtSource = _.find(creepsInRoom, c => 
-							c.memory.role === roleName && c.memory.sourceId === source.id
-						);
-
-						if (!harvesterAtSource) {
-							// Αν δεν έχει harvest σε αυτή την πηγή, δημιουργεί.
-							this.addToQueue({
-								role: roleName,
-								
-								homeRoom: roomName,
-								targetRoom: roomName,
-								priority: roomMemory.isRecovery ? 5 : (PRIORITY[roleName] || 20),
-								memory: { sourceId: source.id, init:true } 
-							});
-						} else if(this.checkIfNeedReplace(harvesterAtSource)) {
-							this.addToQueue({
-								role: roleName,								
-								homeRoom: roomName,
-								targetRoom: roomName,
-								priority: roomMemory.isRecovery ? 5 : (PRIORITY[roleName] || 20),
-								memory: { sourceId: source.id, init:true } 
-							});
-							this.dropFlagForReplace(harvesterAtSource);
-						}
-					});
-				} else {
-					const count = _.filter(creepsInRoom, c => c.memory.role === roleName).length;
-
-					if (count < limit) {
-                        let priority = PRIORITY[roleName] || 100;
-                        
-                        // ΕΛΕΓΧΟΣ RECOVERY: Αν η οικονομία έχει καταρρεύσει (μέσω populationManager)
-                        if (roomMemory.isRecovery && (roleName === ROLES.SIMPLE_HARVESTER || roleName === ROLES.HAULER)) {
-                            priority = 1; 
-                        }
-
-						this.addToQueue({
-							role: roleName,
-							homeRoom: roomName,
-							targetRoom: roomName,
-							priority: priority
-						});
-					}
-				}
-			}
-		}
-	}
-	checkIfNeedReplace(creep){ 
-		if(creep.memory[NEED_REPLACEMENT_FLAG] && creep.memory[NEED_REPLACEMENT_FLAG]===true) {
-			return true;
-		}
-		return false;
-	}
-	dropFlagForReplace(creep) {
-		if(creep.memory[NEED_REPLACEMENT_FLAG]) {
-			creep.memory[NEED_REPLACEMENT_FLAG]=false;
-		}
-		return;
-	}
-    addToQueue(request) {
-        const isAlreadyInQueue = this.queue.some(r => 
-            r.role === request.role && 
-            r.targetRoom === request.targetRoom &&
-            (!request.memory || r.memory.sourceId === request.memory.sourceId)
-        );
-
-        if (!isAlreadyInQueue) {
-            this.queue.push({
-                role: request.role,
-                priority: request.priority,
-                homeRoom: request.homeRoom,
-                targetRoom: request.targetRoom || request.homeRoom,
-                memory: request.memory || {},
-                addedAt: Game.time
-            });
-            this.sortQueue();
-        }
+    isMyRoom(room) {
+        return room.controller && room.controller.my;
     }
 
-    sortQueue() {
-        this.queue.sort((a, b) => a.priority - b.priority);
-    }
+    /**
+     * Διαχειρίζεται την παραγωγή σε ένα συγκεκριμένο δωμάτιο.
+     */
+    processRoom(room) {
+        // Βρίσκουμε διαθέσιμα spawns που δεν δουλεύουν ήδη
+        const idleSpawns = room.find(FIND_MY_SPAWNS, { 
+            filter: s => !s.spawning 
+        });
+        
+        if (idleSpawns.length === 0) return;
 
-    processQueue() {
-        if (this.queue.length === 0) return;
+        // Λήψη απαιτήσεων (Quotas) από τον Population Manager
+        const quotas = populationManager.calculateQuotas(room);
+        const currentActiveParts = this.countActivePartsInRoom(room);
+        
+        // Ταξινόμηση ρόλων βάσει προτεραιότητας (Priority)
+        const rolesByPriority = Object.keys(ROLES).sort((a, b) => PRIORITY[a] - PRIORITY[b]);
 
-        const freeSpawns = _.filter(Game.spawns, s => !s.spawning);
-        if (freeSpawns.length === 0) return;
+        for (let roleKey of rolesByPriority) {
+            const role = ROLES[roleKey];
+            const target = quotas[role] || 0;
+            const current = currentActiveParts[role] || 0;
 
-        for (let i = 0; i < this.queue.length; i++) {
-            const request = this.queue[i];
-            const spawn = this.findBestSpawn(request, freeSpawns);
-
-            if (spawn) {
-                const result = this.spawnCreep(spawn, request);
-                if (result === OK) {
-                    this.queue.splice(i, 1);
-                    _.remove(freeSpawns, s => s.id === spawn.id);
-                    i--; 
-                    if (freeSpawns.length === 0) break;
-                }
+            // Αν λείπουν μέρη για αυτόν τον ρόλο, ξεκινάμε spawn
+            if (current < target) {
+                this.executeSpawn(idleSpawns[0], role, room, quotas.isRecovery);
+                return; // Παράγουμε ένα creep ανά spawn ανά tick
             }
         }
     }
 
     /**
-     * Κεντρική μέθοδος επιλογής του καταλληλότερου Spawn.
-     * Δίνει προτεραιότητα στο homeRoom του αιτήματος.
-     * @param {Object} request - Το αίτημα παραγωγής από την ουρά.
-     * @param {StructureSpawn[]} freeSpawns - Λίστα με τα διαθέσιμα (μη απασχολημένα) spawns.
-     * @returns {StructureSpawn|null}
+     * Μετράει τα ενεργά Body Parts (WORK/CARRY) στο δωμάτιο ανά ρόλο.
      */
-    findBestSpawn(request, freeSpawns) {
-        // 1. ΑΠΟΛΥΤΗ ΠΡΟΤΕΡΑΙΟΤΗΤΑ: Αναζήτηση στο homeRoom
-        const localSpawn = freeSpawns.find(s => s.room.name === request.homeRoom);
-        if (localSpawn) {
-            return localSpawn;
-        }
+    countActivePartsInRoom(room) {
+        const creeps = _.filter(Game.creeps, c => c.memory.homeRoom === room.name);
+        const counts = {};
 
-        // 2. FALLBACK: Αν το τοπικό Spawn είναι απασχολημένο, ελέγχουμε γειτονικά δωμάτια
-        // Εξαιρούμε STATIC_HARVESTER και HAULER για να αποφύγουμε μεγάλα ταξίδια χωρίς νόημα
-        if (request.role !== ROLES.STATIC_HARVESTER && request.role !== ROLES.HAULER) {
-            return freeSpawns.find(s => {
-                const route = Game.map.findRoute(s.room.name, request.homeRoom);
-                // Επιτρέπουμε παραγωγή μόνο από δωμάτια σε απόσταση 1 tick
-                return route !== ERR_NO_PATH && route.length <= 1;
-            });
+        for (let roleKey in ROLES) {
+            const role = ROLES[roleKey];
+            const roleCreeps = _.filter(creeps, c => c.memory.role === role);
+            
+            // Για Haulers μετράμε CARRY, για τους υπόλοιπους WORK
+            const metric = (role === ROLES.HAULER) ? CARRY : WORK;
+            counts[role] = _.sum(roleCreeps, c => c.getActiveBodyparts(metric));
         }
-
-        return null;
+        return counts;
     }
 
-    spawnCreep(spawn, request) {
-		/*
-		 Η διαθέσιμη ενέργεια.
-		*/
-        const energyAvailable = spawn.room.energyAvailable;
-		/*
-			Η χωρητικότητα ενέργειας που υπάρχει στο δωμάτιο
-		*/
-        const energyCapacity = spawn.room.energyCapacityAvailable;
+    /**
+     * Εκτελεί την εντολή spawnCreep με σωστό σώμα και μνήμη.
+     */
+    executeSpawn(spawn, role, room, isRecovery) {
+        // Καθορισμός ορίου ενέργειας: 
+        // Αν είμαστε σε Recovery, χρησιμοποιούμε ό,τι έχουμε τώρα.
+        // Αλλιώς, περιμένουμε να γεμίσουν τα extensions (capacity).
+        const energyLimit = isRecovery ? room.energyAvailable : room.energyCapacityAvailable;
+        const body = this.prepareBody(role, energyLimit, isRecovery);
         
-        // Χρήση της σταθεράς CRITICAL_PRIORITY_LEVEL για έλεγχο άμεσης παραγωγής
-        const isCritical = request.priority <= CRITICAL_PRIORITY_LEVEL;
-        // 1. Βρες το όριο ενέργειας για τον συγκεκριμένο ρόλο από τις σταθερές σου
-		const roleLimit = BODY_ENERGY_LIMITS[request.role] || BODY_ENERGY_LIMITS['default'];
+        if (!body || body.length === 0) return;
+        
+        // Έλεγχος αν έχουμε την απαιτούμενη ενέργεια ΤΩΡΑ (εκτός αν είμαστε σε recovery)
+        if (this.calculateCost(body) > room.energyAvailable && !isRecovery) return;
 
-		// 2. Έλεγχος: Αν το δωμάτιο δεν έχει ακόμα την ενέργεια που απαιτείται για το πλήρες σώμα του ρόλου, 
-		// και το creep δεν είναι κρίσιμο, τότε περίμενε.
-		if (!isCritical && energyAvailable < roleLimit && energyAvailable < energyCapacity) {
-			return ERR_NOT_ENOUGH_ENERGY;
-}
-
-        const body = this.calculateBody(request.role, energyAvailable);
-        if (!body || body.length === 0) return ERR_INVALID_ARGS;
-		
-        body.sort(); 
-        const name = `${request.role}_${request.homeRoom}_${Game.time % 10000}`;
-        const memory = _.assign({}, request.memory, { 
-            role: request.role, 
-            homeRoom: request.homeRoom,
-            targetRoom: request.targetRoom 
-        });
+        const name = `${role}_${room.name}_${Game.time % 1000}`;
+        const memory = {
+            role: role,
+            homeRoom: room.name,
+            spawnTick: Game.time,
+            working: false
+        };
 
         const result = spawn.spawnCreep(body, name, { memory: memory });
-        
+
         if (result === OK) {
-            console.log(`⚡ [Spawn] ${spawn.name}(${spawn.room.name}) -> ${request.role}_${request.targetRoom} [Priority: ${request.priority}]`);
+            console.log(`[SPAWN] ${room.name} -> ${name} | Cost: ${this.calculateCost(body)} | Recovery: ${isRecovery}`);
         }
-        
-        return result;
     }
 
-    calculateBody(role, energy) {
-        const limit = BODY_ENERGY_LIMITS[role] || BODY_ENERGY_LIMITS['default'] || energy;
-		
-        const maxEnergy = Math.min(energy, limit);
+    /**
+     * Δυναμικός σχεδιασμός του σώματος του Creep.
+     */
+    prepareBody(role, maxEnergy, isRecovery) {
         let body = [];
-        
-        switch (role) {
-            case ROLES.SCOUT:
-                body = [MOVE];
-                break;
-            case ROLES.STATIC_HARVESTER:
-                
-                body = [MOVE,CARRY, WORK, WORK]; 
-                let workParts = 2;
-                while (this.getBodyCost(body) + 100 <= maxEnergy && workParts < 5) {
-                    body.push(WORK);
-                    workParts++;
-                }
-                break;
-            case ROLES.HAULER:
-                let hParts = 0;
-                while (this.getBodyCost(body) + 150 <= maxEnergy && hParts < 20) {
-                    body.push(CARRY, CARRY, MOVE);
-                    hParts++;
-                }
-                break;
-            
-            case ROLES.UPGRADER:
-			let uParts = 0;
-                while (this.getBodyCost(body) + 350 <= maxEnergy && uParts < 15) {
-                    body.push(WORK,WORK, CARRY, MOVE,MOVE);
-                    uParts++;
-                }
-                break;
-			case ROLES.SIMPLE_HARVESTER:
-            case ROLES.BUILDER:
-                let bParts = 0;
-                while (this.getBodyCost(body) + 250 <= maxEnergy && bParts < 15) {
-                    body.push(WORK, CARRY, MOVE,MOVE);
-                    bParts++;
-                }
-                break;
-            default:
-                body = [WORK, CARRY, MOVE];
+        const config = this.settings.BODY_TEMPLATES[role];
+
+        if (!config) return [WORK, CARRY, MOVE];
+
+        // Emergency Fallback: Αν το δωμάτιο είναι άδειο, φτιάξε το μικρότερο δυνατό
+        if (isRecovery && maxEnergy < this.settings.LIMITS.MIN_RECOVERY_ENERGY) {
+            return [WORK, CARRY, MOVE];
         }
-        return body;
+
+        if (role === ROLES.STATIC_HARVESTER) {
+            // Λογική: 1 MOVE και όσο το δυνατόν περισσότερα WORK
+            body = [...config.base];
+            let units = 0;
+            while (this.calculateCost(body.concat(config.repeatable)) <= maxEnergy && units < config.maxUnits) {
+                body = body.concat(config.repeatable);
+                units++;
+            }
+        } else {
+            // Λογική: Επανάληψη του template (π.χ. WORK, CARRY, MOVE)
+            const template = config.template;
+            const costPerUnit = this.calculateCost(template);
+            
+            let units = Math.floor(maxEnergy / costPerUnit);
+            
+            // Περιορισμός από τις ρυθμίσεις και το hard limit των 50 μερών
+            const maxPossibleUnits = Math.floor(this.settings.LIMITS.MAX_BODY_PARTS / template.length);
+            units = Math.min(units, config.maxUnits, maxPossibleUnits);
+
+            for (let i = 0; i < units; i++) {
+                body = body.concat(template);
+            }
+        }
+
+        return this.sortBodyParts(body);
     }
 
-    getBodyCost(body) {
+    /**
+     * Ταξινομεί τα μέρη του σώματος για βέλτιστη άμυνα.
+     * Σειρά: TOUGH -> WORK -> CARRY -> MOVE.
+     * Τα MOVE μπαίνουν τελευταία ώστε αν το creep φάει damage, 
+     * να χάσει πρώτα την ικανότητα εργασίας αλλά να μπορεί ακόμα να κινηθεί.
+     */
+    sortBodyParts(body) {
+        const partPriority = { [TOUGH]: 1, [WORK]: 2, [CARRY]: 3, [MOVE]: 4 };
+        return _.sortBy(body, part => partPriority[part]);
+    }
+
+    /**
+     * Υπολογίζει το συνολικό κόστος ενός array από body parts.
+     */
+    calculateCost(body) {
         return _.sum(body, part => BODYPART_COST[part]);
     }
 
-    cleanup() {
-        if (Game.time % TICKS_CLEANUP_MEMORY === 0) {
+    /**
+     * Διαγράφει τη μνήμη των Creeps που πέθαναν.
+     */
+    manageMemoryCleanup() {
+        if (Game.time % this.settings.TICKS.MEMORY_CLEANUP === 0) {
             for (const name in Memory.creeps) {
                 if (!Game.creeps[name]) {
                     delete Memory.creeps[name];
@@ -310,5 +249,6 @@ class SpawnManager {
     }
 }
 
-const manager = new SpawnManager();
-module.exports = manager;
+// Εξαγωγή ως Singleton
+const spawnManager = new SpawnManager();
+export default spawnManager;

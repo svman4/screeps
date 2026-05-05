@@ -1,10 +1,11 @@
 /**
  * MODULE: Global Spawn Manager
- * VERSION: 2.5.1
+ * VERSION: 2.5.2
  * TYPE: Modular Class-based Singleton
  * ΠΕΡΙΓΡΑΦΗ: Κεντρικός διαχειριστής παραγωγής. Χρησιμοποιεί το populationManager 
  * για τον έλεγχο κατάρρευσης οικονομίας (Recovery Mode).
  * * CHANGE LOG:
+ * 2.5.2: Βελτιστοποίηση CPU: Αντικατάσταση findRoute με getRoomLinearDistance και conditional sorting.
  * 2.5.1: Refactoring της updateRequests σε μικρότερες μεθόδους.
  * 2.5.0: Εφαρμογή προτεραιότητας Local Spawning. Τα creeps πλέον προτιμούν το δικό τους δωμάτιο
  * και χρησιμοποιούν remote spawns μόνο ως fallback (εκτός από Harvesters/Haulers).
@@ -28,6 +29,7 @@ class SpawnManager {
             Memory.spawnQueue = [];
         }
         this.queue = Memory.spawnQueue;
+        this._queueNeedsSort = true; // Flag για αποφυγή περιττών sorting
     }
 
     /**
@@ -98,7 +100,6 @@ class SpawnManager {
      * Διαχειρίζεται τα αιτήματα για Static Harvesters ανά πηγή.
      */
     manageStaticHarvesterRequests(room, creepsInRoom) {
-        const roomMemory = Memory.rooms[room.name];
         const sources = room.find(FIND_SOURCES);
         
         sources.forEach(source => {
@@ -132,7 +133,6 @@ class SpawnManager {
         const roomMemory = Memory.rooms[roomName];
         let priority = PRIORITY[roleName] || 100;
 
-        // Ειδική προτεραιότητα για Recovery Mode
         if (roomMemory.isRecovery) {
             if (roleName === ROLES.SIMPLE_HARVESTER || roleName === ROLES.HAULER) {
                 priority = 1;
@@ -180,16 +180,21 @@ class SpawnManager {
                 memory: request.memory || {},
                 addedAt: Game.time
             });
-            this.sortQueue();
+            this._queueNeedsSort = true;
         }
     }
 
     sortQueue() {
-        this.queue.sort((a, b) => a.priority - b.priority);
+        if (this._queueNeedsSort) {
+            this.queue.sort((a, b) => a.priority - b.priority);
+            this._queueNeedsSort = false;
+        }
     }
 
     processQueue() {
         if (this.queue.length === 0) return;
+        
+        this.sortQueue();
 
         const freeSpawns = _.filter(Game.spawns, s => !s.spawning);
         if (freeSpawns.length === 0) return;
@@ -210,6 +215,9 @@ class SpawnManager {
         }
     }
 
+    /**
+     * Βελτιστοποιημένη επιλογή Spawn χρησιμοποιώντας γραμμική απόσταση.
+     */
     findBestSpawn(request, freeSpawns) {
         const localSpawn = freeSpawns.find(s => s.room.name === request.homeRoom);
         if (localSpawn) {
@@ -218,8 +226,9 @@ class SpawnManager {
 
         if (request.role !== ROLES.STATIC_HARVESTER && request.role !== ROLES.HAULER) {
             return freeSpawns.find(s => {
-                const route = Game.map.findRoute(s.room.name, request.homeRoom);
-                return route !== ERR_NO_PATH && route.length <= 1;
+                // Χρήση γραμμικής απόστασης αντί για findRoute για εξοικονόμηση CPU
+                const distance = Game.map.getRoomLinearDistance(s.room.name, request.homeRoom);
+                return distance <= 1;
             });
         }
 

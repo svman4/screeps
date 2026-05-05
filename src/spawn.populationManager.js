@@ -1,234 +1,216 @@
 /**
  * MODULE: Population Manager
  * ΠΕΡΙΓΡΑΦΗ: Διαχειρίζεται τα όρια πληθυσμού και την κατάσταση Recovery ανά δωμάτιο.
- * Version 1.5.0
- * - Δημιουργία Link. 
+ * * VERSION 2.0.0
+ * - Μετάβαση από "Πλήθος Creeps" σε "Quotas Body Parts" (Work/Carry Quotas).
+ * - Δυναμικός υπολογισμός Net Income και κατανομή WORK parts σε Builders/Upgraders.
+ * - Υπολογισμός Carry Quota βάσει πραγματικών αποστάσεων (Pathfinding) από το Anchor (Storage ή Spawn).
+ * - Εισαγωγή Economic Balancing Constants για αποφυγή magic numbers.
+ * * VERSION 1.5.0
+ * - Δημιουργία Link.
  * VERSION 1.4.0
  * - Refactored σε εξειδικευμένες μεθόδους για ευαναγνωσία.
  * - Ενσωμάτωση Builder-as-Upgrader στρατηγικής.
- * 1.2.0 Προσθήκη λειτουργία containers. 
+ * VERSION 1.2.0 Προσθήκη λειτουργία containers. 
  * - Αν υπάρχει έστω και ένα container τότε αλλάζει η διαχείριση του πληθυσμού.
- * 1.1.0 Ακύρωση λειτουργίας storageContainer. 
- * 
- * TODO ΝΑ υπολογίζει πόσα body parts χρειάζεται ανά ρόλο. Η Δημιουργία των creeps να εξαρτάται από τα body Parts και όχι από το πληθυσμό.
- * - Η manager.spawn θα πρέπει να αλλάξει ώστε να δημιουργεί creeps βάση των body parts.
+ * VERSION 1.1.0 Ακύρωση λειτουργίας storageContainer. 
  */
-const { ROLES } = require('spawn.constants');
-const CARRY_PART_CAPACITY=50;
-const CARRY_PART_FOR_EXTENSIONS=10;
-const ROOM_STATE={
-	RESERVED:"reserved",
-	NEURAL:"neural",
-	CLAIM:"reserved"
-};
-const SOURCE_ENERGY_PER_TICK={
-	ROOM_STATE.RESERVED:10,
-	ROOM_STATE.NEURAL:5
-};
+import { ROLES } from './spawn.constants';
+
 class PopulationManager {
+    constructor() {
+        // Efficiency constants
+        this.WORK_EFFICIENCY = 2; // 1 WORK part = 2 energy per tick harvest
+        this.UPGRADE_EFFICIENCY = 1; // 1 WORK part = 1 energy per tick upgrade
+        
+        // Economic Balancing Constants
+        this.MAINTENANCE_BUFFER = 2; // Ενέργεια που κρατάμε για Towers/Spawning
+        this.BUILDER_INCOME_SHARE = 0.5; // Ποσοστό του εισοδήματος που πάει σε χτίσιμο
+        this.MAX_BUILDER_WORK_BASELINE = 10; // Μέγιστο WORK για builders από το τρέχον εισόδημα
+        this.SURPLUS_THRESHOLD = 0.5; // Πάνω από ποιο ποσοστό Storage θεωρούμε ότι έχουμε πλεόνασμα
+        this.SURPLUS_SCALER = 50; // Πόσο επιθετικά αυξάνουμε τα parts στο πλεόνασμα
+        this.MAX_UPGRADER_WORK_RCL8 = 15; // Το όριο του controller στο RCL 8
+        
+        // Logistics Constants
+        this.EXTENSION_CARRY_BONUS = 10; // Σταθερό quota για τον ανεφοδιασμό extensions
+    }
+
     /**
-     * Κύρια μέθοδος υπολογισμού ορίων.
+     * Κεντρική μέθοδος υπολογισμού ορίων.
      */
     calculateLimits(room) {
-        const context = this._getContext(room);
-s
-        // 1. Έλεγχος για Recovery Mode (Αν έχει "σπάσει" η οικονομία)
-        if (this._isEmergency(room, context)) {
+        const context = this._createContext(room);
+        
+        if (context.isRecovery) {
             return this._getRecoveryLimits(context);
         }
 
-        // 2. Επιλογή στρατηγικής βάσει υποδομών
-        if(context.LinkCount!==0) {
-         return this._getLinkLimits(context);   
-        }
         if (context.storage) {
             return this._getStorageLimits(context);
-        } else if (context.hasContainers) {
-            return this._getContainerLimits(context);
-        } else {
-            return this._getEarlyGameLimits(context);
         }
-    } // end of calculateLimits(room)
+
+        if (context.hasContainers) {
+            return this._getContainerLimits(context);
+        }
+
+        return this._getEarlyGameLimits(context);
+    }
 
     /**
-     * Συγκεντρώνει όλα τα απαραίτητα δεδομένα για τους υπολογισμούς.
+     * Υπολογίζει τα διαθέσιμα WORK parts βάσει εισοδήματος και αποθεμάτων.
      */
-    _getContext(room) {
+    _calculateAvailableWorkParts(context) {
+        const SOURCE_INCOME_PER_TICK = 10;
+        
+        // 1. Income: Πόσο energy παράγουμε ανά tick
+        const totalIncome = context.sources.length * SOURCE_INCOME_PER_TICK;
+        
+        // 2. Net Available: Income μείον τα λειτουργικά έξοδα
+        let availableWork = totalIncome - this.MAINTENANCE_BUFFER;
+
+        // 3. Surplus Logic: Αν το storage ξεχειλίζει, προσθέτουμε "extra" work parts (Burn Strategy)
+        if (context.storage) {
+            const energy = context.storage.store[RESOURCE_ENERGY];
+            const storageCapacity = context.storage.store.getCapacity();
+            const fillPercent = energy / storageCapacity;
+
+            if (fillPercent > this.SURPLUS_THRESHOLD) {
+                const surplusBonus = Math.floor((fillPercent - this.SURPLUS_THRESHOLD) * this.SURPLUS_SCALER);
+                availableWork += surplusBonus;
+            }
+        }
+
+        return Math.max(availableWork, 1);
+    }
+
+    /**
+     * Κατανομή των διαθέσιμων WORK parts σε Builders και Upgraders.
+     */
+    _distributeWorkQuotas(context, limits) {
+        let availableWork = this._calculateAvailableWorkParts(context);
+        
+        let builderWork = 0;
+        let upgraderWork = 0;
+
+        // 1. Builder Allocation
+        if (context.hasConstruction) {
+            // Δίνουμε ένα baseline στον builder από το διαθέσιμο εισόδημα
+            builderWork = Math.min(availableWork * this.BUILDER_INCOME_SHARE, this.MAX_BUILDER_WORK_BASELINE); 
+            availableWork -= builderWork;
+        }
+
+        // 2. Upgrader Allocation
+        // Ο upgrader παίρνει ό,τι περίσσεψε από το income + bonus πλεονάσματος
+        upgraderWork = availableWork;
+
+        // 3. RCL 8 Cap (Hard limit για τον controller)
+        if (context.level === 8) {
+            upgraderWork = Math.min(upgraderWork, this.MAX_UPGRADER_WORK_RCL8);
+        }
+
+        limits[ROLES.UPGRADER] = Math.max(Math.floor(upgraderWork), 1);
+        limits[ROLES.BUILDER] = Math.floor(builderWork);
+    }
+
+    _getStorageLimits(context) {
+        let limits = {
+            [ROLES.SIMPLE_HARVESTER]: 0,
+            [ROLES.STATIC_HARVESTER]: context.sources.length * 5, // 5 WORK parts ανά source
+            [ROLES.HAULER]: this._calculateCarryQuota(context),
+            isRecovery: false
+        };
+
+        this._distributeWorkQuotas(context, limits);
+
+        return limits;
+    }
+
+    /**
+     * Υπολογισμός CARRY parts για Haulers.
+     */
+    _calculateCarryQuota(context) {
+        const target = context.storage || (context.spawns && context.spawns.length > 0 ? context.spawns[0] : null);
+        if (!target) return 10;
+
+        const FALLBACK_DISTANCE = 20;
+        const SOURCE_INCOME_PER_TICK = 10;
+        
+        let totalCarryRequired = 0;
+
+        context.sources.forEach(source => {
+            const path = target.pos.findPathTo(source, { ignoreCreeps: true });
+            const distance = path.length || FALLBACK_DISTANCE; 
+            totalCarryRequired += (SOURCE_INCOME_PER_TICK * distance * 2) / CARRY_CAPACITY;
+        });
+
+        const controllerPath = target.pos.findPathTo(context.room.controller, { ignoreCreeps: true });
+        const controllerDistance = controllerPath.length || FALLBACK_DISTANCE;
+        const upgradeRate = 10; 
+        totalCarryRequired += (upgradeRate * controllerDistance * 2) / CARRY_CAPACITY;
+
+        totalCarryRequired += this.EXTENSION_CARRY_BONUS;
+        
+        return Math.ceil(totalCarryRequired);
+    }
+
+    _createContext(room) {
+        const sources = room.find(FIND_SOURCES);
+        const spawns = room.find(FIND_MY_SPAWNS);
+        const storage = room.storage;
         const containers = room.find(FIND_STRUCTURES, {
             filter: s => s.structureType === STRUCTURE_CONTAINER
         });
-        const links=room.find(FIND_STRUCTURES,{
-            filter: s => s.structureType === STRUCTURE_LINK
-        });
-        const carryParts=this._getCarryParts(room,links);
-		const workParts=this._getWorksParts(room);
+        const construction = room.find(FIND_CONSTRUCTION_SITES);
+
+        const creeps = room.find(FIND_MY_CREEPS);
+        const hasWork = creeps.some(c => c.getActiveBodyparts(WORK) > 0);
+        const hasCarry = creeps.some(c => c.getActiveBodyparts(CARRY) > 0);
+
         return {
             room: room,
-            sources: room.find(FIND_SOURCES).length,
             level: room.controller.level,
-            storage: room.storage,
+            sources: sources,
+            spawns: spawns,
+            storage: storage,
             hasContainers: containers.length > 0,
-            LinkCount:links.length,
-            hasConstruction: room.find(FIND_CONSTRUCTION_SITES).length > 0,
-			carryParts:carryParts,
-			workParts:workParts;
+            hasConstruction: construction.length > 0,
+            isRecovery: (!hasWork || !hasCarry) && room.controller.level > 1
         };
-    } // end of _getContext
-	
-	_getCarryParts(room,links) {
-		// TODO να υπολογίζει πόσα carryParts χρειάζονται για το δωμάτιο room.
-		const roomState=ROOM_STATE.CLAIM;
-		let carryParts=CARRY_PART_FOR_EXTENSIONS;
-		
-		//Για κάθε πηγή source
-		
-		carryParts+=_getCarryPartsPerSource(roomState,source,storage);
-		return carryParts;
-	} // end of _getCarryParts
-	_GetCarryPartsForSource(roomState,source,center) {
-		const distance=10; // TODO Να υπολογίζει την απόσταση μεταξύ source-center
-		let energyPerTick = source.energyCapacity / ENERGY_REGEN_TIME;
-		return _getCarryParts(energyPerTick,distance);
-		
-	} // end of _GetCarryPartsForSource
-	_getCarryParts(EPT,roomState,Distance) {
-		return EPT*Distance*2/CARRY_PART_CAPACITY;
-	} // end of _getCarryPartsPerSource
-	_getWorkParts(room) {
-		// TODO να υπολογίζει πόσα workParts είναι βέλτιστα για το δωμάτιο room.
-		return 16;
-	}  // end of _getWorkParts
-    /**
-     * Ελέγχει αν το δωμάτιο βρίσκεται σε κατάσταση έκτακτης ανάγκης.
-     */
-    _isEmergency(room, context) {
-		/*
-			TODO όταν μπούμε σε στρατηγική link, έχουμε ένα hauler. Όταν πεθάνει το room μπαίνει σε emergency. ΑΠΑΙΤΕΙΤΑΙ ΕΛΕΓΧΟΣ
-		*/
-        const roomCreeps = _.filter(Game.creeps, c => c.memory.homeRoom === room.name);
-        
-        const hasHarvesters = _.some(roomCreeps, c => 
-            (c.memory.role === ROLES.STATIC_HARVESTER || c.memory.role === ROLES.SIMPLE_HARVESTER) && 
-            (c.ticksToLive > 40 || c.spawning)
-        );
+    }
 
-        // Αν έχουμε containers/storage, χρειαζόμαστε οπωσδήποτε haulers
-        const needsHauler = context.hasContainers || context.storage;
-        const hasHaulers = _.some(roomCreeps, c => c.memory.role === ROLES.HAULER);
-
-        return !hasHarvesters || (needsHauler && !hasHaulers);
-    }// end of _isEmergency
-
-	_getLinkLimits(context) {
-       // console.log("population in linkLimits strategy");
-        const energy = context.storage.store[RESOURCE_ENERGY];
+    _getContainerLimits(context) {
         let limits = {
             [ROLES.SIMPLE_HARVESTER]: 0,
-            [ROLES.STATIC_HARVESTER]: context.sources,
-            [ROLES.HAULER]: context.sources,
-            [ROLES.UPGRADER]: 1,
-            [ROLES.BUILDER]: 1,
+            [ROLES.STATIC_HARVESTER]: context.sources.length * 5,
+            [ROLES.HAULER]: this._calculateCarryQuota(context),
             isRecovery: false
         };
-
-        // Αυξάνουμε τους Builders (που κάνουν και Upgrade) αν έχουμε πλεόνασμα ενέργειας
-        if (context.level < 8) {
-            if (energy > 200000) limits[ROLES.BUILDER] = 3;
-            if (energy > 500000) limits[ROLES.BUILDER] = 5;
-            
-        } else {
-			if (context.hasConstruction) { 
-				limits[ROLES.BUILDER] = 3;
-			}
-		}
-
+        this._distributeWorkQuotas(context, limits);
         return limits;
-    } // end of _getStorageLimits
+    }
 
-    /**
-     * Όρια για Recovery Mode.
-     */
+    _getEarlyGameLimits(context) {
+        let limits = {
+            [ROLES.SIMPLE_HARVESTER]: context.sources.length * 10,
+            [ROLES.STATIC_HARVESTER]: 0,
+            [ROLES.HAULER]: this._calculateCarryQuota(context),
+            isRecovery: false
+        };
+        this._distributeWorkQuotas(context, limits);
+        return limits;
+    }
+
     _getRecoveryLimits(context) {
         return {
-            [ROLES.SIMPLE_HARVESTER]: context.sources ,
-            [ROLES.STATIC_HARVESTER]: 0,
-            [ROLES.HAULER]: context.hasContainers ? 1 : 0,
-            [ROLES.UPGRADER]: 0,
-            [ROLES.BUILDER]: 1, // Ένας builder για τυχόν repairs σε κρίσιμα σημεία
-            isRecovery: true
-        };
-    }
-
-    /**
-     * Στρατηγική όταν υπάρχει Storage (Mid-Late Game).
-     */
-    _getStorageLimits(context) {
-        console.log("population in storage strategy");
-        const energy = context.storage.store[RESOURCE_ENERGY];
-        let limits = {
-            [ROLES.SIMPLE_HARVESTER]: 0,
-            [ROLES.STATIC_HARVESTER]: context.sources,
-            [ROLES.HAULER]: context.sources,
-            [ROLES.UPGRADER]: 1,
-            [ROLES.BUILDER]: 1,
-            isRecovery: false
-        };
-
-        // Αυξάνουμε τους Builders (που κάνουν και Upgrade) αν έχουμε πλεόνασμα ενέργειας
-        if (context.level < 8) {
-            if (energy > 200000) limits[ROLES.BUILDER] = 3;
-            if (energy > 500000) limits[ROLES.BUILDER] = 5;
-            
-        } else {
-			if (context.hasConstruction) { 
-				limits[ROLES.BUILDER] = 3;
-			}
-		}
-
-        return limits;
-    } // end of _getStorageLimits
-
-    /**
-     * Στρατηγική όταν υπάρχουν Containers αλλά όχι Storage.
-     */
-    _getContainerLimits(context) {
-        return {
-            [ROLES.SIMPLE_HARVESTER]: 0,
-            [ROLES.STATIC_HARVESTER]: context.sources,
-            [ROLES.HAULER]: context.sources ,
-            [ROLES.UPGRADER]: 1,
-            [ROLES.BUILDER]: 3, // Αυξημένοι builders λόγω έλλειψης storage
-            isRecovery: false
-        };
-    }
-
-    /**
-     * Στρατηγική για το ξεκίνημα του παιχνιδιού.
-     */
-    _getEarlyGameLimits(context) {
-        return {
-            [ROLES.SIMPLE_HARVESTER]: context.sources * 2,
+            [ROLES.SIMPLE_HARVESTER]: 4,
             [ROLES.STATIC_HARVESTER]: 0,
             [ROLES.HAULER]: 0,
             [ROLES.UPGRADER]: 1,
-            [ROLES.BUILDER]: 2,
-            isRecovery: false
+            [ROLES.BUILDER]: 0,
+            isRecovery: true
         };
-    } // end of _getEarlyGameLimits
-
-    /**
-     * Ενημερώνει το Memory του δωματίου.
-     */
-    updateRoomLimits(roomName) {
-        const room = Game.rooms[roomName];
-        if (!room || !room.controller || !room.controller.my) return;
-
-        const newLimits = this.calculateLimits(room);
-        
-        if (!Memory.rooms[roomName]) Memory.rooms[roomName] = {};
-        Memory.rooms[roomName].populationLimits = newLimits;
-        Memory.rooms[roomName].isRecovery = newLimits.isRecovery;
-    } // end of updateRoomLimits
+    }
 }
 
-module.exports = new PopulationManager();
+// Export a single instance for ease of use (Singleton)
+export const populationManager = new PopulationManager();

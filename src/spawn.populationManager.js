@@ -266,4 +266,4 @@ class PopulationManager {
     }
 }
 
-export const populationManager = new PopulationManager();
+module.exports = new PopulationManager();

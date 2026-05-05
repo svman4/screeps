@@ -1,7 +1,14 @@
 /**
  * MODULE: Population Manager
  * ΠΕΡΙΓΡΑΦΗ: Διαχειρίζεται τα όρια πληθυσμού και την κατάσταση Recovery ανά δωμάτιο.
- * * VERSION 2.0.0
+ * * VERSION 2.2.0
+ * - Refactoring: Μεταφορά των σταθερών (constants) εκτός κλάσης για μελλοντική εξαγωγή σε config module.
+ * - Καθαρισμός του constructor για καλύτερη τήρηση των αρχών προγραμματισμού.
+ * VERSION 2.1.0
+ * - Βελτίωση Recovery Mode: Προσθήκη ελάχιστου Upgrader για αποφυγή downgrade.
+ * - Δυναμικός υπολογισμός εισοδήματος πηγών (Source Income) βάσει RCL (1500 vs 3000 energy).
+ * - Ενσωμάτωση "Padding" στα Quotas για να καλύπτονται οι απώλειες κατά τη μεταφορά.
+ * VERSION 2.0.0
  * - Μετάβαση από "Πλήθος Creeps" σε "Quotas Body Parts" (Work/Carry Quotas).
  * - Δυναμικός υπολογισμός Net Income και κατανομή WORK parts σε Builders/Upgraders.
  * - Υπολογισμός Carry Quota βάσει πραγματικών αποστάσεων (Pathfinding) από το Anchor (Storage ή Spawn).
@@ -17,65 +24,74 @@
  */
 import { ROLES } from './spawn.constants';
 
+// --- CONFIGURATION CONSTANTS ---
+// Στο μέλλον αυτές οι σταθερές μπορούν να μεταφερθούν σε ξεχωριστό module
+const CONFIG = {
+    // Efficiency values
+    WORK_EFFICIENCY: 2,          // 1 WORK part = 2 energy per tick harvest
+    UPGRADE_EFFICIENCY: 1,       // 1 WORK part = 1 energy per tick upgrade
+    
+    // Economic Balancing
+    MAINTENANCE_BUFFER: 2,       // Ενέργεια που κρατάμε για Towers/Spawning
+    BUILDER_INCOME_SHARE: 0.5,   // Ποσοστό του εισοδήματος που πάει σε χτίσιμο
+    MAX_BUILDER_WORK_BASELINE: 10, // Μέγιστο WORK για builders από το τρέχον εισόδημα
+    SURPLUS_THRESHOLD: 0.5,      // Πάνω από ποιο ποσοστό Storage θεωρούμε ότι έχουμε πλεόνασμα
+    SURPLUS_SCALER: 50,          // Πόσο επιθετικά αυξάνουμε τα parts στο πλεόνασμα
+    MAX_UPGRADER_WORK_RCL8: 15,  // Το όριο του controller στο RCL 8 (15 energy/tick cap)
+    
+    // Logistics
+    EXTENSION_CARRY_BONUS: 10,   // Σταθερό quota για τον ανεφοδιασμό extensions
+    DISTANCE_PADDING: 1.1        // 10% έξτρα carry για κάλυψη απωλειών/κίνησης
+};
+
 class PopulationManager {
     constructor() {
-        // Efficiency constants
-        this.WORK_EFFICIENCY = 2; // 1 WORK part = 2 energy per tick harvest
-        this.UPGRADE_EFFICIENCY = 1; // 1 WORK part = 1 energy per tick upgrade
-        
-        // Economic Balancing Constants
-        this.MAINTENANCE_BUFFER = 2; // Ενέργεια που κρατάμε για Towers/Spawning
-        this.BUILDER_INCOME_SHARE = 0.5; // Ποσοστό του εισοδήματος που πάει σε χτίσιμο
-        this.MAX_BUILDER_WORK_BASELINE = 10; // Μέγιστο WORK για builders από το τρέχον εισόδημα
-        this.SURPLUS_THRESHOLD = 0.5; // Πάνω από ποιο ποσοστό Storage θεωρούμε ότι έχουμε πλεόνασμα
-        this.SURPLUS_SCALER = 50; // Πόσο επιθετικά αυξάνουμε τα parts στο πλεόνασμα
-        this.MAX_UPGRADER_WORK_RCL8 = 15; // Το όριο του controller στο RCL 8
-        
-        // Logistics Constants
-        this.EXTENSION_CARRY_BONUS = 10; // Σταθερό quota για τον ανεφοδιασμό extensions
+        // Ο constructor παραμένει καθαρός από σταθερές παραμέτρους
     }
 
     /**
      * Κεντρική μέθοδος υπολογισμού ορίων.
+     * @param {Room} room - Το αντικείμενο του δωματίου.
+     * @returns {Object} Τα όρια πληθυσμού (Quotas).
      */
     calculateLimits(room) {
         const context = this._createContext(room);
         
+        // Αν το δωμάτιο είναι σε κατάσταση έκτακτης ανάγκης
         if (context.isRecovery) {
             return this._getRecoveryLimits(context);
         }
 
+        // Αν έχουμε Storage (Mid-Late Game)
         if (context.storage) {
             return this._getStorageLimits(context);
         }
 
+        // Αν έχουμε Containers (Early-Mid Game)
         if (context.hasContainers) {
             return this._getContainerLimits(context);
         }
 
+        // Αρχή του παιχνιδιού (No infra)
         return this._getEarlyGameLimits(context);
     }
 
     /**
-     * Υπολογίζει τα διαθέσιμα WORK parts βάσει εισοδήματος και αποθεμάτων.
+     * Υπολογίζει τα διαθέσιμα WORK parts βάσει πραγματικού εισοδήματος.
      */
     _calculateAvailableWorkParts(context) {
-        const SOURCE_INCOME_PER_TICK = 10;
+        const INCOME_PER_SOURCE = (context.room.controller && context.room.controller.level >= 1) ? 10 : 5;
         
-        // 1. Income: Πόσο energy παράγουμε ανά tick
-        const totalIncome = context.sources.length * SOURCE_INCOME_PER_TICK;
-        
-        // 2. Net Available: Income μείον τα λειτουργικά έξοδα
-        let availableWork = totalIncome - this.MAINTENANCE_BUFFER;
+        const totalIncome = context.sources.length * INCOME_PER_SOURCE;
+        let availableWork = totalIncome - CONFIG.MAINTENANCE_BUFFER;
 
-        // 3. Surplus Logic: Αν το storage ξεχειλίζει, προσθέτουμε "extra" work parts (Burn Strategy)
         if (context.storage) {
             const energy = context.storage.store[RESOURCE_ENERGY];
             const storageCapacity = context.storage.store.getCapacity();
             const fillPercent = energy / storageCapacity;
 
-            if (fillPercent > this.SURPLUS_THRESHOLD) {
-                const surplusBonus = Math.floor((fillPercent - this.SURPLUS_THRESHOLD) * this.SURPLUS_SCALER);
+            if (fillPercent > CONFIG.SURPLUS_THRESHOLD) {
+                const surplusBonus = Math.floor((fillPercent - CONFIG.SURPLUS_THRESHOLD) * CONFIG.SURPLUS_SCALER);
                 availableWork += surplusBonus;
             }
         }
@@ -92,67 +108,52 @@ class PopulationManager {
         let builderWork = 0;
         let upgraderWork = 0;
 
-        // 1. Builder Allocation
         if (context.hasConstruction) {
-            // Δίνουμε ένα baseline στον builder από το διαθέσιμο εισόδημα
-            builderWork = Math.min(availableWork * this.BUILDER_INCOME_SHARE, this.MAX_BUILDER_WORK_BASELINE); 
+            builderWork = Math.min(availableWork * CONFIG.BUILDER_INCOME_SHARE, CONFIG.MAX_BUILDER_WORK_BASELINE); 
             availableWork -= builderWork;
         }
 
-        // 2. Upgrader Allocation
-        // Ο upgrader παίρνει ό,τι περίσσεψε από το income + bonus πλεονάσματος
         upgraderWork = availableWork;
 
-        // 3. RCL 8 Cap (Hard limit για τον controller)
         if (context.level === 8) {
-            upgraderWork = Math.min(upgraderWork, this.MAX_UPGRADER_WORK_RCL8);
+            upgraderWork = Math.min(upgraderWork, CONFIG.MAX_UPGRADER_WORK_RCL8);
         }
 
         limits[ROLES.UPGRADER] = Math.max(Math.floor(upgraderWork), 1);
         limits[ROLES.BUILDER] = Math.floor(builderWork);
     }
 
-    _getStorageLimits(context) {
-        let limits = {
-            [ROLES.SIMPLE_HARVESTER]: 0,
-            [ROLES.STATIC_HARVESTER]: context.sources.length * 5, // 5 WORK parts ανά source
-            [ROLES.HAULER]: this._calculateCarryQuota(context),
-            isRecovery: false
-        };
-
-        this._distributeWorkQuotas(context, limits);
-
-        return limits;
-    }
-
     /**
-     * Υπολογισμός CARRY parts για Haulers.
+     * Υπολογισμός CARRY parts για Haulers βασισμένος σε Round-trip Distance.
      */
     _calculateCarryQuota(context) {
         const target = context.storage || (context.spawns && context.spawns.length > 0 ? context.spawns[0] : null);
         if (!target) return 10;
 
-        const FALLBACK_DISTANCE = 20;
-        const SOURCE_INCOME_PER_TICK = 10;
+        const FALLBACK_DISTANCE = 25;
+        const ENERGY_INCOME_TICK = 10;
         
         let totalCarryRequired = 0;
 
         context.sources.forEach(source => {
-            const path = target.pos.findPathTo(source, { ignoreCreeps: true });
-            const distance = path.length || FALLBACK_DISTANCE; 
-            totalCarryRequired += (SOURCE_INCOME_PER_TICK * distance * 2) / CARRY_CAPACITY;
+            const range = target.pos.getRangeTo(source);
+            const distance = (range !== Infinity) ? range : FALLBACK_DISTANCE; 
+            totalCarryRequired += (ENERGY_INCOME_TICK * distance * 2) / CARRY_CAPACITY;
         });
 
-        const controllerPath = target.pos.findPathTo(context.room.controller, { ignoreCreeps: true });
-        const controllerDistance = controllerPath.length || FALLBACK_DISTANCE;
-        const upgradeRate = 10; 
+        const controllerRange = target.pos.getRangeTo(context.room.controller);
+        const controllerDistance = (controllerRange !== Infinity) ? controllerRange : FALLBACK_DISTANCE;
+        const upgradeRate = Math.min(this._calculateAvailableWorkParts(context), 15); 
         totalCarryRequired += (upgradeRate * controllerDistance * 2) / CARRY_CAPACITY;
 
-        totalCarryRequired += this.EXTENSION_CARRY_BONUS;
+        totalCarryRequired = (totalCarryRequired + CONFIG.EXTENSION_CARRY_BONUS) * CONFIG.DISTANCE_PADDING;
         
         return Math.ceil(totalCarryRequired);
     }
 
+    /**
+     * Δημιουργία Context για το δωμάτιο (Caching δεδομένων για τον υπολογισμό).
+     */
     _createContext(room) {
         const sources = room.find(FIND_SOURCES);
         const spawns = room.find(FIND_MY_SPAWNS);
@@ -168,14 +169,25 @@ class PopulationManager {
 
         return {
             room: room,
-            level: room.controller.level,
+            level: room.controller ? room.controller.level : 0,
             sources: sources,
             spawns: spawns,
             storage: storage,
             hasContainers: containers.length > 0,
             hasConstruction: construction.length > 0,
-            isRecovery: (!hasWork || !hasCarry) && room.controller.level > 1
+            isRecovery: (!hasWork || !hasCarry) && room.controller && room.controller.level > 1
         };
+    }
+
+    _getStorageLimits(context) {
+        let limits = {
+            [ROLES.SIMPLE_HARVESTER]: 0,
+            [ROLES.STATIC_HARVESTER]: context.sources.length * 5, 
+            [ROLES.HAULER]: this._calculateCarryQuota(context),
+            isRecovery: false
+        };
+        this._distributeWorkQuotas(context, limits);
+        return limits;
     }
 
     _getContainerLimits(context) {
@@ -202,15 +214,27 @@ class PopulationManager {
 
     _getRecoveryLimits(context) {
         return {
-            [ROLES.SIMPLE_HARVESTER]: 4,
+            [ROLES.SIMPLE_HARVESTER]: 4, 
             [ROLES.STATIC_HARVESTER]: 0,
             [ROLES.HAULER]: 0,
-            [ROLES.UPGRADER]: 1,
+            [ROLES.UPGRADER]: 1, 
             [ROLES.BUILDER]: 0,
             isRecovery: true
         };
     }
+
+    /**
+     * Ενημερώνει τα Memory limits του δωματίου.
+     * Καλείται από το SpawnManager.
+     */
+    updateRoomLimits(roomName) {
+        const room = Game.rooms[roomName];
+        if (!room) return;
+        
+        const limits = this.calculateLimits(room);
+        Memory.rooms[roomName].populationLimits = limits;
+        Memory.rooms[roomName].isRecovery = limits.isRecovery;
+    }
 }
 
-// Export a single instance for ease of use (Singleton)
 export const populationManager = new PopulationManager();

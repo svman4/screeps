@@ -1,6 +1,13 @@
 /**
  * MODULE: Population Manager
  * ΠΕΡΙΓΡΑΦΗ: Διαχειρίζεται τα όρια πληθυσμού και την κατάσταση Recovery ανά δωμάτιο.
+ * * VERSION 2.5.0
+ * - Feature: Υλοποίηση της checkIfRoomHaveRoads για δυναμικό έλεγχο υποδομών.
+ * - Refactoring: Προσθήκη HAVE_ROAD_KEY στο GLOBAL_CONFIG.
+ * * VERSION 2.4.0
+ * - Refactoring: Διαχωρισμός ρυθμίσεων σε GLOBAL_CONFIG και MODULE_CONFIG για καλύτερη διαλειτουργικότητα.
+ * * VERSION 2.3.0
+ * - Refactoring: Μεταφορά του ονόματος κλειδιού Memory (populationLimits) στο CONFIG.
  * * VERSION 2.2.0
  * - Refactoring: Μεταφορά των σταθερών (constants) εκτός κλάσης για μελλοντική εξαγωγή σε config module.
  * - Καθαρισμός του constructor για καλύτερη τήρηση των αρχών προγραμματισμού.
@@ -24,9 +31,17 @@
  */
 import { ROLES } from './spawn.constants';
 
-// --- CONFIGURATION CONSTANTS ---
-// Στο μέλλον αυτές οι σταθερές μπορούν να μεταφερθούν σε ξεχωριστό module
-const CONFIG = {
+// --- GLOBAL CONFIGURATION ---
+// Ρυθμίσεις που χρησιμοποιούνται και από άλλα modules (π.χ. Spawn Manager)
+const GLOBAL_CONFIG = {
+    MEMORY_KEY: 'populationLimits',
+    RECOVERY_KEY: 'isRecovery',
+    HAVE_ROAD_KEY: 'hasRoads'
+};
+
+// --- MODULE SPECIFIC CONFIGURATION ---
+// Ρυθμίσεις που αφορούν αποκλειστικά τη λογική του Population Manager
+const MODULE_CONFIG = {
     // Efficiency values
     WORK_EFFICIENCY: 2,          // 1 WORK part = 2 energy per tick harvest
     UPGRADE_EFFICIENCY: 1,       // 1 WORK part = 1 energy per tick upgrade
@@ -41,7 +56,8 @@ const CONFIG = {
     
     // Logistics
     EXTENSION_CARRY_BONUS: 10,   // Σταθερό quota για τον ανεφοδιασμό extensions
-    DISTANCE_PADDING: 1.1        // 10% έξτρα carry για κάλυψη απωλειών/κίνησης
+    DISTANCE_PADDING: 1.1,       // 10% έξτρα carry για κάλυψη απωλειών/κίνησης
+    ROAD_THRESHOLD: 10           // Ελάχιστος αριθμός δρόμων για να θεωρηθεί το δωμάτιο "στρωμένο"
 };
 
 class PopulationManager {
@@ -83,15 +99,15 @@ class PopulationManager {
         const INCOME_PER_SOURCE = (context.room.controller && context.room.controller.level >= 1) ? 10 : 5;
         
         const totalIncome = context.sources.length * INCOME_PER_SOURCE;
-        let availableWork = totalIncome - CONFIG.MAINTENANCE_BUFFER;
+        let availableWork = totalIncome - MODULE_CONFIG.MAINTENANCE_BUFFER;
 
         if (context.storage) {
             const energy = context.storage.store[RESOURCE_ENERGY];
             const storageCapacity = context.storage.store.getCapacity();
             const fillPercent = energy / storageCapacity;
 
-            if (fillPercent > CONFIG.SURPLUS_THRESHOLD) {
-                const surplusBonus = Math.floor((fillPercent - CONFIG.SURPLUS_THRESHOLD) * CONFIG.SURPLUS_SCALER);
+            if (fillPercent > MODULE_CONFIG.SURPLUS_THRESHOLD) {
+                const surplusBonus = Math.floor((fillPercent - MODULE_CONFIG.SURPLUS_THRESHOLD) * MODULE_CONFIG.SURPLUS_SCALER);
                 availableWork += surplusBonus;
             }
         }
@@ -109,14 +125,14 @@ class PopulationManager {
         let upgraderWork = 0;
 
         if (context.hasConstruction) {
-            builderWork = Math.min(availableWork * CONFIG.BUILDER_INCOME_SHARE, CONFIG.MAX_BUILDER_WORK_BASELINE); 
+            builderWork = Math.min(availableWork * MODULE_CONFIG.BUILDER_INCOME_SHARE, MODULE_CONFIG.MAX_BUILDER_WORK_BASELINE); 
             availableWork -= builderWork;
         }
 
         upgraderWork = availableWork;
 
         if (context.level === 8) {
-            upgraderWork = Math.min(upgraderWork, CONFIG.MAX_UPGRADER_WORK_RCL8);
+            upgraderWork = Math.min(upgraderWork, MODULE_CONFIG.MAX_UPGRADER_WORK_RCL8);
         }
 
         limits[ROLES.UPGRADER] = Math.max(Math.floor(upgraderWork), 1);
@@ -146,7 +162,7 @@ class PopulationManager {
         const upgradeRate = Math.min(this._calculateAvailableWorkParts(context), 15); 
         totalCarryRequired += (upgradeRate * controllerDistance * 2) / CARRY_CAPACITY;
 
-        totalCarryRequired = (totalCarryRequired + CONFIG.EXTENSION_CARRY_BONUS) * CONFIG.DISTANCE_PADDING;
+        totalCarryRequired = (totalCarryRequired + MODULE_CONFIG.EXTENSION_CARRY_BONUS) * MODULE_CONFIG.DISTANCE_PADDING;
         
         return Math.ceil(totalCarryRequired);
     }
@@ -205,7 +221,7 @@ class PopulationManager {
         let limits = {
             [ROLES.SIMPLE_HARVESTER]: context.sources.length * 10,
             [ROLES.STATIC_HARVESTER]: 0,
-            [ROLES.HAULER]: this._calculateCarryQuota(context),
+            [ROLES.HAULER]: this._calculateQuota(context),
             isRecovery: false
         };
         this._distributeWorkQuotas(context, limits);
@@ -232,8 +248,21 @@ class PopulationManager {
         if (!room) return;
         
         const limits = this.calculateLimits(room);
-        Memory.rooms[roomName].populationLimits = limits;
-        Memory.rooms[roomName].isRecovery = limits.isRecovery;
+        Memory.rooms[roomName][GLOBAL_CONFIG.MEMORY_KEY] = limits;
+        Memory.rooms[roomName][GLOBAL_CONFIG.RECOVERY_KEY] = limits.isRecovery;
+        Memory.rooms[roomName][GLOBAL_CONFIG.HAVE_ROAD_KEY] = this.checkIfRoomHaveRoads(room);
+    }
+
+    /**
+     * Ελέγχει αν υπάρχουν επαρκείς δρόμοι στο δωμάτιο.
+     * @param {Room} room 
+     * @returns {boolean}
+     */
+    checkIfRoomHaveRoads(room) {
+        const roads = room.find(FIND_STRUCTURES, {
+            filter: (s) => s.structureType === STRUCTURE_ROAD
+        });
+        return roads.length >= MODULE_CONFIG.ROAD_THRESHOLD;
     }
 }
 

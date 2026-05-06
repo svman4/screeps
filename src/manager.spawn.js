@@ -138,20 +138,26 @@ class SpawnManager {
     checkRoomNeeds(room) {
         const roomMemory = Memory.rooms[room.name];
         const creepsInRoom = _.filter(Game.creeps, c => c.memory.homeRoom === room.name);
-        //TODO Πλέον να διαβάζει από το 
-        for (let roleName in roomMemory[POPULATION_GLOBAL_CONFIG.MEMORY_KEY]) {
-            if (roleName === 'isRecovery') continue;
+        const creepPopulationLimit = roomMemory[POPULATION_GLOBAL_CONFIG.MEMORY_KEY][POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP];
+        if (creepPopulationLimit) {
+            for (let roleName in creepPopulationLimit) {
+                const limit = creepPopulationLimit[roleName];
+                if (limit <= 0) continue;
 
-            const limit = roomMemory[POPULATION_GLOBAL_CONFIG.MEMORY_KEY][roleName];
-            if (limit <= 0) continue;
-
-            if (roleName === ROLES.STATIC_HARVESTER) {
-                this.manageStaticHarvesterRequests(room, creepsInRoom);
-            } else {
-                this.manageStandardRoleRequests(room.name, roleName, limit, creepsInRoom);
+                if (roleName === ROLES.STATIC_HARVESTER) {
+                    this.manageStaticHarvesterRequests(room, creepsInRoom);
+                } else {
+                    this.manageStandardRoleRequests(room.name, roleName, limit, creepsInRoom);
+                }
             }
         }
-    }
+        const partsPopulationLimits = roomMemory[POPULATION_GLOBAL_CONFIG.MEMORY_KEY][POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS];
+        if (partsPopulationLimits) {
+
+            //TODO να υπολογίζει τα απαραίτητα creeps ανάλογα με τα parts που ζητούνται ανά ρόλο
+        }
+    } // end of checkRoomNeeds
+    
 
     manageStaticHarvesterRequests(room, creepsInRoom) {
         const sources = room.find(FIND_SOURCES);

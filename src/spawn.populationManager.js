@@ -176,7 +176,7 @@ class PopulationManager {
                 [ROLES.SIMPLE_HARVESTER]: 0,
                 [ROLES.STATIC_HARVESTER]: context.sources.length * MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
             },
-            parts: {
+            [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
                 [ROLES.HAULER]: this._calculateCarryQuota(context)
             },
             isRecovery: false
@@ -191,7 +191,7 @@ class PopulationManager {
                 [ROLES.SIMPLE_HARVESTER]: 0,
                 [ROLES.STATIC_HARVESTER]: context.sources.length * MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
             },
-            parts: {
+            [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
                 [ROLES.HAULER]: this._calculateCarryQuota(context)
             },
             isRecovery: false
@@ -206,7 +206,7 @@ class PopulationManager {
                 [ROLES.SIMPLE_HARVESTER]: context.sources.length * MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE,
                 [ROLES.STATIC_HARVESTER]: 0
             },
-            parts: {
+            [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
                 [ROLES.HAULER]: this._calculateCarryQuota(context)
             },
             isRecovery: false

@@ -20,7 +20,7 @@ const TICKS_LOG_DEBUG = 20;
 const TICKS_CLEANUP_MEMORY = 50;
 const CRITICAL_PRIORITY_LEVEL = 15;
 
-const { NEED_REPLACEMENT_FLAG, ROLES, PRIORITY, BODY_ENERGY_LIMITS } = require('spawn.constants');
+const { NEED_REPLACEMENT_FLAG, ROLES, PRIORITY, BODY_ENERGY_LIMITS, POPULATION_GLOBAL_CONFIG } = require('spawn.constants');
 const populationManager = require('spawn.populationManager');
 
 /**
@@ -127,22 +127,22 @@ class SpawnManager {
 
             this.checkRoomNeeds(room);
         }
-    }
+    } // end of updateRequests
 
     refreshRoomLimits(roomName) {
-        if (Game.time % TICKS_UPDATE_LIMITS === 0 || !Memory.rooms[roomName].populationLimits) { 
+        if (Game.time % TICKS_UPDATE_LIMITS === 0 || !Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY]) { 
             populationManager.updateRoomLimits(roomName);	
         }
-    }
+    } // end of refreshRoomLimits
 
     checkRoomNeeds(room) {
         const roomMemory = Memory.rooms[room.name];
         const creepsInRoom = _.filter(Game.creeps, c => c.memory.homeRoom === room.name);
-
-        for (let roleName in roomMemory.populationLimits) {
+        //TODO Πλέον να διαβάζει από το 
+        for (let roleName in roomMemory[POPULATION_GLOBAL_CONFIG.MEMORY_KEY]) {
             if (roleName === 'isRecovery') continue;
 
-            const limit = roomMemory.populationLimits[roleName];
+            const limit = roomMemory[POPULATION_GLOBAL_CONFIG.MEMORY_KEY][roleName];
             if (limit <= 0) continue;
 
             if (roleName === ROLES.STATIC_HARVESTER) {

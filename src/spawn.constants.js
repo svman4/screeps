@@ -1,9 +1,10 @@
 /**
  * Σταθερές και ρυθμίσεις για το σύστημα παραγωγής Creeps.
+ * Version 1.1
  */
 
- 
- 
+
+
 const ROLES = {
     STATIC_HARVESTER: 'staticHarvester',
     SIMPLE_HARVESTER: 'simpleHarvester',
@@ -41,10 +42,44 @@ const PRIORITY = {
     [ROLES.SUPPORTER]: 80,
     [ROLES.SCOUT]: 100
 };
-const NEED_REPLACEMENT_FLAG="needReplacementFlag";
+const NEED_REPLACEMENT_FLAG = "needReplacementFlag";
 
-module.exports = {NEED_REPLACEMENT_FLAG,
+// --- GLOBAL CONFIGURATION ---
+
+const POPULATION_GLOBAL_CONFIG = {
+    MEMORY_KEY: 'populationLimits',
+    RECOVERY_KEY: 'isRecovery',
+    HAVE_ROAD_KEY: 'hasRoads',
+    MEMORY_KEY_CREEP: "creeps",
+    MEMORY_KEY_PARTS: "parts"
+
+};
+
+// --- MODULE SPECIFIC CONFIGURATION ---
+// Ρυθμίσεις που αφορούν αποκλειστικά τη λογική του Population Manager
+const POPULATION_MODULE_CONFIG = {
+    // Efficiency values
+    WORK_EFFICIENCY: 2,          // 1 WORK part = 2 energy per tick harvest
+    UPGRADE_EFFICIENCY: 1,       // 1 WORK part = 1 energy per tick upgrade
+
+    // Economic Balancing
+    MAINTENANCE_BUFFER: 2,       // Ενέργεια που κρατάμε για Towers/Spawning
+    BUILDER_INCOME_SHARE: 0.5,   // Ποσοστό του εισοδήματος που πάει σε χτίσιμο
+    MAX_BUILDER_WORK_BASELINE: 10, // Μέγιστο WORK για builders από το τρέχον εισόδημα
+    SURPLUS_THRESHOLD: 0.5,      // Πάνω από ποιο ποσοστό Storage θεωρούμε ότι έχουμε πλεόνασμα
+    SURPLUS_SCALER: 50,          // Πόσο επιθετικά αυξάνουμε τα parts στο πλεόνασμα
+    MAX_UPGRADER_WORK_RCL8: 15,  // Το όριο του controller στο RCL 8 (15 energy/tick cap)
+
+    // Logistics
+    EXTENSION_CARRY_BONUS: 10,   // Σταθερό quota για τον ανεφοδιασμό extensions
+    DISTANCE_PADDING: 1.1,       // 10% έξτρα carry για κάλυψη απωλειών/κίνησης
+    ROAD_THRESHOLD: 10           // Ελάχιστος αριθμός δρόμων για να θεωρηθεί το δωμάτιο "στρωμένο"
+};
+module.exports = {
+    NEED_REPLACEMENT_FLAG,
     ROLES,
     BODY_ENERGY_LIMITS,
-    PRIORITY
+    PRIORITY,
+    POPULATION_GLOBAL_CONFIG,
+    POPULATION_MODULE_CONFIG
 };

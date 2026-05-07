@@ -36,7 +36,7 @@ class PopulationManager {
      */
     _getLinkLimits(context) {
         const energy = context.storage ? context.storage.store[RESOURCE_ENERGY] : 0;
-        console.log("Calculate populationLimit with Link statements");
+        //console.log("Calculate populationLimit with Link statements");
         let haulerCount = 1;
         if (context.link_count < context.sources + 1) {
             haulerCount = 2;

@@ -33,7 +33,7 @@
  * VERSION 1.1.0 Ακύρωση λειτουργίας storageContainer
  */
 const { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG } = require('./spawn.constants');
-const DEBUG_STATE = true;
+const DEBUG_STATE = false;
 const debugText = function (text) {
     if (DEBUG_STATE) {
 
@@ -136,8 +136,11 @@ class PopulationManager {
          * Τα carry που χρειάζονται από τις πηγές μέχρι το target(storage)
          */
         let totalCarryRequired = 0;
-        if (context.links && context.links.length > 3) {
+        if (context.links && context.links.length > context.sources.length+2) {
             totalCarryRequired += 0;
+            /* αν έχουμε όλα τα links ολοκληρώμενα (όσα είναι οι πηγές + του storage+του controller) 
+            τότε δε χρειάζεται να υπολογίσουμε την απόσταση από κάθε πηγή σε target | storage.
+            */
         } else {
             context.sources.forEach(source => {
                 const range = target.pos.getRangeTo(source);
@@ -145,21 +148,24 @@ class PopulationManager {
                 totalCarryRequired += (ENERGY_INCOME_TICK * distance * 2) / CARRY_CAPACITY;
             });
         }
-        debugText("-0------");
-        debugText("totalCarry after sources" + totalCarryRequired + "links " + context.links.length);
+        //debugText("-0------");
+        //debugText("totalCarry after sources" + totalCarryRequired + "links " + context.links.length);
         // ΥΠολογίζει τα carry Που χρειάζονται από το target στο controller
         if (context.links && context.links.length > 3) {
             totalCarryRequired += 0;
+            /* έφοσον έχουμε πάνω από τρία link σημαίνει πως τουλάχιστον δύο πηγές γεμίζουν το link του controller οπότε και δε χρειάζεται
+                να πηγαίνει hauler
+            */
         } else {
             const controllerRange = target.pos.getRangeTo(context.room.controller);
             const controllerDistance = (controllerRange !== Infinity) ? controllerRange : FALLBACK_DISTANCE;
             const upgradeRate = Math.min(this._calculateAvailableWorkParts(context), 15);
             totalCarryRequired += (upgradeRate * controllerDistance * 2) / CARRY_CAPACITY;
         }
-        debugText("totalCarry after controllers" + totalCarryRequired);
+        //debugText("totalCarry after controllers" + totalCarryRequired);
         // ---------
         totalCarryRequired = (totalCarryRequired + POPULATION_MODULE_CONFIG.EXTENSION_CARRY_BONUS) * POPULATION_MODULE_CONFIG.DISTANCE_PADDING;
-        debugText("totalCarry final " + totalCarryRequired);
+        //debugText("totalCarry final " + totalCarryRequired);
         return Math.ceil(totalCarryRequired);
     }
 
@@ -269,7 +275,7 @@ class PopulationManager {
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY] = limits;
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.RECOVERY_KEY] = limits.isRecovery;
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.HAVE_ROAD_KEY] = this.checkIfRoomHaveRoads(room);
-    }
+    } // end of updateRoomLimits
 
     /**
      * Ελέγχει αν υπάρχουν επαρκείς δρόμοι στο δωμάτιο.
@@ -282,6 +288,6 @@ class PopulationManager {
         });
         return roads.length >= POPULATION_MODULE_CONFIG.ROAD_THRESHOLD;
     }
-}
+} // end of class PopulationManager
 
 module.exports = new PopulationManager();

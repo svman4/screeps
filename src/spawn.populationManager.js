@@ -217,18 +217,18 @@ class PopulationManager {
 
     _getRecoveryLimits(context) {
         return {
-            [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP] : {
+            [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
                 [ROLES.SIMPLE_HARVESTER]: 4,
                 [ROLES.STATIC_HARVESTER]: 0
             },
-            POPULATION_GLOBAL_CONFIG,MEMORY_KEY_PARTS   : {
+            [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
                 [ROLES.HAULER]: 0,
                 [ROLES.UPGRADER]: 1,
                 [ROLES.BUILDER]: 0
             },
             isRecovery: true
         };
-    }
+    } // end of _getRecoveryLimits
 
     /**
      * Ενημερώνει τα Memory limits του δωματίου.

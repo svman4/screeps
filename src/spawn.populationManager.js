@@ -32,8 +32,18 @@
  * - Αν υπάρχει έστω και ένα container τότε αλλάζει η διαχείριση του πληθυσμού.
  * VERSION 1.1.0 Ακύρωση λειτουργίας storageContainer
  */
-const { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG }=require('./spawn.constants');
+const { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG } = require('./spawn.constants');
+const DEBUG_STATE = true;
+const debugText = function (text) {
+    if (DEBUG_STATE) {
 
+        console.log(`[SpawnManager] ${text}`);
+    }
+}
+const debugObject = function (obj, text) {
+    if (!DEBUG_STATE) return;
+    console.log(text + "\n" + JSON.stringify(obj, null, 2));
+}
 class PopulationManager {
     constructor() {
         // Ο constructor παραμένει καθαρός από σταθερές παραμέτρους
@@ -51,7 +61,6 @@ class PopulationManager {
         if (context.isRecovery) {
             return this._getRecoveryLimits(context);
         }
-
         // Αν έχουμε Storage (Mid-Late Game)
         if (context.storage) {
             return this._getStorageLimits(context);
@@ -73,15 +82,15 @@ class PopulationManager {
         const INCOME_PER_SOURCE = (context.room.controller && context.room.controller.level >= 1) ? 10 : 5;
 
         const totalIncome = context.sources.length * INCOME_PER_SOURCE;
-        let availableWork = totalIncome - MODULE_CONFIG.MAINTENANCE_BUFFER;
+        let availableWork = totalIncome - POPULATION_MODULE_CONFIG.MAINTENANCE_BUFFER;
 
         if (context.storage) {
             const energy = context.storage.store[RESOURCE_ENERGY];
             const storageCapacity = context.storage.store.getCapacity();
             const fillPercent = energy / storageCapacity;
 
-            if (fillPercent > MODULE_CONFIG.SURPLUS_THRESHOLD) {
-                const surplusBonus = Math.floor((fillPercent - MODULE_CONFIG.SURPLUS_THRESHOLD) * MODULE_CONFIG.SURPLUS_SCALER);
+            if (fillPercent > POPULATION_MODULE_CONFIG.SURPLUS_THRESHOLD) {
+                const surplusBonus = Math.floor((fillPercent - POPULATION_MODULE_CONFIG.SURPLUS_THRESHOLD) * POPULATION_MODULE_CONFIG.SURPLUS_SCALER);
                 availableWork += surplusBonus;
             }
         }
@@ -123,22 +132,34 @@ class PopulationManager {
 
         const FALLBACK_DISTANCE = 25;
         const ENERGY_INCOME_TICK = 10;
-
+        /**
+         * Τα carry που χρειάζονται από τις πηγές μέχρι το target(storage)
+         */
         let totalCarryRequired = 0;
-
-        context.sources.forEach(source => {
-            const range = target.pos.getRangeTo(source);
-            const distance = (range !== Infinity) ? range : FALLBACK_DISTANCE;
-            totalCarryRequired += (ENERGY_INCOME_TICK * distance * 2) / CARRY_CAPACITY;
-        });
-
-        const controllerRange = target.pos.getRangeTo(context.room.controller);
-        const controllerDistance = (controllerRange !== Infinity) ? controllerRange : FALLBACK_DISTANCE;
-        const upgradeRate = Math.min(this._calculateAvailableWorkParts(context), 15);
-        totalCarryRequired += (upgradeRate * controllerDistance * 2) / CARRY_CAPACITY;
-
-        totalCarryRequired = (totalCarryRequired + MODULE_CONFIG.EXTENSION_CARRY_BONUS) * MODULE_CONFIG.DISTANCE_PADDING;
-
+        if (context.links && context.links.length > 3) {
+            totalCarryRequired += 0;
+        } else {
+            context.sources.forEach(source => {
+                const range = target.pos.getRangeTo(source);
+                const distance = (range !== Infinity) ? range : FALLBACK_DISTANCE;
+                totalCarryRequired += (ENERGY_INCOME_TICK * distance * 2) / CARRY_CAPACITY;
+            });
+        }
+        debugText("-0------");
+        debugText("totalCarry after sources" + totalCarryRequired + "links " + context.links.length);
+        // ΥΠολογίζει τα carry Που χρειάζονται από το target στο controller
+        if (context.links && context.links.length > 3) {
+            totalCarryRequired += 0;
+        } else {
+            const controllerRange = target.pos.getRangeTo(context.room.controller);
+            const controllerDistance = (controllerRange !== Infinity) ? controllerRange : FALLBACK_DISTANCE;
+            const upgradeRate = Math.min(this._calculateAvailableWorkParts(context), 15);
+            totalCarryRequired += (upgradeRate * controllerDistance * 2) / CARRY_CAPACITY;
+        }
+        debugText("totalCarry after controllers" + totalCarryRequired);
+        // ---------
+        totalCarryRequired = (totalCarryRequired + POPULATION_MODULE_CONFIG.EXTENSION_CARRY_BONUS) * POPULATION_MODULE_CONFIG.DISTANCE_PADDING;
+        debugText("totalCarry final " + totalCarryRequired);
         return Math.ceil(totalCarryRequired);
     }
 
@@ -157,24 +178,30 @@ class PopulationManager {
         const creeps = room.find(FIND_MY_CREEPS);
         const hasWork = creeps.some(c => c.getActiveBodyparts(WORK) > 0);
         const hasCarry = creeps.some(c => c.getActiveBodyparts(CARRY) > 0);
-
-        return {
+        const links = room.find(FIND_STRUCTURES, {
+            filter: s => s.structureType === STRUCTURE_LINK
+        });
+        const answer = {
             room: room,
             level: room.controller ? room.controller.level : 0,
             sources: sources,
             spawns: spawns,
             storage: storage,
             hasContainers: containers.length > 0,
+            links: links,
             hasConstruction: construction.length > 0,
             isRecovery: (!hasWork || !hasCarry) && room.controller && room.controller.level > 1
         };
+
+        return answer;
     }
 
     _getStorageLimits(context) {
+
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
                 [ROLES.SIMPLE_HARVESTER]: 0,
-                [ROLES.STATIC_HARVESTER]: context.sources.length * MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
+                [ROLES.STATIC_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
             },
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
                 [ROLES.HAULER]: this._calculateCarryQuota(context)
@@ -189,7 +216,7 @@ class PopulationManager {
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
                 [ROLES.SIMPLE_HARVESTER]: 0,
-                [ROLES.STATIC_HARVESTER]: context.sources.length * MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
+                [ROLES.STATIC_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
             },
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
                 [ROLES.HAULER]: this._calculateCarryQuota(context)
@@ -203,7 +230,7 @@ class PopulationManager {
     _getEarlyGameLimits(context) {
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
-                [ROLES.SIMPLE_HARVESTER]: context.sources.length * MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE,
+                [ROLES.SIMPLE_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE,
                 [ROLES.STATIC_HARVESTER]: 0
             },
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
@@ -239,9 +266,9 @@ class PopulationManager {
         if (!room) return;
 
         const limits = this.calculateLimits(room);
-        Memory.rooms[roomName][GLOBAL_CONFIG.MEMORY_KEY] = limits;
-        Memory.rooms[roomName][GLOBAL_CONFIG.RECOVERY_KEY] = limits.isRecovery;
-        Memory.rooms[roomName][GLOBAL_CONFIG.HAVE_ROAD_KEY] = this.checkIfRoomHaveRoads(room);
+        Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY] = limits;
+        Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.RECOVERY_KEY] = limits.isRecovery;
+        Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.HAVE_ROAD_KEY] = this.checkIfRoomHaveRoads(room);
     }
 
     /**
@@ -253,7 +280,7 @@ class PopulationManager {
         const roads = room.find(FIND_STRUCTURES, {
             filter: (s) => s.structureType === STRUCTURE_ROAD
         });
-        return roads.length >= MODULE_CONFIG.ROAD_THRESHOLD;
+        return roads.length >= POPULATION_MODULE_CONFIG.ROAD_THRESHOLD;
     }
 }
 

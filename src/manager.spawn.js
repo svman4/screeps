@@ -14,7 +14,13 @@
  * και χρησιμοποιούν remote spawns μόνο ως fallback (εκτός από Harvesters/Haulers).
  * 2.4.0: Εισαγωγή PopulationManager integration.
  */
+const DEBUG_STATE = true;
+const debugText = function (text) {
+    if (DEBUG_STATE) {
 
+        console.log(`[SpawnManager] ${text}`);
+    }
+}
 const SpawnQueue = require('spawn.SpawnQueue');
 const populationManager = require('spawn.populationManager');
 const { POPULATION_GLOBAL_CONFIG, ROLES, PRIORITY, BODY_ENERGY_LIMITS } = require('spawn.constants');
@@ -27,23 +33,25 @@ const TICKS_CLEANUP_MEMORY = 50;
 class SpawnManager {
     constructor() {
         this.queue = new SpawnQueue();
-        this.run = this.run.bind(this);
-        this.cleanup = this.cleanup.bind(this);
+
     }
 
     run() {
         this.cleanup();
-
+        //debugText(`Running SpawnManager. Queue length: ${this.queue.length}`);
         for (let roomName in Game.rooms) {
             const room = Game.rooms[roomName];
             if (room.controller && room.controller.my) {
                 // Περιοδική ενημέρωση ορίων πληθυσμού
                 if (Game.time % TICKS_UPDATE_LIMITS === 0) {
+                    debugText("updating population for " + roomName);
+
                     populationManager.updateRoomLimits(roomName);
                 }
 
                 // Περιοδικός έλεγχος αναγκών δωματίου
                 if (Game.time % TICKS_UPDATE_REQUESTS === 0) {
+                    debugText("checking room needs for " + roomName);
                     this.checkRoomNeeds(room);
                 }
             }
@@ -62,7 +70,9 @@ class SpawnManager {
      */
     checkRoomNeeds(room) {
         const roomMemory = Memory.rooms[room.name];
-        if (!roomMemory || !roomMemory[POPULATION_GLOBAL_CONFIG.MEMORY_KEY]) return;
+        if (!roomMemory || !roomMemory[POPULATION_GLOBAL_CONFIG.MEMORY_KEY]) {
+            populationManager.updateRoomLimits(room.name);
+        }
 
         const creepsInRoom = _.filter(Game.creeps, c => c.memory.homeRoom === room.name);
         const config = POPULATION_GLOBAL_CONFIG;
@@ -145,14 +155,12 @@ class SpawnManager {
     }
 
     addRoleToQueue(roomName, roleName) {
-        if (!this.queue.hasRequest(roomName, roleName)) {
-            this.queue.add({
-                role: roleName,
-                priority: PRIORITY[roleName] || 50,
-                homeRoom: roomName,
-                targetRoom: roomName
-            });
-        }
+        this.queue.add({
+            role: roleName,
+            priority: PRIORITY[roleName] || 50,
+            homeRoom: roomName,
+            targetRoom: roomName
+        });
     }
 
     processQueue() {
@@ -164,7 +172,7 @@ class SpawnManager {
 
             if (spawn) {
                 const body = this.calculateBody(request.role, spawn.room.energyCapacityAvailable, request.homeRoom);
-                const name = `${request.role}_${Game.time}_${Math.floor(Math.random() * 100)}`;
+                const name = `${request.role}_${request.homeRoom}_${Game.time}_${Math.floor(Math.random() * 100)}`;
 
                 const result = spawn.spawnCreep(body, name, {
                     memory: {

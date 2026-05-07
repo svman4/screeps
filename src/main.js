@@ -8,6 +8,8 @@ main.js
  ΘΑ πρέπει να φτιάχνονται δρόμοι άμεσα ή σε επόμενα rcl?
  TODO αλλαγή από builder/upgrader σε taskManager.
  -Δημιουργία role worker
+ 
+ TODO ΘΑ πρέπει πρώτα να χτίζονται το link του controller και της πιο απομακρυσμένης πηγής, έπειτα του storage και μετέπειτα τα υπόλοιπα Link.
 
 
  */

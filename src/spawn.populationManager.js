@@ -36,7 +36,7 @@ class PopulationManager {
      */
     _getLinkLimits(context) {
         const energy = context.storage ? context.storage.store[RESOURCE_ENERGY] : 0;
-        
+        console.log("Calculate populationLimit with Link statements");
         let haulerCount = 1;
         if (context.link_count < context.sources + 1) {
             haulerCount = 2;
@@ -50,25 +50,29 @@ class PopulationManager {
             [ROLES.BUILDER]: 0,
             isRecovery: false
         };
-if (context.level < 8) {
-            if (energy > 200000)  {
-                limits[ROLES.UPGRADER] += 1;
-                console.log("200000");
-            } 
-            if (energy > 500000)  {
-                limits[ROLES.UPGRADER] += 1;
-                console.log("500000");
-            }
-        } 
-        if (context.hasConstruction) { 
-            limits[ROLES.BUILDER] = 3;
-            limits[ROLES.UPGRADER] = 1;
-        }
-        
+        this.calculateBuildersAndUpgraders(context,limits,energy);
 
         return limits;
     }
-
+    calculateBuildersAndUpgraders(context,limits,energy) {
+        limits[ROLES.UPGRADER] = 1;
+        if (context.hasConstruction) { 
+          //  console.log("found constuctrionSite, need builders");
+            limits[ROLES.BUILDER] = 3;
+            
+            return;
+        } 
+        limits[ROLES.UPGRADER] = 1;
+        if (context.level < 8) {
+            if (energy > 200000)  {
+                limits[ROLES.UPGRADER] += 1;
+            } 
+            if (energy > 500000)  {
+                limits[ROLES.UPGRADER] += 1;
+            }
+        } 
+        return;
+    }
     /**
      * Συγκεντρώνει όλα τα απαραίτητα δεδομένα για τους υπολογισμούς.
      */
@@ -153,22 +157,7 @@ if (context.level < 8) {
             [ROLES.BUILDER]: 0,
             isRecovery: false
         };
-
-        if (context.level < 8) {
-            if (energy > 200000)  {
-                limits[ROLES.UPGRADER] += 1;
-                console.log("200000");
-            } 
-            if (energy > 500000)  {
-                limits[ROLES.UPGRADER] += 1;
-                console.log("500000");
-            }
-        } 
-        if (context.hasConstruction) { 
-            limits[ROLES.BUILDER] = 3;
-            limits[ROLES.UPGRADER] = 1;
-        }
-        
+        this.calculateBuildersAndUpgraders(context,limits,energy);
 
         return limits;
     }

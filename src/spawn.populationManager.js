@@ -47,18 +47,24 @@ class PopulationManager {
             [ROLES.STATIC_HARVESTER]: context.sources,
             [ROLES.HAULER]: haulerCount,
             [ROLES.UPGRADER]: 1,
-            [ROLES.BUILDER]: 1,
+            [ROLES.BUILDER]: 0,
             isRecovery: false
         };
-
-        if (context.level < 8) {
-            if (energy > 150000) limits[ROLES.BUILDER] = 2;
-            if (energy > 400000) limits[ROLES.BUILDER] = 4;
-        } else {
-            if (context.hasConstruction) { 
-                limits[ROLES.BUILDER] = 2;
+if (context.level < 8) {
+            if (energy > 200000)  {
+                limits[ROLES.UPGRADER] += 1;
+                console.log("200000");
+            } 
+            if (energy > 500000)  {
+                limits[ROLES.UPGRADER] += 1;
+                console.log("500000");
             }
+        } 
+        if (context.hasConstruction) { 
+            limits[ROLES.BUILDER] = 3;
+            limits[ROLES.UPGRADER] = 1;
         }
+        
 
         return limits;
     }
@@ -144,18 +150,25 @@ class PopulationManager {
             [ROLES.STATIC_HARVESTER]: context.sources,
             [ROLES.HAULER]: context.sources,
             [ROLES.UPGRADER]: 1,
-            [ROLES.BUILDER]: 1,
+            [ROLES.BUILDER]: 0,
             isRecovery: false
         };
 
         if (context.level < 8) {
-            if (energy > 200000) limits[ROLES.BUILDER] = 3;
-            if (energy > 500000) limits[ROLES.BUILDER] = 5;
-        } else {
-            if (context.hasConstruction) { 
-                limits[ROLES.BUILDER] = 3;
+            if (energy > 200000)  {
+                limits[ROLES.UPGRADER] += 1;
+                console.log("200000");
+            } 
+            if (energy > 500000)  {
+                limits[ROLES.UPGRADER] += 1;
+                console.log("500000");
             }
+        } 
+        if (context.hasConstruction) { 
+            limits[ROLES.BUILDER] = 3;
+            limits[ROLES.UPGRADER] = 1;
         }
+        
 
         return limits;
     }

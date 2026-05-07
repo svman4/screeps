@@ -65,13 +65,15 @@ module.exports.loop = function () {
             //    console.log(`🏠 Επεξεργασία δωματίου: ${roomName} (RCL: ${room.controller.level})`);
 
             // HIGH PRIORITY - Πάντα τρέχουν
-            runAndCatch(defenceManager.run, "Error on defenceManager (" + roomName + ")", roomName);
-            runAndCatch(militaryController.run, "Error on militaryController (" + roomName + ")", roomName);
-            runAndCatch(logisticsManager.run, "Error on logisticsManager (" + roomName + ")", roomName);
-            runAndCatch(linkManager.run, "error on linkmanager (" + roomName + ")", roomName);
+            runAndCatch((name) => defenceManager.run(name), "Error on defenceManager (" + roomName + ")", roomName);
+            runAndCatch((name) => militaryController.run(name), "Error on militaryController (" + roomName + ")", roomName);
 
-            runAndCatch(constructionManager.run, "error on constructionManager (" + roomName + ")", roomName);
-            runAndCatch(market.run, "error on market (" + roomName + ")", roomName);
+            runAndCatch((name) => logisticsManager.run(name), "Error on logisticsManager (" + roomName + ")", roomName);
+
+            runAndCatch((name) => linkManager.run(name), "error on linkmanager (" + roomName + ")", roomName);
+
+            runAndCatch((name) => constructionManager.run(name), "error on constructionManager (" + roomName + ")", roomName);
+            runAndCatch((name) => market.run(name), "error on market (" + roomName + ")", roomName);
 
 
             //Οπτική πληροφόρηση
@@ -80,8 +82,10 @@ module.exports.loop = function () {
             }
         }
     }
-    runAndCatch(roleManager.run, "Error on roleManager");
-    runAndCatch(spawnManager.run, "error on spawnManager");
+    runAndCatch(() => roleManager.run(), "Error on roleManager");
+
+    runAndCatch(() => spawnManager.run(), "error on spawnManager");
+    runAndCatch(() => expansionManager.run(), "error on expansionManager");
     //runAndCatch(expansionManager.run, "error on expansionManager");
     runAndCatch(pixels.run, "Error on pixels");;
     if (Game.time % 10 === 0) {
@@ -96,7 +100,7 @@ function runAndCatch(action, message, ...args) {
     try {
         action(...args);
     } catch (error) {
-        console.log(`<span style="color:red">${message}: ${error.message}</span>`);
+        console.log(`${message}: ${error.message}</span>`);
         // Προαιρετικά: εκτύπωσε και το stack trace αν είσαι σε debug mode
         console.log(error.stack);
     }

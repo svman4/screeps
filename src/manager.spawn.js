@@ -17,7 +17,7 @@
 
 const SpawnQueue = require('spawn.SpawnQueue');
 const populationManager = require('spawn.populationManager');
-
+const { POPULATION_GLOBAL_CONFIG, ROLES, PRIORITY, BODY_ENERGY_LIMITS } = require('spawn.constants');
 // --- ΕΣΩΤΕΡΙΚΕΣ ΣΤΑΘΕΡΕΣ ΔΙΑΧΕΙΡΙΣΤΗ ---
 const TICKS_UPDATE_REQUESTS = 10;
 const TICKS_UPDATE_LIMITS = 100;
@@ -27,6 +27,8 @@ const TICKS_CLEANUP_MEMORY = 50;
 class SpawnManager {
     constructor() {
         this.queue = new SpawnQueue();
+        this.run = this.run.bind(this);
+        this.cleanup = this.cleanup.bind(this);
     }
 
     run() {
@@ -257,6 +259,6 @@ class SpawnManager {
             }
         }
     }
-}
+} // end of class
 
 module.exports = new SpawnManager();

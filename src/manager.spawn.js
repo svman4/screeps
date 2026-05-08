@@ -21,6 +21,7 @@ const debugText = function (text) {
 
 const SpawnQueue = require('spawn.SpawnQueue');
 const PopulationManager = require('spawn.populationManager');
+const { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG, BODY_ENERGY_LIMITS, PRIORITY } = require('./spawn.constants');
 
 class SpawnManager {
     constructor() {
@@ -90,9 +91,6 @@ class SpawnManager {
     createNewCreep(roomName, role, current, target, isCountBased) {
         const room = Game.rooms[roomName];
         if (!room) return;
-
-        // Αποφυγή πολλαπλών αιτημάτων για τον ίδιο ρόλο στην ουρά
-        if (this.queue.countRequests(roomName, role) > 0) return;
 
         // Υπολογισμός μέγιστου δυνατού σώματος για το τρέχον RCL του δωματίου
         const maxEnergyAvailable = room.energyCapacityAvailable;

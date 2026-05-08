@@ -108,14 +108,14 @@ class PopulationManager {
         let upgraderWork = 0;
 
         if (context.hasConstruction) {
-            builderWork = Math.min(availableWork * MODULE_CONFIG.BUILDER_INCOME_SHARE, MODULE_CONFIG.MAX_BUILDER_WORK_BASELINE);
+            builderWork = Math.min(availableWork * POPULATION_MODULE_CONFIG.BUILDER_INCOME_SHARE, POPULATION_MODULE_CONFIG.MAX_BUILDER_WORK_BASELINE);
             availableWork -= builderWork;
         }
 
         upgraderWork = availableWork;
 
         if (context.level === 8) {
-            upgraderWork = Math.min(upgraderWork, MODULE_CONFIG.MAX_UPGRADER_WORK_RCL8);
+            upgraderWork = Math.min(upgraderWork, POPULATION_MODULE_CONFIG.MAX_UPGRADER_WORK_RCL8);
         }
 
         // Τα όρια πλέον αποθηκεύονται στο nested object 'parts'
@@ -136,7 +136,7 @@ class PopulationManager {
          * Τα carry που χρειάζονται από τις πηγές μέχρι το target(storage)
          */
         let totalCarryRequired = 0;
-        if (context.links && context.links.length > context.sources.length+2) {
+        if (context.links && context.links.length > context.sources.length + 2) {
             totalCarryRequired += 0;
             /* αν έχουμε όλα τα links ολοκληρώμενα (όσα είναι οι πηγές + του storage+του controller) 
             τότε δε χρειάζεται να υπολογίσουμε την απόσταση από κάθε πηγή σε target | storage.
@@ -290,4 +290,4 @@ class PopulationManager {
     }
 } // end of class PopulationManager
 
-module.exports = new PopulationManager();
+module.exports = PopulationManager;

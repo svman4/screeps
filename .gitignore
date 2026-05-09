@@ -1,8 +1,12 @@
 /.settings
 .project
 /.idea
+
 *.vsidx
 *.sqlite
 .vs/screeps.slnx/v18/.wsuo
 .vs/screeps.slnx/v18/DocumentLayout.json
 .vs/VSWorkspaceState.json
+/node_modules
+/dist
+

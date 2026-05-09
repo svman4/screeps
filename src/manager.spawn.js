@@ -20,7 +20,16 @@ const CRITICAL_PRIORITY_LEVEL = 15; // Επίπεδο προτεραιότητα
 const { NEED_REPLACEMENT_FLAG,ROLES, PRIORITY, BODY_ENERGY_LIMITS } = require('spawn.constants');
 const expansionManager = require('manager.expansion');
 const populationManager = require('spawn.populationManager');
-
+const DEBUG_STATE = false;
+const debugText = function (text) {
+    if (DEBUG_STATE) {
+        console.log(`[SpawnManager] ${text}`);
+    }
+}
+const debugObject = function (obj, text) {
+    if (!DEBUG_STATE) return;
+    console.log(text + "\n" + JSON.stringify(obj, null, 2));
+}
 class SpawnManager {
     constructor() {
         if (!Memory.spawnQueue) {
@@ -34,11 +43,14 @@ class SpawnManager {
      */
     run() {
         this.cleanup();
-        
+        // Εκτύπωση της ουράς για debugging
         if (Game.time % TICKS_UPDATE_REQUESTS === 0) {
             this.updateRequests();
         }
-		
+		if (this.queue.length > 0) {
+         //   debugObject(this.queue, "--- Current Spawn Queue "+this.queue.length+" ---");
+        }
+       // return;
         this.processQueue();
         
         if (Game.time % TICKS_LOG_DEBUG === 0 && this.queue.length > 0) {
@@ -158,6 +170,7 @@ class SpawnManager {
     }
 
     processQueue() {
+        
         if (this.queue.length === 0) return;
 
         const freeSpawns = _.filter(Game.spawns, s => !s.spawning);

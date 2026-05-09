@@ -11,6 +11,7 @@ main.js
  
  TODO ΘΑ πρέπει πρώτα να χτίζονται το link του controller και της πιο απομακρυσμένης πηγής, έπειτα του storage και μετέπειτα τα υπόλοιπα Link.
 
+TODO όταν ο hauler δεν έχει δουλειά να πηγαίνει κάπου εκτός δρόμου. Ειδικά σε μεγάλα επίπεδα
 
  */
 var spawnManager = require('manager.spawn');
@@ -96,7 +97,7 @@ module.exports.loop = function () {
         }
     } 
     roleManager.run();	
-    spawnManager.run();
+    spawnManager.run(); 
     //expansionManager.run();
     pixels.run();
     if (Game.time % 10 === 0) {

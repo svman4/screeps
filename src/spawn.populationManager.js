@@ -1,6 +1,8 @@
 /**
  * MODULE: Population Manager
  * ΠΕΡΙΓΡΑΦΗ: Διαχειρίζεται τα όρια πληθυσμού και την κατάσταση Recovery ανά δωμάτιο.
+ * *VERSION 2.6.1
+ * bugfix: Διόρθωση λογικής ελέγχου για τα links στην _calculateCarryQuota ώστε να καλύπτει σωστά την περίπτωση με ακριβώς τα απαιτούμενα links.    
  * * VERSION 2.6.0
  * - Refactoring: Διαχωρισμός των limits σε 'creeps' (αριθμός creeps) και 'parts' (άθροισμα body parts).
  * - Οι Harvesters πλέον υπολογίζονται βάσει επιθυμητού αριθμού creeps ανά πηγή.
@@ -79,7 +81,7 @@ class PopulationManager {
      * Υπολογίζει τα διαθέσιμα WORK parts βάσει πραγματικού εισοδήματος.
      */
     _calculateAvailableWorkParts(context) {
-        const INCOME_PER_SOURCE = (context.room.controller && context.room.controller.level >= 1) ? 10 : 5;
+        const INCOME_PER_SOURCE = (context.room.controller) ? 10 : 5;
 
         const totalIncome = context.sources.length * INCOME_PER_SOURCE;
         let availableWork = totalIncome - POPULATION_MODULE_CONFIG.MAINTENANCE_BUFFER;
@@ -136,7 +138,8 @@ class PopulationManager {
          * Τα carry που χρειάζονται από τις πηγές μέχρι το target(storage)
          */
         let totalCarryRequired = 0;
-        if (context.links && context.links.length > context.sources.length + 2) {
+        if (context.links && context.links.length >= context.sources.length + 2) {
+            //debugText("Links cover all sources and target, no carry needed from sources to target");
             totalCarryRequired += 0;
             /* αν έχουμε όλα τα links ολοκληρώμενα (όσα είναι οι πηγές + του storage+του controller) 
             τότε δε χρειάζεται να υπολογίσουμε την απόσταση από κάθε πηγή σε target | storage.
@@ -151,8 +154,9 @@ class PopulationManager {
         //debugText("-0------");
         //debugText("totalCarry after sources" + totalCarryRequired + "links " + context.links.length);
         // ΥΠολογίζει τα carry Που χρειάζονται από το target στο controller
-        if (context.links && context.links.length > 3) {
+        if (context.links && context.links.length >= context.sources.length + 2) {
             totalCarryRequired += 0;
+            debugText("Links cover all sources and target, no carry needed from target to controller");
             /* έφοσον έχουμε πάνω από τρία link σημαίνει πως τουλάχιστον δύο πηγές γεμίζουν το link του controller οπότε και δε χρειάζεται
                 να πηγαίνει hauler
             */
@@ -162,10 +166,11 @@ class PopulationManager {
             const upgradeRate = Math.min(this._calculateAvailableWorkParts(context), 15);
             totalCarryRequired += (upgradeRate * controllerDistance * 2) / CARRY_CAPACITY;
         }
-        //debugText("totalCarry after controllers" + totalCarryRequired);
+        debugText("totalCarry after controller" + totalCarryRequired);
+        debugText("totalCarry after controllers" + totalCarryRequired);
         // ---------
         totalCarryRequired = (totalCarryRequired + POPULATION_MODULE_CONFIG.EXTENSION_CARRY_BONUS) * POPULATION_MODULE_CONFIG.DISTANCE_PADDING;
-        //debugText("totalCarry final " + totalCarryRequired);
+
         return Math.ceil(totalCarryRequired);
     }
 

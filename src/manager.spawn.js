@@ -18,6 +18,10 @@ const debugText = function (text) {
         console.log(`[SpawnManager] ${text}`);
     }
 }
+const debugObject = function (obj, text) {
+    if (!DEBUG_STATE) return;
+    console.log(text + "\n" + JSON.stringify(obj, null, 2));
+}
 
 const SpawnQueue = require('spawn.SpawnQueue');
 const PopulationManager = require('spawn.populationManager');
@@ -34,7 +38,10 @@ class SpawnManager {
      */
     run() {
         this.cleanup();
-
+        // Εκτύπωση της ουράς για debugging
+        if (this.queue.length > 0) {
+            debugObject(this.queue, "--- Current Spawn Queue " + this.queue.length + " ---");
+        }
         // Έλεγχος αναγκών για κάθε δωμάτιο που ελέγχουμε
         for (const roomName in Game.rooms) {
             const room = Game.rooms[roomName];
@@ -56,19 +63,20 @@ class SpawnManager {
 
         const limits = Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY];
         if (!limits) return;
-
+        debugObject(limits, `Checking needs for ${roomName}`);
         // 1. Έλεγχος βάσει αριθμού Creeps (κυρίως για Harvesters σε Recovery/Early stage)
+
         if (limits[POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]) {
             for (const role in limits[POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]) {
                 const currentCount = _.filter(Game.creeps, c => c.memory.homeRoom === roomName && c.memory.role === role).length;
                 const targetCount = limits[POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP][role];
-
+                //TODO δημιουργεί staticHarverter με 6 work χωρίς carry parts παρ΄όλο που στον έλεγχο είχαμε link.
                 if (currentCount < targetCount) {
                     this.createNewCreep(roomName, role, currentCount, targetCount, true);
                 }
             }
         }
-
+        return;
         // 2. Έλεγχος βάσει Body Parts (για Scaling & Efficiency)
         if (limits[POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]) {
             for (const role in limits[POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]) {
@@ -89,68 +97,79 @@ class SpawnManager {
      * @param {boolean} isCountBased Αν ο έλεγχος γίνεται με αριθμό creeps ή parts.
      */
     createNewCreep(roomName, role, current, target, isCountBased) {
+        // TODO απαιτεί έλεγχο. ΔΗμιουργούνται τεράστια creep που τελικά δεν εξαρτώνται από το Limit ούτε από τις απαιτήσεις.
         const room = Game.rooms[roomName];
         if (!room) return;
 
-        // Υπολογισμός μέγιστου δυνατού σώματος για το τρέχον RCL του δωματίου
+        // 1. Προετοιμασία δεδομένων
         const maxEnergyAvailable = room.energyCapacityAvailable;
         const roleLimit = BODY_ENERGY_LIMITS[role] || 800;
         const maxBudget = Math.min(maxEnergyAvailable, roleLimit);
-        const sampleBody = this.calculateBody(role, maxBudget, roomName);
 
-        // Καθορισμός του κύριου part για τον υπολογισμό efficiency (WORK για εργάτες, CARRY για haulers)
+        const sampleBody = this.calculateBody(role, maxBudget, roomName);
+        const bodyCost = this.getBodyCost(sampleBody);
+
         const primaryPart = (role === ROLES.HAULER || role === ROLES.LD_HAULER) ? CARRY : WORK;
         const partsPerMaxCreep = _.filter(sampleBody, p => p === primaryPart).length;
-
         const isRecovery = Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.RECOVERY_KEY];
 
-        // --- LOGIC 1: ΕΛΛΕΙΨΗ (Missing Resources) ---
+        // 2. Έλεγχος Ελλείμματος (Deficit Logic)
         if (current < target) {
-            // Σε Recovery Mode βγάζουμε creeps ΑΜΕΣΑ χωρίς threshold
-            if (isRecovery) {
-                this.addRoleToQueue(roomName, role);
-                return;
-            }
-
-            // Threshold Logic: Μην βγάζεις creep αν του λείπουν ελάχιστα parts (π.χ. < 40% ενός μεγάλου)
-            // ΕΚΤΟΣ αν η ενέργεια στο δωμάτιο είναι ήδη γεμάτη, οπότε "καίμε" την ενέργεια για να μην πάει χαμένη.
-            const deficit = target - current;
-            const threshold = Math.max(1, Math.floor(partsPerMaxCreep * 0.4));
-
-            if (deficit >= threshold || room.energyAvailable >= this.getBodyCost(sampleBody)) {
-                this.addRoleToQueue(roomName, role);
-                return;
-            }
+            this._handleLowPopulation(room, role, current, target, partsPerMaxCreep, bodyCost, isRecovery);
+            return; // Σημαντικό: σταματάμε εδώ αν βρήκαμε ανάγκη
         }
 
-        // --- LOGIC 2: ΣΥΓΧΩΝΕΥΣΗ (Consolidation) ---
-        // Αν έχουμε ήδη το target, αλλά το πετυχαίνουμε με πολλά μικρά creeps,
-        // προσπαθούμε να τα αντικαταστήσουμε με ένα μεγάλο για εξοικονόμηση CPU/Spawning time.
+        // 3. Έλεγχος Αναβάθμισης (Consolidation Logic)
         if (!isRecovery && !isCountBased) {
-            const creepsInRoom = _.filter(Game.creeps, c => c.memory.homeRoom === roomName && c.memory.role === role);
-            if (creepsInRoom.length > 1) {
-                // Βρες το μικρότερο creep που έχουμε αυτή τη στιγμή
-                const smallestCreep = _.min(creepsInRoom, c => c.getActiveBodyparts(primaryPart));
-                const smallestParts = smallestCreep.getActiveBodyparts(primaryPart);
+            this._handlePopulationUpgrade(room, role, primaryPart, partsPerMaxCreep, maxBudget);
+        }
+    }
+    _handleLowPopulation(room, role, current, target, partsPerMaxCreep, bodyCost, isRecovery) {
+        if (isRecovery) {
+            this.addRoleToQueue(room.name, role, room.energyAvailable); // Στο recovery χρησιμοποιούμε ό,τι έχουμε
+            return;
+        }
 
-                // Αν το νέο "Max" creep είναι τουλάχιστον 2 φορές μεγαλύτερο από το μικρότερο τρέχον,
-                // και έχουμε αρκετή ενέργεια, κάνουμε upgrade τον πληθυσμό.
-                if (partsPerMaxCreep >= smallestParts * 2 && room.energyAvailable >= maxBudget * 0.9) {
-                    debugText(`Consolidating ${role} in ${roomName}: Smallest had ${smallestParts}, New will have ${partsPerMaxCreep}`);
-                    this.addRoleToQueue(roomName, role);
-                }
-            }
+        const deficit = target - current;
+        const threshold = Math.max(1, Math.floor(partsPerMaxCreep * 0.4));
+
+        if (deficit >= threshold || room.energyAvailable >= bodyCost) {
+            // Εδώ υπολογίζουμε το "έξυπνο" budget: 
+            // Μόνο όσο χρειάζεται για να καλύψουμε το έλλειμμα, αλλά όχι πάνω από το όριο του role
+            this.addRoleToQueue(room.name, role, bodyCost);
         }
     }
 
-    /**
-     * Προσθέτει ένα ρόλο στην ουρά με τις κατάλληλες παραμέτρους.
-     */
-    addRoleToQueue(roomName, role) {
+    _handlePopulationUpgrade(room, role, primaryPart, partsPerMaxCreep, maxBudget) {
+        const creepsInRoom = _.filter(Game.creeps, c => c.memory.homeRoom === room.name && c.memory.role === role);
+        if (creepsInRoom.length <= 1) return;
+
+        const smallestCreep = _.min(creepsInRoom, c => c.getActiveBodyparts(primaryPart));
+        const smallestParts = smallestCreep.getActiveBodyparts(primaryPart);
+
+        if (partsPerMaxCreep >= smallestParts * 2 && room.energyAvailable >= maxBudget * 0.9) {
+            debugText(`Upgrading ${role} in ${room.name}`);
+            this.addRoleToQueue(room.name, role, maxBudget);
+        }
+    }
+    _handlePopulationUpgrade(room, role, primaryPart, partsPerMaxCreep, maxBudget) {
+        const creepsInRoom = _.filter(Game.creeps, c => c.memory.homeRoom === room.name && c.memory.role === role);
+        if (creepsInRoom.length <= 1) return;
+
+        const smallestCreep = _.min(creepsInRoom, c => c.getActiveBodyparts(primaryPart));
+        const smallestParts = smallestCreep.getActiveBodyparts(primaryPart);
+
+        if (partsPerMaxCreep >= smallestParts * 2 && room.energyAvailable >= maxBudget * 0.9) {
+            debugText(`Upgrading ${role} in ${room.name}`);
+            this.addRoleToQueue(room.name, role, maxBudget);
+        }
+    }
+    addRoleToQueue(roomName, role, budget) {
         this.queue.add({
             role: role,
             targetRoom: roomName,
             priority: PRIORITY[role] || 50,
+            energyBudget: budget, // Αποθήκευση του budget στην ουρά
             addedAt: Game.time
         });
     }
@@ -175,7 +194,8 @@ class SpawnManager {
             const spawn = this.findBestSpawn(request);
 
             if (spawn) {
-                const body = this.calculateBody(request.role, spawn.room.energyAvailable, request.targetRoom);
+                const energyToUse = Math.min(spawn.room.energyAvailable, request.energyBudget || spawn.room.energyAvailable);
+                const body = this.calculateBody(request.role, energyToUse, request.targetRoom);
                 const name = `${request.role}_${Game.time % 10000}`;
 
                 const result = spawn.spawnCreep(body, name, {
@@ -268,7 +288,7 @@ class SpawnManager {
      */
     getBodyCost(body) {
         return _.sum(body, part => BODYPART_COST[part]);
-    }
+    } // end of getBodyCost
 
     /**
      * Καθαρισμός της Memory από νεκρά creeps.
@@ -281,7 +301,7 @@ class SpawnManager {
                 }
             }
         }
-    }
-}
+    } // end of cleanUp
+} // end of class SpawnManager
 
 module.exports = new SpawnManager();

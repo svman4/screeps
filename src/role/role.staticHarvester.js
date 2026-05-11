@@ -9,9 +9,9 @@
  * 2.4.1: Διόρθωση logs και debugging για το NEED_REPLACEMENT_FLAG.
  */
 
-const BaseRole = require('role.base');
+const BaseRole = require('role/role.base');
 const movementManager = require('manager.movement');
-const { NEED_REPLACEMENT_FLAG } = require('spawn.constants');
+const { NEED_REPLACEMENT_FLAG } = require('spawn/spawn.constants');
 
 class StaticHarvester extends BaseRole {
     /**
@@ -20,7 +20,7 @@ class StaticHarvester extends BaseRole {
     run() {
         const source = this.resolveSource();
         if (!source) return;
-        
+
         const container = this.resolveContainer(source);
 
         // Έλεγχος αν ο αντικαταστάτης είναι εδώ για να αποχωρήσει (suicide)
@@ -59,8 +59,8 @@ class StaticHarvester extends BaseRole {
     resolveContainer(source) {
         let container = Game.getObjectById(this.creep.memory.containerId);
         if (!container && this.creep.ticksToLive % 10 === 0) {
-            const containers = source.pos.findInRange(FIND_STRUCTURES, 2, { 
-                filter: s => s.structureType === STRUCTURE_CONTAINER 
+            const containers = source.pos.findInRange(FIND_STRUCTURES, 2, {
+                filter: s => s.structureType === STRUCTURE_CONTAINER
             });
             if (containers.length > 0) {
                 container = containers[0];
@@ -77,17 +77,17 @@ class StaticHarvester extends BaseRole {
     handleRetirement(source) {
         const flag = NEED_REPLACEMENT_FLAG || 'needReplacementFlag';
         const ARRIVAL_RANGE = 1; // Απόσταση στην οποία θεωρούμε ότι ο αντικαταστάτης έφτασε
-        
+
         // Τροποποιημένη συνθήκη: Αν υπάρχει το flag και είναι false, προχωράμε σε suicide αν έφτασε ο αντικαταστάτης
         if (this.creep.memory[flag] !== false) return false;
 
         // Αναζήτηση για τον αντικαταστάτη που πλησιάζει
         const replacement = this.creep.pos.findInRange(FIND_MY_CREEPS, ARRIVAL_RANGE, {
-            filter: c => c.memory.role === this.creep.memory.role && 
-                         c.memory.sourceId === source.id && 
-                         c.id !== this.creep.id
+            filter: c => c.memory.role === this.creep.memory.role &&
+                c.memory.sourceId === source.id &&
+                c.id !== this.creep.id
         });
-        
+
         if (replacement.length > 0) {
             //console.log(`[${this.creep.room.name}] ${this.creep.name}: Ο αντικαταστάτης ${replacement[0].name} έφτασε και το flag είναι false. Αυτοκτονία.`);
             this.creep.suicide();
@@ -105,7 +105,7 @@ class StaticHarvester extends BaseRole {
 
         if (!this.creep.pos.inRangeTo(targetPos, range)) {
             movementManager.smartMove(this.creep, targetPos, range);
-            return true; 
+            return true;
         }
         return false;
     }
@@ -117,8 +117,8 @@ class StaticHarvester extends BaseRole {
         if (this.creep.memory.init === true) {
             const travelTime = CREEP_LIFE_TIME - this.creep.ticksToLive;
             const spawnTime = this.creep.body.length * 3;
-            const buffer = 15; 
-            
+            const buffer = 15;
+
             this.creep.memory.leadTime = travelTime + spawnTime + buffer;
             delete this.creep.memory.init;
         }
@@ -129,10 +129,10 @@ class StaticHarvester extends BaseRole {
      */
     checkReplacementNeeds() {
         const flag = NEED_REPLACEMENT_FLAG || 'needReplacementFlag';
-        
+
         if (this.creep.memory.leadTime && (this.creep.ticksToLive < this.creep.memory.leadTime)) {
             console.log(`[${this.creep.room.name}] ${this.creep.name}: Χαμηλό TTL. Αίτημα αντικατάστασης (Lead: ${this.creep.memory.leadTime})`);
-            this.creep.memory[flag] = true; 
+            this.creep.memory[flag] = true;
             delete this.creep.memory.leadTime;
         }
     }
@@ -143,8 +143,8 @@ class StaticHarvester extends BaseRole {
     manageLogistics(container) {
         if (this.creep.memory.linkId === undefined) {
             const searchPos = container ? container.pos : this.creep.pos;
-            const links = searchPos.findInRange(FIND_STRUCTURES, 1, { 
-                filter: s => s.structureType === STRUCTURE_LINK 
+            const links = searchPos.findInRange(FIND_STRUCTURES, 1, {
+                filter: s => s.structureType === STRUCTURE_LINK
             });
             this.creep.memory.linkId = links.length > 0 ? links[0].id : null;
         }
@@ -165,12 +165,12 @@ class StaticHarvester extends BaseRole {
             this.creep.harvest(source);
         }
     } // end of performHarvest
-	/**
-		Ο staticHarvester θέλουμε να εργάζεται μέχρι το τελευταίο tick.
-	*/
-	getRetirementThreshold() { 
-		return 0;
-	}
+    /**
+        Ο staticHarvester θέλουμε να εργάζεται μέχρι το τελευταίο tick.
+    */
+    getRetirementThreshold() {
+        return 0;
+    }
 }
 
 module.exports = StaticHarvester;

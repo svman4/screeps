@@ -20,7 +20,7 @@
 
 // Προστέθηκε το DEFAULTS_RCL στο destructuring
 const { PRIORITIES, STRUCTURE_RCL_STEPS, DEFAULTS_RCL } = require('construction.constants');
-const RoadPlanner = require('construction.roadPlanner');
+const RoadPlanner = require('constuction/construction.roadPlanner');
 
 class Scorer {
     /**
@@ -35,7 +35,7 @@ class Scorer {
         this.processExtensions(rawData, buildingEntries, context);
         this.processLinks(rawData, buildingEntries, context);
         this.processRoads(rawData, buildingEntries, roomName, context);
-        
+
         // Τελευταίο βήμα: Όλα τα υπόλοιπα structures (Spawns, Towers, Storage κλπ)
         this.processStructures(rawData, buildingEntries, context);
 
@@ -51,7 +51,7 @@ class Scorer {
         const links = rawData.buildings.link;
         const storagePos = rawData.buildings.storage ? rawData.buildings.storage[0] : null;
         const { sources, controller, center } = context;
-        
+
         const tempLinks = [];
 
         for (const pos of links) {
@@ -68,7 +68,7 @@ class Scorer {
                 bonus = 40;
             } else if (isSourceLink) {
                 // Προτεραιότητα στις απομακρυσμένες πηγές
-                bonus = 80 + (distToCenter * 0.5); 
+                bonus = 80 + (distToCenter * 0.5);
             }
 
             tempLinks.push({ x: pos.x, y: pos.y, dist: distToCenter, bonus: bonus });
@@ -149,7 +149,7 @@ class Scorer {
         for (const pos of roads) {
             // Χρήση του RoadPlanner για να βρούμε αν ο δρόμος ανήκει σε κρίσιμο μονοπάτι
             const meta = RoadPlanner.getRoadMetadata(pos.x, pos.y, rawData, buildingEntries, roomName);
-            
+
             let bonus = meta.bonus || 0;
             let rcl = meta.rcl || 8;
 
@@ -157,7 +157,7 @@ class Scorer {
             if (meta.category === 'critical') {
                 // Έλεγχος αν είναι Source path ή Controller path
                 const isSourcePath = sources.some(s => RoadPlanner.isOnActualPath(pos.x, pos.y, center, s, roomName));
-                
+
                 if (isSourcePath) {
                     bonus += 50; // Οι δρόμοι των πηγών προηγούνται
                 } else {
@@ -189,7 +189,7 @@ class Scorer {
                 type: 'road',
                 rcl: r.rcl,
                 score: PRIORITIES.ROAD + r.bonus,
-				category:r.category
+                category: r.category
             });
         }
     }
@@ -200,20 +200,20 @@ class Scorer {
     static processStructures(rawData, buildingEntries, context) {
         if (!rawData.buildings) return;
         const { center } = context;
-		
+
         const ignoredStructures = ['center', 'road', 'extension', 'container', 'link'];
-        
+
         for (const [type, positions] of Object.entries(rawData.buildings)) {
-            
-			// Παράκαμψη metadata και δρόμων (έχουν δικό τους process)
-			if (ignoredStructures.includes(type)) {
-				continue;
-			}
+
+            // Παράκαμψη metadata και δρόμων (έχουν δικό τους process)
+            if (ignoredStructures.includes(type)) {
+                continue;
+            }
 
             positions.forEach((pos, index) => {
-                const rcl = this.calculateRCL(type, index+1);
+                const rcl = this.calculateRCL(type, index + 1);
                 const distToCenter = Math.abs(pos.x - center.x) + Math.abs(pos.y - center.y);
-                
+
                 buildingEntries.push({
                     x: pos.x,
                     y: pos.y,
@@ -232,8 +232,8 @@ class Scorer {
         if (!rawData.buildings || !rawData.buildings.extension) return;
         const { center } = context;
         const extensions = [...rawData.buildings.extension].sort((a, b) => {
-            return (Math.abs(a.x - center.x) + Math.abs(a.y - center.y)) - 
-                   (Math.abs(b.x - center.x) + Math.abs(b.y - center.y));
+            return (Math.abs(a.x - center.x) + Math.abs(a.y - center.y)) -
+                (Math.abs(b.x - center.x) + Math.abs(b.y - center.y));
         });
 
         extensions.forEach((pos, index) => {
@@ -281,13 +281,13 @@ class Scorer {
         // Η τιμή μέσα στο array είναι το RCL που ξεκλειδώνει.
         if (Array.isArray(steps)) {
             if (count > steps.length) return 8; // Ασφάλεια αν ζητηθούν παραπάνω κτίρια
-            return steps[count - 1]; 
-        } 
-        
+            return steps[count - 1];
+        }
+
         // 3. Αν είναι Object (π.χ. 'extension': { 1: 0, 2: 5, 3: 10... })
         // Ταξινομούμε τα RCL keys (1, 2, 3...) για να ελέγχουμε από το μικρότερο στο μεγαλύτερο.
         const rclKeys = Object.keys(steps).map(Number).sort((a, b) => a - b);
-        
+
         for (const rcl of rclKeys) {
             if (count <= steps[rcl]) return rcl;
         }

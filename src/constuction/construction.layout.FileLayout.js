@@ -14,7 +14,7 @@
     - Προσθήκη error handling για δωμάτια χωρίς αρχείο blueprint.
 */
 
-const BaseLayout = require('construction.layout.BaseLayout');
+import BaseLayout from './construction.layout.BaseLayout';
 
 class FileLayout extends BaseLayout {
     constructor(roomName) {

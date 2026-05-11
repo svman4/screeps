@@ -13,7 +13,7 @@
  * BASE LAYOUT CLASS
  * Ορίζει τη δομή ενός πλάνου. Μπορεί να επεκταθεί για Auto-Planner στο μέλλον.
  */
-const LayoutScorer = require('construction.layout.Scorer');
+const LayoutScorer = require('constuction/construction.layout.Scorer');
 const { MEMORY_KEYS } = require('construction.constants');
 
 class BaseLayout {
@@ -27,7 +27,7 @@ class BaseLayout {
      */
     init() {
         const rootMem = Memory.rooms[this.roomName] && Memory.rooms[this.roomName][MEMORY_KEYS.ROOT];
-        
+
         if (rootMem && rootMem[MEMORY_KEYS.BLUE_PRINT]) {
             this.blueprint = rootMem[MEMORY_KEYS.BLUE_PRINT];
             return;
@@ -55,9 +55,9 @@ class BaseLayout {
         if (!this.blueprint) return [];
         return this.blueprint.filter(s => s.rcl <= rcl && !builtMap[`${s.x},${s.y}`]);
     }
-    
-    loadRawData() { 
-        throw new Error(`[BaseLayout] loadRawData not implemented for ${this.constructor.name}`); 
+
+    loadRawData() {
+        throw new Error(`[BaseLayout] loadRawData not implemented for ${this.constructor.name}`);
     }
 }
 

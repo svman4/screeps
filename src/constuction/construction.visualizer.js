@@ -4,7 +4,7 @@
  * Version 1.0.0
  */
 
-require('RoomVisual'); // Βεβαιώσου ότι έχεις το RoomVisual polyfill αν χρησιμοποιείς εξωτερικά εργαλεία
+require('constuction/RoomVisual'); // Βεβαιώσου ότι έχεις το RoomVisual polyfill αν χρησιμοποιείς εξωτερικά εργαλεία
 
 class ConstructionVisualizer {
     /**
@@ -23,55 +23,55 @@ class ConstructionVisualizer {
      */
     drawBlueprint(blueprint, builtMap, currentRCL) {
         if (!blueprint || !Array.isArray(blueprint)) return;
-        
-        for (const s of blueprint) {
-             // Αν το κτίριο είναι ήδη χτισμένο στη σωστή θέση, δεν το σχεδιάζουμε στο blueprint
-             if (builtMap[`${s.x},${s.y}`] === s.type) continue;
-                 const isAvailable = s.rcl <= currentRCL;
-             const opacity = isAvailable ? 1 : 1;
 
-             if (s.type === 'road') {
-                 this.drawRoad(s, opacity);
-             } else {
-                 this.drawStructure(s, isAvailable, opacity);
-             }
-         }
-        
+        for (const s of blueprint) {
+            // Αν το κτίριο είναι ήδη χτισμένο στη σωστή θέση, δεν το σχεδιάζουμε στο blueprint
+            if (builtMap[`${s.x},${s.y}`] === s.type) continue;
+            const isAvailable = s.rcl <= currentRCL;
+            const opacity = isAvailable ? 1 : 1;
+
+            if (s.type === 'road') {
+                this.drawRoad(s, opacity);
+            } else {
+                this.drawStructure(s, isAvailable, opacity);
+            }
+        }
+
         this.drawHeader(currentRCL);
-        
+
     }
 
     /**
  * Σχεδίαση δρόμου με το κανονικό εικονίδιο της roomVisual
  * και χρωματική επισήμανση ανά κατηγορία.
  */
-drawRoad(s, opacity) {
-    // Σχεδίαση του βασικού δρόμου (texture)
-    this.visual.structure(s.x, s.y, 'road', { opacity: opacity });
-	//console.log(s.category);
-    // Επικάλυψη χρώματος για critical / logistics
-    if (s.category === 'critical') {
-        this.visual.circle(s.x, s.y, {
-            fill: '#ff0000',
-            radius: 0.25,
-            opacity: opacity * 0.4
-        });
-    } else if (s.category === 'logistics') {
-        this.visual.circle(s.x, s.y, {
-            fill: '#00ffff',
-            radius: 0.25,
-            opacity: opacity * 0.4
-        });
-    } else {
-        // Προαιρετικά: αμυδρό περίγραμμα για infrastructure
-        this.visual.circle(s.x, s.y, {
-            stroke: '#ffffff',
-            radius: 0.10,
-            strokeWidth: 0.05,
-            opacity: opacity * 0.6
-        });
+    drawRoad(s, opacity) {
+        // Σχεδίαση του βασικού δρόμου (texture)
+        this.visual.structure(s.x, s.y, 'road', { opacity: opacity });
+        //console.log(s.category);
+        // Επικάλυψη χρώματος για critical / logistics
+        if (s.category === 'critical') {
+            this.visual.circle(s.x, s.y, {
+                fill: '#ff0000',
+                radius: 0.25,
+                opacity: opacity * 0.4
+            });
+        } else if (s.category === 'logistics') {
+            this.visual.circle(s.x, s.y, {
+                fill: '#00ffff',
+                radius: 0.25,
+                opacity: opacity * 0.4
+            });
+        } else {
+            // Προαιρετικά: αμυδρό περίγραμμα για infrastructure
+            this.visual.circle(s.x, s.y, {
+                stroke: '#ffffff',
+                radius: 0.10,
+                strokeWidth: 0.05,
+                opacity: opacity * 0.6
+            });
+        }
     }
-}
 
     /**
      * Σχεδίαση κτιρίου με το εικονίδιο του Screeps
@@ -81,14 +81,14 @@ drawRoad(s, opacity) {
         try {
             this.visual.structure(s.x, s.y, s.type, { opacity: opacity });
         } catch (e) {
-            this.visual.rect(s.x - 0.4, s.y - 0.4, 0.8, 0.8, { 
-                fill: 'transparent', 
-                stroke: isAvailable ? '#00ff00' : '#ffffff', 
+            this.visual.rect(s.x - 0.4, s.y - 0.4, 0.8, 0.8, {
+                fill: 'transparent',
+                stroke: isAvailable ? '#00ff00' : '#ffffff',
                 lineStyle: 'dashed',
-                opacity: opacity 
+                opacity: opacity
             });
         }
-        
+
         this.drawStructureBadge(s.x, s.y, s.rcl, isAvailable, opacity);
     }
 

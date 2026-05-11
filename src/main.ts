@@ -1,11 +1,11 @@
 import { ErrorMapper } from "./utils/ErrorMapper";
-import spawnManager from "./manager.spawn";
+import spawnManager from "./spawn/manager.spawn";
 import defenceManager from "./manager.defense";
-import constructionManager from "./manager.construction";
+import constructionManager from "./constuction/manager.construction";
 import expansionManager from "./manager.expansion";
 import logisticsManager from "./manager.logistics";
 import militaryController from "./manager.military";
-import roleManager from "./manager.role";
+import roleManager from "./role/manager.role";
 import market from "./manager.market";
 import pixels from "./manager.pixels";
 import linkManager from "./manager.link";

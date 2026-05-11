@@ -23,9 +23,9 @@ const debugObject = function (obj, text) {
     console.log(text + "\n" + JSON.stringify(obj, null, 2));
 }
 
-const SpawnQueue = require('spawn.SpawnQueue');
-const PopulationManager = require('spawn.populationManager');
-const { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG, BODY_ENERGY_LIMITS, PRIORITY } = require('./spawn.constants');
+const SpawnQueue = require('spawn/spawn.SpawnQueue');
+const PopulationManager = require('spawn/spawn.populationManager');
+const { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG, BODY_ENERGY_LIMITS, PRIORITY } = require('./spawn/spawn.constants');
 
 class SpawnManager {
     constructor() {

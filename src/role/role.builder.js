@@ -1,18 +1,18 @@
-/*
-version 1.0.1
-*/
-const BaseRole = require('role.base');
+const BaseRole = require('role/role.base');
 const movementManager = require('manager.movement');
 
-class Upgrader extends BaseRole {
+class Builder extends BaseRole {
     run() {
         if (this.travelToHomeRoom()) return;
         if (this.checkYield()) return;
         if (this.creep.memory.working && this.creep.store[RESOURCE_ENERGY] === 0) this.creep.memory.working = false;
         if (!this.creep.memory.working && this.creep.store.getFreeCapacity() === 0) this.creep.memory.working = true;
 
-        if (this.creep.memory.working) this.upgradeController();
-        else this.getEnergy();
+        if (this.creep.memory.working) {
+            if (!this.buildStructures()) this.upgradeController();
+        } else {
+            this.getEnergy();
+        }
     }
 }
-module.exports = Upgrader;
+module.exports = Builder;

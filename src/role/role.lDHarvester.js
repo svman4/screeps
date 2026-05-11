@@ -1,4 +1,4 @@
-const BaseRole = require('role.base');
+const BaseRole = require('role/role.base');
 const movementManager = require('manager.movement');
 
 class LDHarvester extends BaseRole {
@@ -12,7 +12,7 @@ class LDHarvester extends BaseRole {
             if (this.creep.memory.homeRoom !== this.creep.room.name && this.buildStructures()) return;
             if (this.travelToHomeRoom()) return;
             if (this.fillSpawnExtension()) return;
-            
+
             const target = this.creep.pos.findClosestByPath(FIND_STRUCTURES, {
                 filter: s => (s.structureType === STRUCTURE_CONTAINER || s.structureType === STRUCTURE_STORAGE) && s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
             });

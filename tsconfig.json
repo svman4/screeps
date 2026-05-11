@@ -8,13 +8,12 @@
     "noImplicitAny": false,
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "outDir": "dist",
     "rootDir": "src",
-    "baseUrl": "./",
     "sourceMap": false,
     "types": [
       "screeps",
-      "node"
+      "node",
+      "lodash"
     ],
     "paths": {
       "*": [

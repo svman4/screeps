@@ -2,7 +2,7 @@
  * Supporter Role: Ένας ευέλικτος ρόλος υποστήριξης που διαχειρίζεται ενέργεια, 
  * χτίζει δομές και προστατεύει τον Controller από υποβάθμιση (downgrade).
  */
-const BaseRole = require('role.base');
+const BaseRole = require('role/role.base');
 const movementManager = require('manager.movement');
 
 class Supporter extends BaseRole {
@@ -11,12 +11,12 @@ class Supporter extends BaseRole {
      */
     run() {
         // --- 1. ΔΙΑΧΕΙΡΙΣΗ ΚΑΤΑΣΤΑΣΗΣ (STATE MANAGEMENT) ---
-        
+
         // Αν το creep δούλευε (working: true) αλλά άδειασε η αποθήκη του, σταμάτα να δουλεύεις.
         if (this.creep.memory.working && this.creep.store[RESOURCE_ENERGY] === 0) {
             this.creep.memory.working = false;
         }
-        
+
         // Αν το creep μάζευε ενέργεια και γέμισε η αποθήκη του, ξεκίνα να δουλεύεις.
         if (!this.creep.memory.working && this.creep.store.getFreeCapacity() === 0) {
             this.creep.memory.working = true;
@@ -24,7 +24,7 @@ class Supporter extends BaseRole {
 
         // --- 2. ΕΚΤΕΛΕΣΗ ΕΡΓΑΣΙΩΝ (WORKING STATE) ---
         if (this.creep.memory.working) {
-            
+
             // Πρώτη προτεραιότητα: Μετακίνηση στο δωμάτιο-στόχο αν βρίσκεται αλλού.
             // Η χρήση του 'return' σταματά την εκτέλεση για αυτό το tick αν το creep ταξιδεύει.
             if (this.travelToTargetRoom()) return;
@@ -51,7 +51,7 @@ class Supporter extends BaseRole {
             // Αυτό βοηθάει στην αύξηση του RCL (Room Controller Level).
             this.upgradeController();
 
-        } 
+        }
         // --- 3. ΑΝΑΠΛΗΡΩΣΗ ΠΟΡΩΝ (COLLECTING STATE) ---
         else {
             // Αν το creep πρέπει να μαζέψει ενέργεια, επέστρεψε στο "Home Room".

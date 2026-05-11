@@ -1,4 +1,4 @@
-const BaseRole = require('role.base');
+const BaseRole = require('role/role.base');
 const movementManager = require('manager.movement');
 
 class Miner extends BaseRole {

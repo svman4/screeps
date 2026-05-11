@@ -4,8 +4,7 @@
  * Version 1.0.0
  */
 
-require('constuction/RoomVisual'); // Βεβαιώσου ότι έχεις το RoomVisual polyfill αν χρησιμοποιείς εξωτερικά εργαλεία
-
+import './RoomVisual';
 class ConstructionVisualizer {
     /**
      * @param {string} roomName - Το όνομα του δωματίου
@@ -153,4 +152,4 @@ class ConstructionVisualizer {
     }
 }
 
-module.exports = ConstructionVisualizer;
+export default ConstructionVisualizer;

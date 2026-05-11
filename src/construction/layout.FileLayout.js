@@ -14,7 +14,7 @@
     - Προσθήκη error handling για δωμάτια χωρίς αρχείο blueprint.
 */
 
-import BaseLayout from './construction.layout.BaseLayout';
+import BaseLayout from './layout.BaseLayout';
 
 class FileLayout extends BaseLayout {
     constructor(roomName) {
@@ -42,4 +42,4 @@ class FileLayout extends BaseLayout {
     } // end of loadRawData
 } // end of class
 
-module.exports = FileLayout;
+export default FileLayout;

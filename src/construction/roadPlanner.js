@@ -79,4 +79,4 @@ class RoadPlanner {
         return false;
     }
 }
-module.exports = RoadPlanner;
+export default RoadPlanner;

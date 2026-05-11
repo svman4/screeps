@@ -297,4 +297,4 @@ class Scorer {
     }
 }
 
-module.exports = Scorer;
+export default Scorer;

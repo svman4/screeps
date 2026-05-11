@@ -14,11 +14,11 @@
     - Κατάργηση hardcoded strings στη διαχείριση μνήμης.
 */
 
-const ConstructionVisualizer = require('constuction/construction.visualizer');
-import BaseLayout from './construction.layout.BaseLayout';
-const FileLayout = require('constuction/construction.layout.FileLayout');
-const RoadPlanner = require('constuction/construction.roadPlanner');
-const { MEMORY_KEYS, MAX_CONSTRUCTION_SITE } = require('construction.constants');
+import ConstructionVisualizer  from './visualizer';
+import BaseLayout from './layout.BaseLayout';
+import FileLayout from './layout.FileLayout';
+import RoadPlanner from './roadPlanner';
+import { MEMORY_KEYS, MAX_CONSTRUCTION_SITE } from './constants';
 
 /**
  * SCAN INTERVALS
@@ -233,7 +233,7 @@ class ConstructionManager {
     }
 }
 
-module.exports = {
+export default {
     run: function (roomName) {
         const manager = new ConstructionManager(roomName);
         manager.run();

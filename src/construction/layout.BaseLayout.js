@@ -13,8 +13,8 @@
  * BASE LAYOUT CLASS
  * Ορίζει τη δομή ενός πλάνου. Μπορεί να επεκταθεί για Auto-Planner στο μέλλον.
  */
-const LayoutScorer = require('constuction/construction.layout.Scorer');
-const { MEMORY_KEYS } = require('construction.constants');
+import LayoutScorer  from './layout.Scorer';
+import { MEMORY_KEYS } from './constants';
 
 class BaseLayout {
     constructor(roomName) {
@@ -61,4 +61,4 @@ class BaseLayout {
     }
 }
 
-module.exports = BaseLayout;
+export default BaseLayout;

@@ -13,21 +13,24 @@
  */
 
 const DEBUG_STATE = true;
-const debugText = function (text) {
+const debugText = function (text: string) {
     if (DEBUG_STATE) {
         console.log(`[SpawnManager] ${text}`);
     }
 }
-const debugObject = function (obj, text) {
+const debugObject = function (obj: any, text: string) {
     if (!DEBUG_STATE) return;
     console.log(text + "\n" + JSON.stringify(obj, null, 2));
 }
 
 import SpawnQueue from './SpawnQueue';
 import PopulationManager from './populationManager';
-import{ ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG, BODY_ENERGY_LIMITS, PRIORITY } from('./spawn.constants');
+import { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG, BODY_ENERGY_LIMITS, PRIORITY } from './spawn.constants';
+import _ from "lodash";
 
 class SpawnManager {
+    queue: SpawnQueue;
+    populationManager: PopulationManager;
     constructor() {
         this.queue = new SpawnQueue();
         this.populationManager = new PopulationManager();
@@ -57,7 +60,7 @@ class SpawnManager {
     /**
      * Αναλύει τις ανάγκες του δωματίου και αποφασίζει αν θα ζητήσει νέα creeps.
      */
-    checkRoomNeeds(roomName) {
+    checkRoomNeeds(roomName: string) {
         // Ενημέρωση των ορίων (limits) βάσει της τρέχουσας κατάστασης του δωματίου
         this.populationManager.updateRoomLimits(roomName);
 
@@ -96,7 +99,7 @@ class SpawnManager {
      * @param {number} target Στόχος (counts ή parts).
      * @param {boolean} isCountBased Αν ο έλεγχος γίνεται με αριθμό creeps ή parts.
      */
-    createNewCreep(roomName, role, current, target, isCountBased) {
+    createNewCreep(roomName: string, role: string, current: number, target: number, isCountBased: boolean) {
         // TODO απαιτεί έλεγχο. ΔΗμιουργούνται τεράστια creep που τελικά δεν εξαρτώνται από το Limit ούτε από τις απαιτήσεις.
         const room = Game.rooms[roomName];
         if (!room) return;
@@ -124,7 +127,7 @@ class SpawnManager {
             this._handlePopulationUpgrade(room, role, primaryPart, partsPerMaxCreep, maxBudget);
         }
     }
-    _handleLowPopulation(room, role, current, target, partsPerMaxCreep, bodyCost, isRecovery) {
+    _handleLowPopulation(room: Room, role: string, current: number, target: number, partsPerMaxCreep: number, bodyCost: number, isRecovery: boolean) {
         if (isRecovery) {
             this.addRoleToQueue(room.name, role, room.energyAvailable); // Στο recovery χρησιμοποιούμε ό,τι έχουμε
             return;
@@ -140,7 +143,7 @@ class SpawnManager {
         }
     }
 
-    _handlePopulationUpgrade(room, role, primaryPart, partsPerMaxCreep, maxBudget) {
+    _handlePopulationUpgrade(room: Room, role: string, primaryPart: string, partsPerMaxCreep: number, maxBudget: number) {
         const creepsInRoom = _.filter(Game.creeps, c => c.memory.homeRoom === room.name && c.memory.role === role);
         if (creepsInRoom.length <= 1) return;
 
@@ -152,19 +155,8 @@ class SpawnManager {
             this.addRoleToQueue(room.name, role, maxBudget);
         }
     }
-    _handlePopulationUpgrade(room, role, primaryPart, partsPerMaxCreep, maxBudget) {
-        const creepsInRoom = _.filter(Game.creeps, c => c.memory.homeRoom === room.name && c.memory.role === role);
-        if (creepsInRoom.length <= 1) return;
 
-        const smallestCreep = _.min(creepsInRoom, c => c.getActiveBodyparts(primaryPart));
-        const smallestParts = smallestCreep.getActiveBodyparts(primaryPart);
-
-        if (partsPerMaxCreep >= smallestParts * 2 && room.energyAvailable >= maxBudget * 0.9) {
-            debugText(`Upgrading ${role} in ${room.name}`);
-            this.addRoleToQueue(room.name, role, maxBudget);
-        }
-    }
-    addRoleToQueue(roomName, role, budget) {
+    addRoleToQueue(roomName: string, role: string, budget: number) {
         this.queue.add({
             role: role,
             targetRoom: roomName,
@@ -177,7 +169,7 @@ class SpawnManager {
     /**
      * Μετράει το σύνολο των ενεργών body parts ενός συγκεκριμένου τύπου σε ένα δωμάτιο.
      */
-    countPartsInRoom(roomName, role) {
+    countPartsInRoom(roomName: string, role: string) {
         const primaryPart = (role === ROLES.HAULER || role === ROLES.LD_HAULER) ? CARRY : WORK;
         const creeps = _.filter(Game.creeps, c => c.memory.homeRoom === roomName && c.memory.role === role && (!c.ticksToLive || c.ticksToLive > 50));
         return _.sum(creeps, c => c.getActiveBodyparts(primaryPart));
@@ -209,7 +201,7 @@ class SpawnManager {
                 if (result === OK) {
                     debugText(`Spawning ${name} at ${spawn.name} for ${request.targetRoom}`);
                     this.queue.removeAt(i);
-                    i--; // Διόρθωση index μετά την αφαίρεση
+                    i--; // Προσαρμογή του δείκτη μετά την αφαίρεση          
                 }
             }
         }
@@ -218,7 +210,7 @@ class SpawnManager {
     /**
      * Βρίσκει το καταλληλότερο Spawn για ένα αίτημα.
      */
-    findBestSpawn(request) {
+    findBestSpawn(request: any) {
         // Προτεραιότητα σε spawns του ίδιου δωματίου
         const localSpawns = _.filter(Game.spawns, s => s.room.name === request.targetRoom && !s.spawning);
         if (localSpawns.length > 0) return localSpawns[0];
@@ -235,8 +227,8 @@ class SpawnManager {
     /**
      * Υπολογίζει το βέλτιστο σώμα βάσει διαθέσιμης ενέργειας και ρόλου.
      */
-    calculateBody(role, maxEnergy, roomName) {
-        let body = [];
+    calculateBody(role: string, maxEnergy: number, roomName: string) {
+        let body: BodyPartConstant[] = [];
         const hasRoads = Memory.rooms[roomName] ? Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.HAVE_ROAD_KEY] : false;
 
         switch (role) {
@@ -286,7 +278,7 @@ class SpawnManager {
     /**
      * Επιστρέφει το κόστος ενός σώματος σε ενέργεια.
      */
-    getBodyCost(body) {
+    getBodyCost(body: BodyPartConstant[]) {
         return _.sum(body, part => BODYPART_COST[part]);
     } // end of getBodyCost
 
@@ -304,4 +296,4 @@ class SpawnManager {
     } // end of cleanUp
 } // end of class SpawnManager
 
-module.exports = new SpawnManager();
+export default new SpawnManager();

@@ -19,6 +19,7 @@ declare global {
     }
     interface CreepMemory {
         role: string;
+        homeRoom: string;
         // Add other memory variables you use, e.g.:
         // room?: string;
         // working?: boolean;

@@ -36,13 +36,13 @@
  */
 const { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG } = require('./spawn.constants');
 const DEBUG_STATE = false;
-const debugText = function (text) {
+const debugText = function (text: string) {
     if (DEBUG_STATE) {
 
         console.log(`[SpawnManager] ${text}`);
     }
 }
-const debugObject = function (obj, text) {
+const debugObject = function (obj: any, text: string) {
     if (!DEBUG_STATE) return;
     console.log(text + "\n" + JSON.stringify(obj, null, 2));
 }
@@ -56,7 +56,7 @@ class PopulationManager {
      * @param {Room} room - Το αντικείμενο του δωματίου.
      * @returns {Object} Τα όρια πληθυσμού χωρισμένα σε creeps και parts.
      */
-    calculateLimits(room) {
+    calculateLimits(room: Room) {
         const context = this._createContext(room);
 
         // Αν το δωμάτιο είναι σε κατάσταση έκτακτης ανάγκης
@@ -80,7 +80,7 @@ class PopulationManager {
     /**
      * Υπολογίζει τα διαθέσιμα WORK parts βάσει πραγματικού εισοδήματος.
      */
-    _calculateAvailableWorkParts(context) {
+    _calculateAvailableWorkParts(context: any) {
         const INCOME_PER_SOURCE = (context.room.controller) ? 10 : 5;
 
         const totalIncome = context.sources.length * INCOME_PER_SOURCE;
@@ -103,7 +103,7 @@ class PopulationManager {
     /**
      * Κατανομή των διαθέσιμων WORK parts σε Builders και Upgraders (Μπαίνουν στη λίστα 'parts').
      */
-    _distributeWorkQuotas(context, limits) {
+    _distributeWorkQuotas(context: any, limits: any) {
         let availableWork = this._calculateAvailableWorkParts(context);
 
         let builderWork = 0;
@@ -128,7 +128,7 @@ class PopulationManager {
     /**
      * Υπολογισμός CARRY parts για Haulers βασισμένος σε Round-trip Distance.
      */
-    _calculateCarryQuota(context) {
+    _calculateCarryQuota(context: any) {
         const target = context.storage || (context.spawns && context.spawns.length > 0 ? context.spawns[0] : null);
         if (!target) return 10;
 
@@ -177,7 +177,7 @@ class PopulationManager {
     /**
      * Δημιουργία Context για το δωμάτιο (Caching δεδομένων για τον υπολογισμό).
      */
-    _createContext(room) {
+    _createContext(room: Room) {
         const sources = room.find(FIND_SOURCES);
         const spawns = room.find(FIND_MY_SPAWNS);
         const storage = room.storage;
@@ -207,7 +207,7 @@ class PopulationManager {
         return answer;
     }
 
-    _getStorageLimits(context) {
+    _getStorageLimits(context: any) {
 
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
@@ -223,7 +223,7 @@ class PopulationManager {
         return limits;
     }
 
-    _getContainerLimits(context) {
+    _getContainerLimits(context: any) {
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
                 [ROLES.SIMPLE_HARVESTER]: 0,
@@ -238,7 +238,7 @@ class PopulationManager {
         return limits;
     }
 
-    _getEarlyGameLimits(context) {
+    _getEarlyGameLimits(context: any) {
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
                 [ROLES.SIMPLE_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE,
@@ -253,7 +253,7 @@ class PopulationManager {
         return limits;
     }
 
-    _getRecoveryLimits(context) {
+    _getRecoveryLimits(context: any) {
         return {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
                 [ROLES.SIMPLE_HARVESTER]: 4,
@@ -272,7 +272,7 @@ class PopulationManager {
      * Ενημερώνει τα Memory limits του δωματίου.
      * Καλείται από το SpawnManager.
      */
-    updateRoomLimits(roomName) {
+    updateRoomLimits(roomName: string) {
         const room = Game.rooms[roomName];
         if (!room) return;
 
@@ -287,7 +287,7 @@ class PopulationManager {
      * @param {Room} room 
      * @returns {boolean}
      */
-    checkIfRoomHaveRoads(room) {
+    checkIfRoomHaveRoads(room: Room): boolean {
         const roads = room.find(FIND_STRUCTURES, {
             filter: (s) => s.structureType === STRUCTURE_ROAD
         });
@@ -295,4 +295,4 @@ class PopulationManager {
     }
 } // end of class PopulationManager
 
-module.exports = PopulationManager;
+export default PopulationManager;

@@ -1,22 +1,30 @@
 import movementManager from 'manager.movement';
-
+import harvester from "role.harvester";
+import simpleHarvester from "role.simpleHarvester";
+import upgrader from "role.upgrader";
+import staticHarvester from "role.staticHarvester";
+import builder from "role.builder";
+import claimer from "role.claimer";
+import scout from "role.scout";
+import supporter from "role.supporter";
+import LDHarvester from "role.lDHarvester";
+import miner from "role.miner";
+import recycleCreep from "role.recycleCreep";
 
 const roleManager = {
-    // Lazy loading των κλάσεων για εξοικονόμηση CPU αν χρειαστεί
     roleClasses: {
-        'harvester': require('role.harvester'),
-        'simpleHarvester': require('role.simpleHarvester'),
-        'upgrader': require('role.upgrader'),
-        'staticHarvester': require('role.staticHarvester'),
-        'builder': require('role.builder'),
-        'claimer': require('role.claimer'),
-        'scout': require('role.scout'),
-        'supporter': require('role.supporter'),
-        'LDHarvester': require('role.lDHarvester'),
-        'miner': require('role.miner'),
-        'to_be_recycled': require('role.recycleCreep')
+        'harvester': harvester,
+        'simpleHarvester': simpleHarvester,
+        'upgrader': upgrader,
+        'staticHarvester': staticHarvester,
+        'builder': builder,
+        'claimer': claimer,
+        'scout': scout,
+        'supporter': supporter,
+        'LDHarvester': LDHarvester,
+        'miner': miner,
+        'recycleCreep': recycleCreep
     },
-
     run: function () {
         for (const name in Game.creeps) {
             const creep = Game.creeps[name];

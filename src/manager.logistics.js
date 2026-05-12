@@ -1,6 +1,6 @@
 // manager.logistics.js
-const movementManager = require('manager.movement'); 
-const{STORAGE_LINK_ID}=require('manager.link');
+import movementManager from 'manager.movement';
+const { STORAGE_LINK_ID } = require('manager.link');
 /*
 version 1.1.0
 - Added high priority for Storage Link emptying using room.memory.storageLinkId
@@ -18,30 +18,30 @@ const PRIORITIES = {
     CONTROLLER_CONTAINER: 70,
     LAB: 40,
     TERMINAL_SOURCE: 40,
-    NUKER: 35, 
-    FACTORY: 35, 
+    NUKER: 35,
+    FACTORY: 35,
     POWER_SPAWN: 35,
     STORAGE: 10,
     TERMINAL: 5
 };
 
-const TARGET_FULL_PERCENT = { 
+const TARGET_FULL_PERCENT = {
     TERMINAL: 0.01,
     STORAGE: 0.8,
     TOWER: 0.8,
     CONTROLLER_CONTAINER: 0.6,
     FACTORY: 0.01,
     LAB: 0.01,
-    NUKER : 0.01,
-    POWER_SPAWN : 1 
+    NUKER: 0.01,
+    POWER_SPAWN: 1
 };
 
 const MIN_LIFE_TO_LIVE = 50;
 const UPDATE_TASKS_INTERVAL = 2;
 
 const logisticsManager = {
-    
-    init: function(roomName) {
+
+    init: function (roomName) {
         if (!Memory.rooms[roomName]) {
             Memory.rooms[roomName] = {};
         }
@@ -56,12 +56,12 @@ const logisticsManager = {
         }
     },
 
-    run: function(roomName) {
+    run: function (roomName) {
         this.init(roomName);
-        
+
         const room = Game.rooms[roomName];
         if (!room) return;
-        
+
         const roomMemory = room.memory.logistics;
 
         if (Game.time % UPDATE_TASKS_INTERVAL === 0) {
@@ -75,12 +75,12 @@ const logisticsManager = {
             this.cleanupTasks(roomMemory);
         }
     },
-    
-    updateEnergyTasks: function(room, roomMemory) {
+
+    updateEnergyTasks: function (room, roomMemory) {
         const roomName = room.name;
         const tasks = [];
         const deliveryTargets = this.findDeliveryTargets(room);
-        
+
         if (deliveryTargets.length > 0) {
             deliveryTargets.forEach(target => {
                 const sources = this.findSourcesForTarget(room, target);
@@ -108,12 +108,12 @@ const logisticsManager = {
                 });
             }
         }
-        
+
         tasks.sort((a, b) => b.priority - a.priority);
         roomMemory.energyTasks = tasks;
     },
 
-    isSameStructureTypeTransfer: function(source, target) {
+    isSameStructureTypeTransfer: function (source, target) {
         if ((source.type === 'storage' && target.type === 'storage') ||
             (source.type === 'terminal' && target.type === 'terminal') ||
             (source.type === 'storageLink' && target.type === 'storageLink')) {
@@ -126,7 +126,7 @@ const logisticsManager = {
         return false;
     },
 
-    findDeliveryTargets: function(room) {
+    findDeliveryTargets: function (room) {
         const targets = [];
         const allStructures = room.find(FIND_MY_STRUCTURES);
 
@@ -157,16 +157,16 @@ const logisticsManager = {
                     condition = energyAmount < capacity * TARGET_FULL_PERCENT.TERMINAL;
                     break;
                 case STRUCTURE_FACTORY:
-                    priority=PRIORITIES.FACTORY;
-                    condition=energyAmount<capacity*TARGET_FULL_PERCENT.FACTORY;
+                    priority = PRIORITIES.FACTORY;
+                    condition = energyAmount < capacity * TARGET_FULL_PERCENT.FACTORY;
                     break;
-                case STRUCTURE_NUKER: 
-                    priority=PRIORITIES.NUKER;
-                    condition=energyAmount<capacity*TARGET_FULL_PERCENT.NUKER;
+                case STRUCTURE_NUKER:
+                    priority = PRIORITIES.NUKER;
+                    condition = energyAmount < capacity * TARGET_FULL_PERCENT.NUKER;
                     break;
                 case STRUCTURE_POWER_SPAWN:
-                    priority=PRIORITIES.POWER_SPAWN;
-                    condition=energyAmount<capacity*TARGET_FULL_PERCENT.POWER_SPAWN;
+                    priority = PRIORITIES.POWER_SPAWN;
+                    condition = energyAmount < capacity * TARGET_FULL_PERCENT.POWER_SPAWN;
                     break;
                 default:
                     return;
@@ -188,16 +188,16 @@ const logisticsManager = {
         return targets.sort((a, b) => b.priority - a.priority);
     },
 
-    findSourcesForTarget: function(room, target) {
+    findSourcesForTarget: function (room, target) {
         const sources = [];
-        
+
         // 1. Dropped Energy
         room.find(FIND_DROPPED_RESOURCES, {
             filter: r => r.resourceType === RESOURCE_ENERGY && r.amount > 200
         }).forEach(energy => sources.push({
             id: energy.id, type: 'dropped', priority: PRIORITIES.DROP_ENERGY, obj: energy
         }));
-   
+
         // 2. Structures
         room.find(FIND_STRUCTURES).forEach(s => {
             let priority = 0;
@@ -224,7 +224,7 @@ const logisticsManager = {
                     break;
                 case STRUCTURE_TERMINAL:
                     if (s.my && s.store[RESOURCE_ENERGY] > 1000) {
-                        priority = PRIORITIES.TERMINAL_SOURCE; 
+                        priority = PRIORITIES.TERMINAL_SOURCE;
                         condition = true;
                     }
                     break;
@@ -241,7 +241,7 @@ const logisticsManager = {
                 sources.push({ id: s.id, type: s.structureType.toLowerCase(), priority: priority, obj: s });
             }
         });
-        
+
         // 3. Ruins
         room.find(FIND_RUINS, {
             filter: ruin => ruin.store[RESOURCE_ENERGY] > 50
@@ -252,11 +252,11 @@ const logisticsManager = {
         return sources.sort((a, b) => b.priority - a.priority);
     },
 
-    findCleanupSources: function(room) {
+    findCleanupSources: function (room) {
         const sources = [];
         const storage = room.storage;
-        
-        this.findSourcesForTarget(room, {id: null}).forEach(source => {
+
+        this.findSourcesForTarget(room, { id: null }).forEach(source => {
             if (source.type === 'dropped' || source.type === 'ruin' || (room.memory[STORAGE_LINK_ID] === source.id)) {
                 sources.push(source);
             }
@@ -302,8 +302,8 @@ const logisticsManager = {
 
         return sources.sort((a, b) => b.priority - a.priority);
     },
-    
-    createTask: function(roomName, source, target, taskType) {
+
+    createTask: function (roomName, source, target, taskType) {
         return {
             id: `${source.id}-${target.id}-${Game.time}`,
             room: roomName,
@@ -317,18 +317,18 @@ const logisticsManager = {
         };
     },
 
-    isContainerNearSource: function(container) {
+    isContainerNearSource: function (container) {
         return container.pos.findInRange(FIND_SOURCES, 2).length > 0;
     },
-    
-    manageHaulers: function(room, roomMemory) {
+
+    manageHaulers: function (room, roomMemory) {
         const roomName = room.name;
-        const haulers = _.filter(Game.creeps, creep => 
-            creep.memory.role === 'hauler' && 
+        const haulers = _.filter(Game.creeps, creep =>
+            creep.memory.role === 'hauler' &&
             creep.memory.homeRoom === roomName &&
             !creep.spawning
         );
-        
+
         const assignments = roomMemory.haulerAssignments;
         const reservations = roomMemory.taskReservations;
         const tasks = roomMemory.energyTasks;
@@ -352,7 +352,7 @@ const logisticsManager = {
         });
     },
 
-    assignTaskToHauler: function(hauler, tasks, assignments, reservations) {
+    assignTaskToHauler: function (hauler, tasks, assignments, reservations) {
         const currentAssignment = assignments[hauler.name];
 
         if (currentAssignment) {
@@ -387,7 +387,7 @@ const logisticsManager = {
         }
     },
 
-    findBestTaskForHauler: function(hauler, tasks, reservations) {
+    findBestTaskForHauler: function (hauler, tasks, reservations) {
         if (tasks.length === 0) return null;
 
         let bestTask = null;
@@ -396,18 +396,18 @@ const logisticsManager = {
 
         for (const task of topTasks) {
             const reservation = reservations[task.id];
-            
+
             if (reservation && reservation.haulerName !== hauler.name) {
                 continue;
             }
-            
+
             const target = Game.getObjectById(task.targetId);
             if (!target) continue;
-            
+
             const distance = hauler.pos.getRangeTo(target);
-            const distancePenalty = distance * 0.1; 
+            const distancePenalty = distance * 0.1;
             const totalScore = task.priority - distancePenalty;
-            
+
             if (totalScore > bestScore) {
                 bestScore = totalScore;
                 bestTask = task;
@@ -417,10 +417,10 @@ const logisticsManager = {
         return bestTask;
     },
 
-    validateTask: function(task) {
+    validateTask: function (task) {
         const source = Game.getObjectById(task.sourceId);
         const target = Game.getObjectById(task.targetId);
-        
+
         if (!source || !target) return false;
         if (source.id === target.id) return false;
 
@@ -430,14 +430,14 @@ const logisticsManager = {
         return hasEnergy && canAcceptEnergy;
     },
 
-    runHaulerWithTask: function(creep, assignment) {
+    runHaulerWithTask: function (creep, assignment) {
         if (creep.ticksToLive < MIN_LIFE_TO_LIVE && creep.room.memory.recoveryContainerId) {
             creep.memory.role = "to_be_recycled";
             return;
         }
 
         if (!assignment) return;
-        
+
         const isCarrying = creep.store[RESOURCE_ENERGY] > 0;
 
         if (!isCarrying) {
@@ -447,33 +447,33 @@ const logisticsManager = {
         }
     },
 
-    collectFromSource: function(creep, assignment) {
+    collectFromSource: function (creep, assignment) {
         const source = Game.getObjectById(assignment.sourceId);
-        
+
         if (!source) {
             this.completeTask(creep);
             return;
         }
-        
+
         const hasEnergy = this.checkSourceHasEnergy(source, assignment.sourceType);
         if (!hasEnergy) {
             this.completeTask(creep);
             return;
         }
-        
+
         if (creep.pos.isNearTo(source)) {
             const result = this.withdrawFromSource(creep, source, assignment.sourceType);
             if (result !== OK) {
                 this.completeTask(creep);
             }
         } else {
-            movementManager.smartMove(creep, source, 1); 
+            movementManager.smartMove(creep, source, 1);
         }
     },
 
-    deliverToTarget: function(creep, assignment) {
+    deliverToTarget: function (creep, assignment) {
         const target = Game.getObjectById(assignment.targetId);
-        
+
         if (!target) {
             this.completeTask(creep);
             return;
@@ -493,7 +493,7 @@ const logisticsManager = {
 
         if (creep.pos.isNearTo(target)) {
             const result = creep.transfer(target, RESOURCE_ENERGY);
-            
+
             if (result === OK || result === ERR_FULL) {
                 this.completeTask(creep);
             } else {
@@ -504,7 +504,7 @@ const logisticsManager = {
         }
     },
 
-    checkSourceHasEnergy: function(source, sourceType) {
+    checkSourceHasEnergy: function (source, sourceType) {
         switch (sourceType) {
             case 'dropped': return source.amount > 20;
             case 'ruin': return source.store[RESOURCE_ENERGY] > 20;
@@ -518,7 +518,7 @@ const logisticsManager = {
         }
     },
 
-    withdrawFromSource: function(creep, source, sourceType) {
+    withdrawFromSource: function (creep, source, sourceType) {
         switch (sourceType) {
             case 'dropped': return creep.pickup(source);
             case 'ruin':
@@ -532,18 +532,18 @@ const logisticsManager = {
         }
     },
 
-    completeTask: function(creep) {
+    completeTask: function (creep) {
         const roomName = creep.memory.homeRoom;
         if (!Memory.rooms[roomName] || !Memory.rooms[roomName].logistics) return;
 
         const roomMemory = Memory.rooms[roomName].logistics;
         const assignments = roomMemory.haulerAssignments;
         const reservations = roomMemory.taskReservations;
-        
+
         if (assignments[creep.name]) {
             delete reservations[assignments[creep.name].taskId];
             delete assignments[creep.name];
-            
+
             delete creep.memory._lastPos;
             delete creep.memory._stuckCount;
 
@@ -552,12 +552,12 @@ const logisticsManager = {
         }
     },
 
-    cleanupTasks: function(roomMemory) {
+    cleanupTasks: function (roomMemory) {
         const now = Game.time;
         roomMemory.energyTasks = roomMemory.energyTasks.filter(task => (now - task.created) < 50);
     },
 
-    cleanupReservations: function(roomMemory) {
+    cleanupReservations: function (roomMemory) {
         const reservations = roomMemory.taskReservations;
         const now = Game.time;
 
@@ -569,14 +569,14 @@ const logisticsManager = {
         }
     },
 
-    showTasksInfo: function(room) {
+    showTasksInfo: function (room) {
         const visual = new RoomVisual(room.name);
         if (!room.memory.logistics) return;
         const tasks = room.memory.logistics.energyTasks;
-        
+
         let y = 10;
         visual.text(`Tasks: ${tasks.length}`, 1, y++, { align: 'left', color: '#ffff00' });
-        
+
         tasks.slice(0, 5).forEach((task, index) => {
             const info = `${task.taskType}: ${task.sourceId === room.memory.storageLinkId ? 'STORAGE_LINK' : task.sourceType}->${task.targetType} (prio:${task.priority})`;
             visual.text(info, 1, y++, { align: 'left', color: '#ffffff' });

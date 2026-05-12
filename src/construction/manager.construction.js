@@ -15,7 +15,7 @@
 */
 
 import ConstructionVisualizer from './visualizer';
-//import BaseLayout from './layout.BaseLayout';
+
 import FileLayout from './layout.FileLayout';
 import RoadPlanner from './roadPlanner';
 import { MEMORY_KEYS, MAX_CONSTRUCTION_SITE } from './construction.constants';

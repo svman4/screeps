@@ -19,8 +19,8 @@
 */
 
 // Προστέθηκε το DEFAULTS_RCL στο destructuring
-const { PRIORITIES, STRUCTURE_RCL_STEPS, DEFAULTS_RCL } = require('construction.constants');
-const RoadPlanner = require('constuction/construction.roadPlanner');
+import { PRIORITIES, STRUCTURE_RCL_STEPS, DEFAULTS_RCL } from './construction.constants';
+import RoadPlanner from './roadPlanner';
 
 class Scorer {
     /**

@@ -34,7 +34,7 @@
  * - Αν υπάρχει έστω και ένα container τότε αλλάζει η διαχείριση του πληθυσμού.
  * VERSION 1.1.0 Ακύρωση λειτουργίας storageContainer
  */
-const { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG } = require('./spawn.constants');
+import { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG } from './spawn.constants';
 const DEBUG_STATE = false;
 const debugText = function (text: string) {
     if (DEBUG_STATE) {

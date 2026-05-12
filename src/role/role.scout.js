@@ -1,6 +1,7 @@
-const BaseRole = require('role/role.base');
-const movementManager = require('manager.movement');
-const expansionManager = require('manager.expansion');
+import BaseRole from 'role.base';
+
+import expansionManager from 'manager.expansion';
+
 class Scout extends BaseRole {
     run() {
         if (this.travelToTargetRoom()) return;
@@ -15,4 +16,4 @@ class Scout extends BaseRole {
         this.creep.suicide();
     }
 }
-module.exports = Scout;
+export default Scout;

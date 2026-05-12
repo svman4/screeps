@@ -1,6 +1,6 @@
 /* eslint-disable */
 import { SourceMapConsumer } from "source-map";
-
+import _ from "lodash";
 export class ErrorMapper {
   // Cache consumer
   private static _consumer?: SourceMapConsumer;

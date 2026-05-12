@@ -1,5 +1,6 @@
-const BaseRole = require('role/role.base');
-const movementManager = require('manager.movement');
+import BaseRole from 'role.base';
+import movementManager from 'manager.movement';
+
 
 class LDHarvester extends BaseRole {
     run() {
@@ -34,4 +35,4 @@ class LDHarvester extends BaseRole {
         }
     }
 }
-module.exports = LDHarvester;
+export default LDHarvester;

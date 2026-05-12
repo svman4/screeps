@@ -45,11 +45,12 @@ class SpawnManager {
         if (this.queue.length > 0) {
             debugObject(this.queue, "--- Current Spawn Queue " + this.queue.length + " ---");
         }
+
         // Έλεγχος αναγκών για κάθε δωμάτιο που ελέγχουμε
         for (const roomName in Game.rooms) {
             const room = Game.rooms[roomName];
             if (room.controller && room.controller.my) {
-                this.checkRoomNeeds(roomName);
+                //this.checkRoomNeeds(roomName);
             }
         }
 
@@ -143,11 +144,13 @@ class SpawnManager {
         }
     }
 
-    _handlePopulationUpgrade(room: Room, role: string, primaryPart: string, partsPerMaxCreep: number, maxBudget: number) {
+    _handlePopulationUpgrade(room: Room, role: string, primaryPart: BodyPartConstant, partsPerMaxCreep: number, maxBudget: number) {
         const creepsInRoom = _.filter(Game.creeps, c => c.memory.homeRoom === room.name && c.memory.role === role);
         if (creepsInRoom.length <= 1) return;
 
-        const smallestCreep = _.min(creepsInRoom, c => c.getActiveBodyparts(primaryPart));
+        const smallestCreep = _.minBy(creepsInRoom, (c: Creep) => c.getActiveBodyparts(primaryPart)) as Creep;
+
+
         const smallestParts = smallestCreep.getActiveBodyparts(primaryPart);
 
         if (partsPerMaxCreep >= smallestParts * 2 && room.energyAvailable >= maxBudget * 0.9) {
@@ -172,7 +175,7 @@ class SpawnManager {
     countPartsInRoom(roomName: string, role: string) {
         const primaryPart = (role === ROLES.HAULER || role === ROLES.LD_HAULER) ? CARRY : WORK;
         const creeps = _.filter(Game.creeps, c => c.memory.homeRoom === roomName && c.memory.role === role && (!c.ticksToLive || c.ticksToLive > 50));
-        return _.sum(creeps, c => c.getActiveBodyparts(primaryPart));
+        return _.sum(creeps.map(c => c.getActiveBodyparts(primaryPart)));
     }
 
     /**
@@ -194,7 +197,7 @@ class SpawnManager {
                     memory: {
                         role: request.role,
                         homeRoom: request.targetRoom,
-                        bornTick: Game.time
+
                     }
                 });
 
@@ -279,7 +282,8 @@ class SpawnManager {
      * Επιστρέφει το κόστος ενός σώματος σε ενέργεια.
      */
     getBodyCost(body: BodyPartConstant[]) {
-        return _.sum(body, part => BODYPART_COST[part]);
+
+        return _.sum(body.map(part => BODYPART_COST[part]));
     } // end of getBodyCost
 
     /**

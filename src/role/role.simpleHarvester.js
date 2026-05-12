@@ -1,5 +1,5 @@
-const BaseRole = require('role/role.base');
-const movementManager = require('manager.movement');
+import BaseRole from 'role.base';
+
 
 class SimpleHarvester extends BaseRole {
     run() {
@@ -16,4 +16,4 @@ class SimpleHarvester extends BaseRole {
         }
     }
 }
-module.exports = SimpleHarvester;
+export default SimpleHarvester;

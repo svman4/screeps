@@ -1,20 +1,20 @@
-const movementManager = require('manager.movement');
+import movementManager from 'manager.movement';
 
 
 const roleManager = {
     // Lazy loading των κλάσεων για εξοικονόμηση CPU αν χρειαστεί
     roleClasses: {
-        'harvester': require('role/role.harvester'),
-        'simpleHarvester': require('role/role.simpleHarvester'),
-        'upgrader': require('role/role.upgrader'),
-        'staticHarvester': require('role/role.staticHarvester'),
-        'builder': require('role/role.builder'),
-        'claimer': require('role/role.claimer'),
-        'scout': require('role/role.scout'),
-        'supporter': require('role/role.supporter'),
-        'LDHarvester': require('role/role.lDHarvester'),
-        'miner': require('role/role.miner'),
-        'to_be_recycled': require('role/role.recycleCreep')
+        'harvester': require('role.harvester'),
+        'simpleHarvester': require('role.simpleHarvester'),
+        'upgrader': require('role.upgrader'),
+        'staticHarvester': require('role.staticHarvester'),
+        'builder': require('role.builder'),
+        'claimer': require('role.claimer'),
+        'scout': require('role.scout'),
+        'supporter': require('role.supporter'),
+        'LDHarvester': require('role.lDHarvester'),
+        'miner': require('role.miner'),
+        'to_be_recycled': require('role.recycleCreep')
     },
 
     run: function () {
@@ -38,4 +38,4 @@ const roleManager = {
     } // end of run
 };
 
-module.exports = roleManager;
+export default roleManager;

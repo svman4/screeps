@@ -1,6 +1,6 @@
-const BaseRole = require('role/role.base');
-const movementManager = require('manager.movement');
-const expansionManager = require('manager.expansion');
+import BaseRole from 'role.base';
+import movementManager from 'manager.movement';
+
 class Claimer extends BaseRole {
     run() {
         if (this.travelToTargetRoom()) return;
@@ -28,4 +28,4 @@ class Claimer extends BaseRole {
         this.creep.suicide();
     }
 }
-module.exports = Claimer;
+export default Claimer;

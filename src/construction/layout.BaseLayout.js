@@ -13,8 +13,8 @@
  * BASE LAYOUT CLASS
  * Ορίζει τη δομή ενός πλάνου. Μπορεί να επεκταθεί για Auto-Planner στο μέλλον.
  */
-import LayoutScorer  from './layout.Scorer';
-import { MEMORY_KEYS } from './constants';
+import LayoutScorer from './layout.Scorer';
+import { MEMORY_KEYS } from './construction.constants';
 
 class BaseLayout {
     constructor(roomName) {

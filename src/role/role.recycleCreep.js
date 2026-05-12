@@ -1,5 +1,5 @@
-const BaseRole = require('role/role.base');
-const movementManager = require('manager.movement');
+import BaseRole from 'role.base';
+import movementManager from 'manager.movement';
 
 class To_be_recycled extends BaseRole {
     run() {
@@ -18,4 +18,4 @@ class To_be_recycled extends BaseRole {
         }
     }
 }
-module.exports = To_be_recycled;
+export default To_be_recycled;

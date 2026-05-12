@@ -6,15 +6,27 @@ import terser from '@rollup/plugin-terser';
 export default {
   // Το σημείο εισόδου της εφαρμογής σου
   input: 'src/main.ts',
+  onwarn: (warning, warn) => {
+    // Αν το Rollup δεν μπορεί να βρει ένα module (Unresolved Import)
+    if (warning.code === 'UNRESOLVED_IMPORT') {
+      throw new Error(
+        `ΣΦΑΛΜΑ: Το module "${warning.source}" δεν βρέθηκε! \n` +
+        `Βεβαιώσου ότι το path είναι σωστό (π.χ. "./constants" αντί για "constants")`
+      );
+    }
+    warn(warning);
+  },
   output: {
     file: 'dist/main.js',
     format: 'cjs',
     sourcemap: false,
     exports: 'named'
   },
+
+  external: ["lodash"],
   plugins: [
     // Επίλυση εξαρτήσεων από το node_modules
-    resolve({ rootDir: 'src' }),
+    resolve({ rootDir: 'src', preferBuiltins: false }),
     // Μετατροπή CommonJS (require) σε ES6
     commonjs(),
     // Μεταγλώττιση TypeScript
@@ -31,7 +43,7 @@ export default {
       },
       compress: {
         drop_console: false, // Κράτησε το console.log για το Screeps
-        passes: 2 // Μην κάνεις πολλαπλές passes για να μειώσεις τον χρόνο μεταγλώττισης
+        passes: 2
       },
       mangle: {
         toplevel: true // Mangle μόνο τις τοπικές μεταβλητές, όχι τις παγκόσμιες που μπορεί να χρειάζονται για το Screeps

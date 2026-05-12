@@ -12,15 +12,15 @@
  * 1.0.0: Αρχική υλοποίηση βασισμένη σε Singleton Pattern.
  */
 
+import _ from "lodash";
+
 class SpawnQueue {
+    data: any;
+    private _needsSort: boolean;
     constructor() {
         // Αρχικοποίηση στη Memory αν δεν υπάρχει
-        if (!Memory.spawnQueue) {
-            Memory.spawnQueue = [];
-        }
-
         /** @type {Array} */
-        this.data = Memory.spawnQueue;
+        this.data = [];
 
         /** @private */
         this._needsSort = true;
@@ -70,7 +70,7 @@ class SpawnQueue {
     sort() {
         if (this._needsSort) {
             // Priority first, then Age (τα παλαιότερα αιτήματα προηγούνται σε ίδια προτεραιότητα)
-            this.data.sort((a, b) => {
+            this.data.sort((a: { priority: number; addedAt: number; }, b: { priority: number; addedAt: number; }) => {
                 if (a.priority !== b.priority) {
                     return a.priority - b.priority;
                 }
@@ -109,8 +109,8 @@ class SpawnQueue {
      * Καθαρίζει ολόκληρη την ουρά (χρήσιμο σε καταστάσεις Recovery).
      */
     flush() {
-        Memory.spawnQueue = [];
-        this.data = Memory.spawnQueue;
+
+        this.data = [];
     }
 
     /**
@@ -131,5 +131,15 @@ class SpawnQueue {
         }
     }
 } // end of class
+// Look for the interface/type in SpawnQueue.ts and update it:
+export interface SpawnRequest {
+    role: string;
+    priority: number;
+    homeRoom: string;     // Add this if missing
+    targetRoom?: string;
+    energyBudget?: number; // <--- Add this line!
+    memory?: any;
+    addedAt?: number;      // Add this if missing
+}
 
-module.exports = SpawnQueue;
+export default SpawnQueue;

@@ -10,6 +10,7 @@
     "resolveJsonModule": true,
     "rootDir": "src",
     "sourceMap": false,
+    "outDir": "./dist",
     "types": [
       "screeps",
       "node",
@@ -17,7 +18,7 @@
     ],
     "paths": {
       "*": [
-        "src/*"
+        "./src/*"
       ]
     }
   },

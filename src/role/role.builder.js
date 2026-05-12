@@ -1,5 +1,5 @@
-const BaseRole = require('role/role.base');
-const movementManager = require('manager.movement');
+import BaseRole from 'role.base';
+
 
 class Builder extends BaseRole {
     run() {
@@ -15,4 +15,4 @@ class Builder extends BaseRole {
         }
     }
 }
-module.exports = Builder;
+export default Builder;

@@ -14,11 +14,11 @@
     - Κατάργηση hardcoded strings στη διαχείριση μνήμης.
 */
 
-import ConstructionVisualizer  from './visualizer';
-import BaseLayout from './layout.BaseLayout';
+import ConstructionVisualizer from './visualizer';
+//import BaseLayout from './layout.BaseLayout';
 import FileLayout from './layout.FileLayout';
 import RoadPlanner from './roadPlanner';
-import { MEMORY_KEYS, MAX_CONSTRUCTION_SITE } from './constants';
+import { MEMORY_KEYS, MAX_CONSTRUCTION_SITE } from './construction.constants';
 
 /**
  * SCAN INTERVALS

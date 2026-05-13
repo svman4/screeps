@@ -1,6 +1,4 @@
-import BaseRole from 'role.base';
-
-
+import BaseRole from 'role/role.base';
 class SimpleHarvester extends BaseRole {
     run() {
         if (this.travelToHomeRoom()) return;

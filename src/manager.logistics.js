@@ -1,6 +1,6 @@
 // manager.logistics.js
 import movementManager from 'manager.movement';
-const { STORAGE_LINK_ID } = require('manager.link');
+import { STORAGE_LINK_ID } from 'manager.link';
 /*
 version 1.1.0
 - Added high priority for Storage Link emptying using room.memory.storageLinkId
@@ -584,4 +584,4 @@ const logisticsManager = {
     }
 };
 
-module.exports = logisticsManager;
+export default logisticsManager;

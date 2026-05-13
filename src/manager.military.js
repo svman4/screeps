@@ -2,7 +2,7 @@ var militaryController = {
     /**
      * Κύρια λειτουργία - ελέγχει αν χρειαζόμαστε στρατό και τον δημιουργεί
      */
-    run: function(roomName) {
+    run: function (roomName) {
         const room = Game.rooms[roomName];
         if (!room) return;
 
@@ -13,7 +13,7 @@ var militaryController = {
 
         // Ανίχνευση κατάστασης άμυνας
         const defenseStatus = this.assessDefenseStatus(room, hostiles, towers);
-        
+
         // Απόκριση βάσει κατάστασης
         switch (defenseStatus) {
             case 'CRITICAL':
@@ -35,22 +35,22 @@ var militaryController = {
     /**
      * Αξιολόγηση της κατάστασης άμυνας
      */
-    assessDefenseStatus: function(room, hostiles, towers) {
+    assessDefenseStatus: function (room, hostiles, towers) {
         if (hostiles.length === 0) return 'SAFE';
 
         const hostilePower = this.calculateHostilePower(hostiles);
         const defensePower = this.calculateDefensePower(room, towers);
-        
+
         // Κρίσιμη κατάσταση: εχθροί υπερτερούν σημαντικά
         if (hostilePower > defensePower * 2) {
             return 'CRITICAL';
         }
-        
+
         // Υψηλός κίνδυνος: εχθροί υπερτερούν
         if (hostilePower > defensePower) {
             return 'HIGH_ALERT';
         }
-        
+
         // Χαμηλός κίνδυνος: η άμυνα είναι επαρκής αλλά χρειάζεται ενίσχυση
         return 'LOW_ALERT';
     },
@@ -58,13 +58,13 @@ var militaryController = {
     /**
      * Υπολογισμός εχθρικής δύναμης
      */
-    calculateHostilePower: function(hostiles) {
+    calculateHostilePower: function (hostiles) {
         return hostiles.reduce((power, creep) => {
             const attackParts = creep.getActiveBodyparts(ATTACK);
             const rangedParts = creep.getActiveBodyparts(RANGED_ATTACK);
             const healParts = creep.getActiveBodyparts(HEAL);
             const workParts = creep.getActiveBodyparts(WORK);
-            
+
             return power + (attackParts * 10) + (rangedParts * 8) + (healParts * 6) + (workParts * 5);
         }, 0);
     },
@@ -72,41 +72,41 @@ var militaryController = {
     /**
      * Υπολογισμός αμυντικής δύναμης
      */
-    calculateDefensePower: function(room, towers) {
+    calculateDefensePower: function (room, towers) {
         let power = 0;
-        
+
         // Δύναμη από towers
         power += towers.length * 20;
-        
+
         // Δύναμη από υπάρχοντα στρατιωτικά creeps
         const militaryCreeps = room.find(FIND_MY_CREEPS, {
             filter: creep => creep.memory.role && creep.memory.role.includes('military')
         });
-        
+
         militaryCreeps.forEach(creep => {
             const attackParts = creep.getActiveBodyparts(ATTACK);
             const rangedParts = creep.getActiveBodyparts(RANGED_ATTACK);
             power += (attackParts * 5) + (rangedParts * 4);
         });
-        
+
         return power;
     },
 
     /**
      * ΚΡΙΣΙΜΗ ΑΠΟΚΡΙΣΗ: Δημιουργία έκτακτων μονάδων
      */
-    emergencyResponse: function(room) {
+    emergencyResponse: function (room) {
         console.log(`🚨 CRITICAL DEFENSE in ${room.name}! Emergency military production!`);
-        
+
         const spawns = room.find(FIND_MY_SPAWNS);
         const availableSpawns = spawns.filter(spawn => !spawn.spawning);
-        
+
         if (availableSpawns.length === 0) return;
 
         // Έκτακτη δημιουργία γρήγορων επιθετικών μονάδων
         for (const spawn of availableSpawns) {
             const energyAvailable = room.energyAvailable;
-            
+
             if (energyAvailable >= 130) {
                 this.createEmergencyUnit(spawn, energyAvailable);
             }
@@ -116,17 +116,17 @@ var militaryController = {
     /**
      * Δημιουργία έκτακτης μονάδας
      */
-    createEmergencyUnit: function(spawn, energy) {
+    createEmergencyUnit: function (spawn, energy) {
         let body = [];
-        
+
         if (energy >= 770) {
-            body = [TOUGH,TOUGH,MOVE,MOVE,MOVE,RANGED_ATTACK,RANGED_ATTACK,RANGED_ATTACK,RANGED_ATTACK]; // 770 energy
+            body = [TOUGH, TOUGH, MOVE, MOVE, MOVE, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK]; // 770 energy
         } else if (energy >= 280) {
-            body = [TOUGH,MOVE,ATTACK,RANGED_ATTACK]; // 290 energy
+            body = [TOUGH, MOVE, ATTACK, RANGED_ATTACK]; // 290 energy
         } else {
             body = [MOVE, ATTACK]; // 130 energy - ελάχιστη μονάδα
         }
-        
+
         const name = `EmergencyGuard_${Game.time}`;
         const result = spawn.spawnCreep(body, name, {
             memory: {
@@ -136,7 +136,7 @@ var militaryController = {
                 emergency: true
             }
         });
-        
+
         if (result === OK) {
             console.log(`🆘 Spawning EMERGENCY guard in ${spawn.room.name}`);
         }
@@ -145,7 +145,7 @@ var militaryController = {
     /**
      * ΑΠΟΚΡΙΣΗ ΥΨΗΛΟΥ ΣΗΜΑΤΟΣ
      */
-    highAlertResponse: function(room) {
+    highAlertResponse: function (room) {
         const existingMilitary = room.find(FIND_MY_CREEPS, {
             filter: creep => creep.memory.role && creep.memory.role.includes('military')
         }).length;
@@ -154,7 +154,7 @@ var militaryController = {
         if (existingMilitary < 3) {
             this.createBalancedSquad(room);
         }
-        
+
         // Διαχείριση υπαρχόντων μονάδων
         this.manageMilitaryCreeps(room);
     },
@@ -162,10 +162,10 @@ var militaryController = {
     /**
      * Δημιουργία ισορροπημένης ομάδας
      */
-    createBalancedSquad: function(room) {
+    createBalancedSquad: function (room) {
         const spawns = room.find(FIND_MY_SPAWNS);
         const availableSpawns = spawns.filter(spawn => !spawn.spawning);
-        
+
         if (availableSpawns.length === 0) return;
 
         const militaryCount = room.find(FIND_MY_CREEPS, {
@@ -188,10 +188,10 @@ var militaryController = {
     /**
      * Δημιουργία Guard
      */
-    createGuard: function(spawn) {
+    createGuard: function (spawn) {
         const body = [TOUGH, MOVE, ATTACK, ATTACK]; // 280 energy
         const name = `Guard_${Game.time}`;
-        
+
         spawn.spawnCreep(body, name, {
             memory: {
                 role: 'military_guard',
@@ -204,13 +204,13 @@ var militaryController = {
     /**
      * Δημιουργία Ranged Attacker
      */
-    createRangedAttacker: function(spawn) {
+    createRangedAttacker: function (spawn) {
         const body = [MOVE, MOVE, RANGED_ATTACK, RANGED_ATTACK]; // 300 energy
         const name = `Ranger_${Game.time}`;
-        
+
         spawn.spawnCreep(body, name, {
             memory: {
-                role: 'military_ranger', 
+                role: 'military_ranger',
                 homeRoom: spawn.room.name,
                 mission: 'defend'
             }
@@ -220,36 +220,36 @@ var militaryController = {
     /**
      * ΑΠΟΚΡΙΣΗ ΧΑΜΗΛΟΥ ΣΗΜΑΤΟΣ
      */
-    lowAlertResponse: function(room) {
+    lowAlertResponse: function (room) {
         // Μόνο παρακολούθηση - δημιουργία μονάδων μόνο αν υπάρχει πλεόνασμα energy
         const energyStatus = room.energyAvailable / room.energyCapacityAvailable;
-        
+
         if (energyStatus > 0.8) { // 80%+ energy capacity
             const existingMilitary = room.find(FIND_MY_CREEPS, {
                 filter: creep => creep.memory.role && creep.memory.role.includes('military')
             }).length;
-            
+
             if (existingMilitary < 2) {
                 this.createScout(room);
             }
         }
-        
+
         this.manageMilitaryCreeps(room);
     },
 
     /**
      * Δημιουργία Scout (φθηνή μονάδα παρακολούθησης)
      */
-    createScout: function(room) {
+    createScout: function (room) {
         const spawns = room.find(FIND_MY_SPAWNS, {
             filter: spawn => !spawn.spawning
         });
-        
+
         if (spawns.length === 0) return;
-        
+
         const body = [MOVE, ATTACK]; // 130 energy
         const name = `Scout_${Game.time}`;
-        
+
         spawns[0].spawnCreep(body, name, {
             memory: {
                 role: 'military_scout',
@@ -262,7 +262,7 @@ var militaryController = {
     /**
      * ΔΙΑΧΕΙΡΙΣΗ ΣΤΡΑΤΙΩΤΙΚΩΝ CREEPS
      */
-    manageMilitaryCreeps: function(room) {
+    manageMilitaryCreeps: function (room) {
         const hostiles = room.find(FIND_HOSTILE_CREEPS);
         const militaryCreeps = room.find(FIND_MY_CREEPS, {
             filter: creep => creep.memory.role && creep.memory.role.includes('military')
@@ -281,7 +281,7 @@ var militaryController = {
                     this.runScout(creep, hostiles);
                     break;
             }
-            
+
             // Αποσύνθεση έκτακτων μονάδων όταν δεν χρειάζονται
             if (creep.memory.emergency && hostiles.length === 0) {
                 if (creep.ticksToLive < 100) {
@@ -296,78 +296,78 @@ var militaryController = {
      */
     // ... (Στο militaryController)
 
-/**
- * Συμπεριφορά Guard (Διορθωμένη για ATTACK - melee)
- */
-runGuard: function(creep, hostiles) {
-    if(this.travelToHomeRoom(creep) ){ return; } 
-    if (hostiles.length > 0) {
-        const target = creep.pos.findClosestByRange(hostiles);
+    /**
+     * Συμπεριφορά Guard (Διορθωμένη για ATTACK - melee)
+     */
+    runGuard: function (creep, hostiles) {
+        if (this.travelToHomeRoom(creep)) { return; }
+        if (hostiles.length > 0) {
+            const target = creep.pos.findClosestByRange(hostiles);
 
-        // Χρησιμοποιούμε attack() για τα melee μέρη
-        if (creep.attack(target) === ERR_NOT_IN_RANGE) {
-            // Κινείται μόνο αν δεν είναι δίπλα στον στόχο
-            creep.moveTo(target, {visualizePathStyle: {stroke: '#ff0000'}});
+            // Χρησιμοποιούμε attack() για τα melee μέρη
+            if (creep.attack(target) === ERR_NOT_IN_RANGE) {
+                // Κινείται μόνο αν δεν είναι δίπλα στον στόχο
+                creep.moveTo(target, { visualizePathStyle: { stroke: '#ff0000' } });
+            }
+        } else {
+            // Patrol mode
+            this.patrol(creep);
         }
-    } else {
-        // Patrol mode
-        this.patrol(creep);
-    }
-},
+    },
 
     /**
      * Συμπεριφορά Ranger
      */
-   // ... (Στο militaryController)
+    // ... (Στο militaryController)
 
-/**
- * Συμπεριφορά Ranger (Διορθωμένη για RANGED_ATTACK)
- */
-runRanger: function(creep, hostiles) {
-    if (hostiles.length > 0) {
-        const target = creep.pos.findClosestByRange(hostiles);
-        const range = creep.pos.getRangeTo(target);
+    /**
+     * Συμπεριφορά Ranger (Διορθωμένη για RANGED_ATTACK)
+     */
+    runRanger: function (creep, hostiles) {
+        if (hostiles.length > 0) {
+            const target = creep.pos.findClosestByRange(hostiles);
+            const range = creep.pos.getRangeTo(target);
 
-        // Πρώτα επιτίθεται (η επίθεση λειτουργεί σε range <= 3)
-        creep.rangedAttack(target);
+            // Πρώτα επιτίθεται (η επίθεση λειτουργεί σε range <= 3)
+            creep.rangedAttack(target);
 
-        if (range > 3) {
-            // Κινείται προς τον στόχο αν είναι εκτός εμβέλειας
-            creep.moveTo(target, {visualizePathStyle: {stroke: '#ffaa00'}});
-        } else if (range < 3 && hostiles.length > 1) {
-             // Ελαφριά υποχώρηση για να διατηρηθεί η εμβέλεια ή για AoE
-             const retreatDir = creep.pos.getDirectionTo(target) + 4;
-             creep.move(retreatDir % 8);
+            if (range > 3) {
+                // Κινείται προς τον στόχο αν είναι εκτός εμβέλειας
+                creep.moveTo(target, { visualizePathStyle: { stroke: '#ffaa00' } });
+            } else if (range < 3 && hostiles.length > 1) {
+                // Ελαφριά υποχώρηση για να διατηρηθεί η εμβέλεια ή για AoE
+                const retreatDir = creep.pos.getDirectionTo(target) + 4;
+                creep.move(retreatDir % 8);
+            }
+            // Αν range === 3, απλά μένει ακίνητος και επιτίθεται
+        } else {
+            this.patrol(creep);
         }
-        // Αν range === 3, απλά μένει ακίνητος και επιτίθεται
-    } else {
-        this.patrol(creep);
-    }
-},
-travelToHomeRoom:function(creep) {
-    const homeRoom = creep.memory.homeRoom;
-    if (creep.room.name !== homeRoom) {
-        creep.moveTo(new RoomPosition(25, 25, homeRoom), { 
-            visualizePathStyle: { stroke: '#ffffff' },
-            reusePath: 50
-        });
-        return true; // Είναι σε διαδικασία ταξιδιού
-    }
-    return false; // Είναι στο home room του
-},
+    },
+    travelToHomeRoom: function (creep) {
+        const homeRoom = creep.memory.homeRoom;
+        if (creep.room.name !== homeRoom) {
+            creep.moveTo(new RoomPosition(25, 25, homeRoom), {
+                visualizePathStyle: { stroke: '#ffffff' },
+                reusePath: 50
+            });
+            return true; // Είναι σε διαδικασία ταξιδιού
+        }
+        return false; // Είναι στο home room του
+    },
     /**
      * Συμπεριφορά Scout
      */
-    runScout: function(creep, hostiles) {
-        if (this.travelToHomeRoom(creep) ){
+    runScout: function (creep, hostiles) {
+        if (this.travelToHomeRoom(creep)) {
             return;
         }
-           
+
         if (hostiles.length > 0) {
             // Κράτα απόσταση και επιτέθου από μακριά
             const target = creep.pos.findClosestByRange(hostiles);
             if (creep.pos.getRangeTo(target) > 3) {
-                creep.moveTo(target, {visualizePathStyle: {stroke: '#00ff00'}});
+                creep.moveTo(target, { visualizePathStyle: { stroke: '#00ff00' } });
             } else {
                 creep.rangedAttack(target);
                 // Κράτα απόσταση
@@ -382,9 +382,9 @@ travelToHomeRoom:function(creep) {
     /**
      * Patrol λειτουργία
      */
-    patrol: function(creep) {
+    patrol: function (creep) {
         const room = creep.room;
-        
+
         // Patrol σε σημαντικά σημεία
         const patrolPoints = [
             room.controller.pos,
@@ -403,18 +403,18 @@ travelToHomeRoom:function(creep) {
             // Επόμενο patrol point
             creep.memory.patrolTarget = (currentTarget + 1) % patrolPoints.length;
         } else {
-            creep.moveTo(targetPos, {visualizePathStyle: {stroke: '#ffffff'}});
+            creep.moveTo(targetPos, { visualizePathStyle: { stroke: '#ffffff' } });
         }
     },
 
     /**
      * Ανακύκλωση creep
      */
-    recycleCreep: function(creep) {
-        creep.memory.role="to_be_recycled";
-        
+    recycleCreep: function (creep) {
+        creep.memory.role = "to_be_recycled";
+
         // const spawn = creep.pos.findClosestByRange(FIND_MY_SPAWNS);
-        
+
         // if (spawn && creep.pos.isNearTo(spawn)) {
         //     spawn.recycleCreep(creep);
         // } else if (spawn) {
@@ -425,7 +425,7 @@ travelToHomeRoom:function(creep) {
     /**
      * ΠΕΡΙΟΔΟΣ ΕΙΡΗΝΗΣ
      */
-    peaceTimeMaintenance: function(room) {
+    peaceTimeMaintenance: function (room) {
         const militaryCreeps = room.find(FIND_MY_CREEPS, {
             filter: creep => creep.memory.role && creep.memory.role.includes('military')
         });
@@ -439,4 +439,4 @@ travelToHomeRoom:function(creep) {
     }
 };
 
-module.exports = militaryController;
+export default militaryController;

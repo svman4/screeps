@@ -14,7 +14,8 @@
     "types": [
       "screeps",
       "node",
-      "lodash"
+      "lodash",
+      "jest"
     ],
     "paths": {
       "*": [
@@ -23,7 +24,8 @@
     }
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "tests/spawn/SpawnQueue.test.ts"
   ],
   "exclude": [
     "node_modules",

@@ -8,7 +8,7 @@
  * 2.5.0: Πλήρες Refactoring σε αυτόνομες μεθόδους. Βελτίωση λογικής αυτοκτονίας.
  * 2.4.1: Διόρθωση logs και debugging για το NEED_REPLACEMENT_FLAG.
  */
-import BaseRole from 'role.base';
+import BaseRole from 'role/role.base';
 import movementManager from 'manager.movement';
 import { NEED_REPLACEMENT_FLAG } from 'spawn/spawn.constants';
 
@@ -172,4 +172,4 @@ class StaticHarvester extends BaseRole {
     }
 }
 
-module.exports = StaticHarvester;
+export default StaticHarvester;

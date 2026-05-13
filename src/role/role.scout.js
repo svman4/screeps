@@ -1,4 +1,4 @@
-import BaseRole from 'role.base';
+import BaseRole from 'role/role.base';
 
 import expansionManager from 'manager.expansion';
 

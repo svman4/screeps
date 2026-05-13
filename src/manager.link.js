@@ -8,7 +8,7 @@
  */
 
 const LIMIT_FOR_START_TRANSFER = 400;
-const STORAGE_LINK_ID = "storageLinkId";
+export const STORAGE_LINK_ID = "storageLinkId";
 
 class LinkManager {
     /**
@@ -37,7 +37,7 @@ class LinkManager {
      * Κύρια λογική εκτέλεσης.
      */
     run() {
-        if (this.links.length < 2) return; 
+        if (this.links.length < 2) return;
 
         const { senders, storageLink, controllerLink } = this.categories;
 
@@ -50,7 +50,7 @@ class LinkManager {
             // ΠΡΟΤΕΡΑΙΟΤΗΤΑ 1: Controller (Upgrading)
             if (controllerLink && controllerLink.store.getFreeCapacity(RESOURCE_ENERGY) >= LIMIT_FOR_START_TRANSFER) {
                 sender.transferEnergy(controllerLink);
-                continue; 
+                continue;
             }
 
             // ΠΡΟΤΕΡΑΙΟΤΗΤΑ 2: Storage
@@ -81,7 +81,7 @@ class LinkManager {
                 controllerLink = link;
                 receivers.push(link);
                 isSpecial = true;
-            } 
+            }
             // Link κοντά στο Storage (Hub)
             else if (storage && link.pos.inRangeTo(storage, 2)) {
                 storageLink = link;
@@ -100,8 +100,8 @@ class LinkManager {
     }
 }
 
-module.exports = {STORAGE_LINK_ID,
-    run: function(roomName) {
+export default {
+    run: function (roomName) {
         const room = Game.rooms[roomName];
         if (!room) return;
 

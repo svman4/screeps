@@ -8,6 +8,9 @@ export default {
   input: 'src/main.ts',
   onwarn: (warning, warn) => {
     // Αν το Rollup δεν μπορεί να βρει ένα module (Unresolved Import)
+    console.log('--- DEBUG WARNING START ---');
+    console.log(warning);
+    console.log('--- DEBUG WARNING END ---');
     if (warning.code === 'UNRESOLVED_IMPORT') {
       throw new Error(
         `ΣΦΑΛΜΑ: Το module "${warning.source}" δεν βρέθηκε! \n` +

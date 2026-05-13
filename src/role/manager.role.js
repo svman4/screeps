@@ -1,15 +1,15 @@
 import movementManager from 'manager.movement';
-import harvester from "role.harvester";
-import simpleHarvester from "role.simpleHarvester";
-import upgrader from "role.upgrader";
-import staticHarvester from "role.staticHarvester";
-import builder from "role.builder";
-import claimer from "role.claimer";
-import scout from "role.scout";
-import supporter from "role.supporter";
-import LDHarvester from "role.lDHarvester";
-import miner from "role.miner";
-import recycleCreep from "role.recycleCreep";
+import harvester from "./role.harvester";
+import simpleHarvester from "./role.simpleHarvester";
+import upgrader from "./role.upgrader";
+import staticHarvester from "./role.staticHarvester";
+import builder from "./role.builder";
+import claimer from "./role.claimer";
+import scout from "./role.scout";
+import supporter from "./role.supporter";
+import LDHarvester from "./role.lDHarvester";
+import miner from "./role.miner";
+import recycleCreep from "./role.recycleCreep";
 
 const roleManager = {
     roleClasses: {

@@ -356,4 +356,4 @@ class BaseRole {
     }
 }
 
-module.exports = BaseRole;
+export default BaseRole;

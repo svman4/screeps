@@ -1,4 +1,4 @@
-import BaseRole from 'role.base';
+import BaseRole from 'role/role.base';
 import movementManager from 'manager.movement';
 
 class To_be_recycled extends BaseRole {

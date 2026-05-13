@@ -35,17 +35,7 @@
  * VERSION 1.1.0 Ακύρωση λειτουργίας storageContainer
  */
 import { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG } from './spawn.constants';
-const DEBUG_STATE = false;
-const debugText = function (text: string) {
-    if (DEBUG_STATE) {
-
-        console.log(`[SpawnManager] ${text}`);
-    }
-}
-const debugObject = function (obj: any, text: string) {
-    if (!DEBUG_STATE) return;
-    console.log(text + "\n" + JSON.stringify(obj, null, 2));
-}
+import debugConsole from '../utils/debug';
 class PopulationManager {
     constructor() {
         // Ο constructor παραμένει καθαρός από σταθερές παραμέτρους
@@ -156,7 +146,7 @@ class PopulationManager {
         // ΥΠολογίζει τα carry Που χρειάζονται από το target στο controller
         if (context.links && context.links.length >= context.sources.length + 2) {
             totalCarryRequired += 0;
-            debugText("Links cover all sources and target, no carry needed from target to controller");
+            debugConsole.textToPrint("PopulationManager", "Links cover all sources and target, no carry needed from target to controller");
             /* έφοσον έχουμε πάνω από τρία link σημαίνει πως τουλάχιστον δύο πηγές γεμίζουν το link του controller οπότε και δε χρειάζεται
                 να πηγαίνει hauler
             */
@@ -166,8 +156,8 @@ class PopulationManager {
             const upgradeRate = Math.min(this._calculateAvailableWorkParts(context), 15);
             totalCarryRequired += (upgradeRate * controllerDistance * 2) / CARRY_CAPACITY;
         }
-        debugText("totalCarry after controller" + totalCarryRequired);
-        debugText("totalCarry after controllers" + totalCarryRequired);
+        debugConsole.textToPrint("PopulationManager", "totalCarry after controller" + totalCarryRequired);
+        debugConsole.textToPrint("PopulationManager", "totalCarry after controllers" + totalCarryRequired);
         // ---------
         totalCarryRequired = (totalCarryRequired + POPULATION_MODULE_CONFIG.EXTENSION_CARRY_BONUS) * POPULATION_MODULE_CONFIG.DISTANCE_PADDING;
 

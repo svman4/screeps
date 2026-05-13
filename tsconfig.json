@@ -8,7 +8,10 @@
     "noImplicitAny": false,
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "rootDir": "src",
+    "rootDirs": [
+      "src",
+      "tests"
+    ],
     "sourceMap": false,
     "outDir": "./dist",
     "types": [

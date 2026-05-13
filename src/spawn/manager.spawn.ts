@@ -12,20 +12,12 @@
  * 2.6.0: Απόσπαση της διαχείρισης ουράς στην κλάση SpawnQueue.
  */
 
-const DEBUG_STATE = true;
-const debugText = function (text: string) {
-    if (DEBUG_STATE) {
-        console.log(`[SpawnManager] ${text}`);
-    }
-}
-const debugObject = function (obj: any, text: string) {
-    if (!DEBUG_STATE) return;
-    console.log(text + "\n" + JSON.stringify(obj, null, 2));
-}
+
 
 import SpawnQueue from './SpawnQueue';
 import PopulationManager from './populationManager';
 import { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG, BODY_ENERGY_LIMITS, PRIORITY } from './spawn.constants';
+import debug from "utils/debug";
 import _ from "lodash";
 
 class SpawnManager {
@@ -43,7 +35,7 @@ class SpawnManager {
         this.cleanup();
         // Εκτύπωση της ουράς για debugging
         if (this.queue.length > 0) {
-            debugObject(this.queue, "--- Current Spawn Queue " + this.queue.length + " ---");
+            debug.objectToPrint("Spawn", "--- Current Spawn Queue " + this.queue.length + " ---", this.queue);
         }
 
         // Έλεγχος αναγκών για κάθε δωμάτιο που ελέγχουμε
@@ -67,7 +59,7 @@ class SpawnManager {
 
         const limits = Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY];
         if (!limits) return;
-        debugObject(limits, `Checking needs for ${roomName}`);
+        debug.objectToPrint("Spawn", `Checking needs for ${roomName}`, limits);
         // 1. Έλεγχος βάσει αριθμού Creeps (κυρίως για Harvesters σε Recovery/Early stage)
 
         if (limits[POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]) {
@@ -154,7 +146,7 @@ class SpawnManager {
         const smallestParts = smallestCreep.getActiveBodyparts(primaryPart);
 
         if (partsPerMaxCreep >= smallestParts * 2 && room.energyAvailable >= maxBudget * 0.9) {
-            debugText(`Upgrading ${role} in ${room.name}`);
+            debug.textToPrint("Spawn", `Upgrading ${role} in ${room.name}`);
             this.addRoleToQueue(room.name, role, maxBudget);
         }
     }
@@ -202,7 +194,7 @@ class SpawnManager {
                 });
 
                 if (result === OK) {
-                    debugText(`Spawning ${name} at ${spawn.name} for ${request.targetRoom}`);
+                    debug.textToPrint("Spawn", `Spawning ${name} at ${spawn.name} for ${request.targetRoom}`);
                     this.queue.removeAt(i);
                     i--; // Προσαρμογή του δείκτη μετά την αφαίρεση          
                 }

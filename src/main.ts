@@ -1,21 +1,20 @@
 import { ErrorMapper } from "./utils/ErrorMapper";
-import spawnManager from "./spawn/manager.spawn";
-import defenceManager from "./manager.defense";
-import constructionManager from "./construction/manager.construction";
-import expansionManager from "./manager.expansion";
-import logisticsManager from "./manager.logistics";
-import militaryController from "./manager.military";
+import spawnManager from "spawn/manager.spawn";
+import defenceManager from "manager.defense";
+import constructionManager from "construction/manager.construction";
+import expansionManager from "manager.expansion";
+import logisticsManager from "manager.logistics";
+import militaryController from "manager.military";
 import roleManager from "./role/manager.role";
-import market from "./manager.market";
-import pixels from "./manager.pixels";
-import linkManager from "./manager.link";
+import market from "manager.market";
+import pixels from "manager.pixels";
+import linkManager from "manager.link";
 
 // Δήλωση των Global συναρτήσεων για το TypeScript
 declare global {
     interface Memory {
         debug: { status: boolean };
-        energyQueue: { [roomName: string]: any };
-
+        energyQueue?: { [roomName: string]: any[] };
     }
     interface CreepMemory {
         role: string;

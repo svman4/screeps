@@ -2,7 +2,7 @@ import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import typescript from '@rollup/plugin-typescript';
 import terser from '@rollup/plugin-terser';
-
+import copy from 'rollup-plugin-copy';
 export default {
   // Το σημείο εισόδου της εφαρμογής σου
   input: 'src/main.ts',
@@ -13,18 +13,18 @@ export default {
     console.log('--- DEBUG WARNING END ---');
     if (warning.code === 'UNRESOLVED_IMPORT') {
       throw new Error(
-        `ΣΦΑΛΜΑ: Το module "${warning.source}" δεν βρέθηκε! \n` +
-        `Βεβαιώσου ότι το path είναι σωστό (π.χ. "./constants" αντί για "constants")`
+        `Unresolved import: ${warning.source}. Please check if the module exists and is correctly imported.`
       );
     }
     warn(warning);
   },
-  output: {
+  output: [{
     file: 'dist/main.js',
     format: 'cjs',
     sourcemap: false,
     exports: 'named'
-  },
+  }
+  ],
 
   external: ["lodash"],
   plugins: [
@@ -51,6 +51,15 @@ export default {
       mangle: {
         toplevel: true // Mangle μόνο τις τοπικές μεταβλητές, όχι τις παγκόσμιες που μπορεί να χρειάζονται για το Screeps
       }
+    }),
+    copy({
+      targets: [
+        {
+          src: 'dist/main.js',
+          dest: 'C:/Users/gerak/AppData/Local/Screeps/scripts/jayseegames_com___21025/testing'
+        }
+      ],
+      hook: 'writeBundle' // Εκτελείται αφού γραφτεί το αρχείο στο dist
     })
   ]
 };

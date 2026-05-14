@@ -23,6 +23,9 @@ declare global {
         // room?: string;
         // working?: boolean;
     }
+    interface RoomMemory {
+        wallLimit?: number;
+    }
     namespace NodeJS {
         interface Global {
             RoomInfo: () => string;

@@ -36,7 +36,8 @@ export default {
     typescript({
       tsconfig: './tsconfig.json',
       outDir: "dist",
-      declaration: false
+      declaration: false,
+      tslib: require('tslib')
 
     }),
     // Optimization για CPU: Αφαίρεση κενών, σχολίων και mangle μεταβλητών
@@ -56,7 +57,7 @@ export default {
       targets: [
         {
           src: 'dist/main.js',
-          dest: 'C:/Users/gerak/AppData/Local/Screeps/scripts/jayseegames_com___21025/testing'
+          dest: 'C:/Users/gerak/AppData/Local/Screeps/scripts/screeps.com/testing'
         }
       ],
       hook: 'writeBundle' // Εκτελείται αφού γραφτεί το αρχείο στο dist

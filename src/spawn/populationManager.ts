@@ -47,8 +47,9 @@ class PopulationManager {
      * @returns {Object} Τα όρια πληθυσμού χωρισμένα σε creeps και parts.
      */
     calculateLimits(room: Room) {
-        const context = this._createContext(room);
 
+        const context = this._createContext(room);
+        //debugConsole.objectToPrint("PopulationManager", "Context for room " + room.name, context);
         // Αν το δωμάτιο είναι σε κατάσταση έκτακτης ανάγκης
         if (context.isRecovery) {
             return this._getRecoveryLimits(context);

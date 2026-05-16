@@ -33,16 +33,17 @@ class SpawnManager {
      */
     run() {
         this.cleanup();
+        debug.textToPrint("Spawn", `Running Spawn Manager - Queue Length: ${this.queue.length}`);
         // Εκτύπωση της ουράς για debugging
-        if (this.queue.length > 0) {
-            debug.objectToPrint("Spawn", "--- Current Spawn Queue " + this.queue.length + " ---", this.queue);
-        }
+        // if (this.queue.length > 0) {
+        //     debug.objectToPrint("Spawn", "--- Current Spawn Queue " + this.queue.length + " ---", this.queue);
+        // }
 
         // Έλεγχος αναγκών για κάθε δωμάτιο που ελέγχουμε
         for (const roomName in Game.rooms) {
             const room = Game.rooms[roomName];
             if (room.controller && room.controller.my) {
-                //this.checkRoomNeeds(roomName);
+                this.checkRoomNeeds(roomName);
             }
         }
 
@@ -72,7 +73,7 @@ class SpawnManager {
                 }
             }
         }
-        return;
+
         // 2. Έλεγχος βάσει Body Parts (για Scaling & Efficiency)
         if (limits[POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]) {
             for (const role in limits[POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]) {

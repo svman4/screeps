@@ -11,18 +11,7 @@
  * 2.7.0: Υλοποίηση parts-based spawning. Αντικατάσταση TODO με countPartsInRoom logic.
  * 2.6.0: Απόσπαση της διαχείρισης ουράς στην κλάση SpawnQueue.
  */
-
-const DEBUG_STATE = true;
-const debugText = function (text) {
-    if (DEBUG_STATE) {
-        console.log(`[SpawnManager] ${text}`);
-    }
-}
-const debugObject = function (obj, text) {
-    if (!DEBUG_STATE) return;
-    console.log(text + "\n" + JSON.stringify(obj, null, 2));
-}
-
+const debugConsole = require("utils.debugConsole");
 const SpawnQueue = require('spawn.SpawnQueue');
 const PopulationManager = require('spawn.populationManager');
 const { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG, BODY_ENERGY_LIMITS, PRIORITY } = require('./spawn.constants');
@@ -40,7 +29,7 @@ class SpawnManager {
         this.cleanup();
         // Εκτύπωση της ουράς για debugging
         if (this.queue.length > 0) {
-            debugObject(this.queue, "--- Current Spawn Queue " + this.queue.length + " ---");
+            debugConsole.debugObject("spawnManager", "--- Current Spawn Queue " + this.queue.length + " ---", this.queue);
         }
         // Έλεγχος αναγκών για κάθε δωμάτιο που ελέγχουμε
         for (const roomName in Game.rooms) {
@@ -63,7 +52,7 @@ class SpawnManager {
 
         const limits = Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY];
         if (!limits) return;
-        debugObject(limits, `Checking needs for ${roomName}`);
+        // debugConsole.debugObject("spawnManager", `Checking needs for ${roomName}`,limits);
         // 1. Έλεγχος βάσει αριθμού Creeps (κυρίως για Harvesters σε Recovery/Early stage)
 
         if (limits[POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]) {

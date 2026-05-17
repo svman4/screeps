@@ -35,17 +35,7 @@
  * VERSION 1.1.0 Ακύρωση λειτουργίας storageContainer
  */
 const { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG } = require('./spawn.constants');
-const DEBUG_STATE = false;
-const debugText = function (text) {
-    if (DEBUG_STATE) {
-
-        console.log(`[SpawnManager] ${text}`);
-    }
-}
-const debugObject = function (obj, text) {
-    if (!DEBUG_STATE) return;
-    console.log(text + "\n" + JSON.stringify(obj, null, 2));
-}
+const debugConsole = require("utils.debugConsole");
 class PopulationManager {
     constructor() {
         // Ο constructor παραμένει καθαρός από σταθερές παραμέτρους
@@ -139,7 +129,7 @@ class PopulationManager {
          */
         let totalCarryRequired = 0;
         if (context.links && context.links.length >= context.sources.length + 2) {
-            //debugText("Links cover all sources and target, no carry needed from sources to target");
+            //debugConsole.debugText("populationManager","Links cover all sources and target, no carry needed from sources to target");
             totalCarryRequired += 0;
             /* αν έχουμε όλα τα links ολοκληρώμενα (όσα είναι οι πηγές + του storage+του controller) 
             τότε δε χρειάζεται να υπολογίσουμε την απόσταση από κάθε πηγή σε target | storage.
@@ -151,12 +141,12 @@ class PopulationManager {
                 totalCarryRequired += (ENERGY_INCOME_TICK * distance * 2) / CARRY_CAPACITY;
             });
         }
-        //debugText("-0------");
-        //debugText("totalCarry after sources" + totalCarryRequired + "links " + context.links.length);
+        //debugConsole.debugText("populationManager", "-------");
+        //debugConsole.debugText("populationManager", "totalCarry after sources" + totalCarryRequired + "links " + context.links.length);
         // ΥΠολογίζει τα carry Που χρειάζονται από το target στο controller
         if (context.links && context.links.length >= context.sources.length + 2) {
             totalCarryRequired += 0;
-            debugText("Links cover all sources and target, no carry needed from target to controller");
+            //  debugConsole.debugText("populationManager", "Links cover all sources and target, no carry needed from target to controller");
             /* έφοσον έχουμε πάνω από τρία link σημαίνει πως τουλάχιστον δύο πηγές γεμίζουν το link του controller οπότε και δε χρειάζεται
                 να πηγαίνει hauler
             */
@@ -166,8 +156,7 @@ class PopulationManager {
             const upgradeRate = Math.min(this._calculateAvailableWorkParts(context), 15);
             totalCarryRequired += (upgradeRate * controllerDistance * 2) / CARRY_CAPACITY;
         }
-        debugText("totalCarry after controller" + totalCarryRequired);
-        debugText("totalCarry after controllers" + totalCarryRequired);
+        //debugConsole.debugText("populationManager", "totalCarry after controller " + totalCarryRequired);
         // ---------
         totalCarryRequired = (totalCarryRequired + POPULATION_MODULE_CONFIG.EXTENSION_CARRY_BONUS) * POPULATION_MODULE_CONFIG.DISTANCE_PADDING;
 

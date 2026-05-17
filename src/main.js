@@ -66,7 +66,7 @@ module.exports.loop = function () {
 
             // HIGH PRIORITY - Πάντα τρέχουν
             runAndCatch((name) => defenceManager.run(name), "Error on defenceManager (" + roomName + ")", roomName);
-            runAndCatch((name) => militaryController.run(name), "Error on militaryController (" + roomName + ")", roomName);
+           // runAndCatch((name) => militaryController.run(name), "Error on militaryController (" + roomName + ")", roomName);
 
             runAndCatch((name) => logisticsManager.run(name), "Error on logisticsManager (" + roomName + ")", roomName);
 

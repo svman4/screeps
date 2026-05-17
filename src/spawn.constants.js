@@ -54,10 +54,13 @@ const POPULATION_GLOBAL_CONFIG = {
     MEMORY_KEY_PARTS: "parts"
 
 };
-
+const SPAWN_MANAGER_CONFIG = {
+    POPULATION_LIMIT_REFRESH_RATE: 50 //κάθε 50 TT
+}
 // --- MODULE SPECIFIC CONFIGURATION ---
 // Ρυθμίσεις που αφορούν αποκλειστικά τη λογική του Population Manager
 const POPULATION_MODULE_CONFIG = {
+
     // Efficiency values
     WORK_EFFICIENCY: 2,          // 1 WORK part = 2 energy per tick harvest
     UPGRADE_EFFICIENCY: 1,       // 1 WORK part = 1 energy per tick upgrade
@@ -81,5 +84,6 @@ module.exports = {
     BODY_ENERGY_LIMITS,
     PRIORITY,
     POPULATION_GLOBAL_CONFIG,
-    POPULATION_MODULE_CONFIG
+    POPULATION_MODULE_CONFIG,
+    SPAWN_MANAGER_CONFIG
 };

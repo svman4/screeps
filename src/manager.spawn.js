@@ -27,10 +27,11 @@ class SpawnManager {
      */
     run() {
         this.cleanup();
+		
         // Εκτύπωση της ουράς για debugging
-        if (this.queue.length > 0) {
-            debugConsole.debugObject("spawnManager", "--- Current Spawn Queue " + this.queue.length + " ---", this.queue);
-        }
+        //if (this.queue.length > 0) {
+            //debugConsole.debugObject("spawnManager", "--- Current Spawn Queue " + this.queue.length + " ---", this.queue);
+        //}
         // Έλεγχος αναγκών για κάθε δωμάτιο που ελέγχουμε
         for (const roomName in Game.rooms) {
             const room = Game.rooms[roomName];
@@ -65,7 +66,7 @@ class SpawnManager {
                 }
             }
         }
-        return;
+        //return;
         // 2. Έλεγχος βάσει Body Parts (για Scaling & Efficiency)
         if (limits[POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]) {
             for (const role in limits[POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]) {
@@ -137,7 +138,7 @@ class SpawnManager {
         const smallestParts = smallestCreep.getActiveBodyparts(primaryPart);
 
         if (partsPerMaxCreep >= smallestParts * 2 && room.energyAvailable >= maxBudget * 0.9) {
-            debugText(`Upgrading ${role} in ${room.name}`);
+            debugConsole.debugText("spawnManager",`Upgrading ${role} in ${room.name}`);
             this.addRoleToQueue(room.name, role, maxBudget);
         }
     }
@@ -149,18 +150,22 @@ class SpawnManager {
         const smallestParts = smallestCreep.getActiveBodyparts(primaryPart);
 
         if (partsPerMaxCreep >= smallestParts * 2 && room.energyAvailable >= maxBudget * 0.9) {
-            debugText(`Upgrading ${role} in ${room.name}`);
+            debugConsole.debugText("spawnManager",`Upgrading ${role} in ${room.name}`);
             this.addRoleToQueue(room.name, role, maxBudget);
         }
     }
+	// TODO τι κάνει αυτό.
+	
     addRoleToQueue(roomName, role, budget) {
-        this.queue.add({
+		const answer={
             role: role,
             targetRoom: roomName,
             priority: PRIORITY[role] || 50,
-            energyBudget: budget, // Αποθήκευση του budget στην ουρά
+            energyBudget: budget,
             addedAt: Game.time
-        });
+        };
+		debugConsole.debugObject("spawnManager","roleToQueue",answer);
+        this.queue.add(answer);
     }
 
     /**
@@ -177,7 +182,8 @@ class SpawnManager {
      */
     processQueue() {
         if (this.queue.length === 0) return;
-
+		//TODO δεν δημιουργεί σωστά τα creep.
+		return;
         for (let i = 0; i < this.queue.length; i++) {
             const request = this.queue.getAt(i);
             const spawn = this.findBestSpawn(request);
@@ -196,7 +202,7 @@ class SpawnManager {
                 });
 
                 if (result === OK) {
-                    debugText(`Spawning ${name} at ${spawn.name} for ${request.targetRoom}`);
+                    debugConsole.debugObject("spawnManager",`Spawning ${name} at ${spawn.name} for ${request.targetRoom}`);
                     this.queue.removeAt(i);
                     i--; // Διόρθωση index μετά την αφαίρεση
                 }

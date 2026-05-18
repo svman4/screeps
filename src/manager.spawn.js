@@ -189,7 +189,7 @@ class SpawnManager {
             memory: memory,
             addedAt: Game.time
         };
-        debugConsole.debugObject("spawnManager", "roleToQueue", request);
+        //debugConsole.debugObject("spawnManager", "roleToQueue", request);
         this.queue.add(request);
     }
 

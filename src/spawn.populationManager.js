@@ -235,11 +235,14 @@ class PopulationManager {
                 [ROLES.STATIC_HARVESTER]: 0
             },
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
-                [ROLES.HAULER]: this._calculateCarryQuota(context)
+                [ROLES.HAULER]: 0,
+                [ROLES.UPGRADER]: 2,
+                [ROLES.BUILDER]: 0
+                // this._calculateCarryQuota(context)
             },
             isRecovery: false
         };
-        this._distributeWorkQuotas(context, limits);
+        //this._distributeWorkQuotas(context, limits);
         return limits;
     }
 

@@ -1,6 +1,7 @@
 /**
  * MODULE: Population Manager
  * ΠΕΡΙΓΡΑΦΗ: Διαχειρίζεται τα όρια πληθυσμού και την κατάσταση Recovery ανά δωμάτιο.
+ * VERSION 2.6.1: Διόρθωση λογικής ελέγχου για τα links στην _calculateCarryQuota ώστε να καλύπτει σωστά την περίπτωση με ακριβώς τα απαιτούμενα links.
  * *VERSION 2.6.1
  * bugfix: Διόρθωση λογικής ελέγχου για τα links στην _calculateCarryQuota ώστε να καλύπτει σωστά την περίπτωση με ακριβώς τα απαιτούμενα links.    
  * * VERSION 2.6.0
@@ -269,8 +270,15 @@ class PopulationManager {
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY] = limits;
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.RECOVERY_KEY] = limits.isRecovery;
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.HAVE_ROAD_KEY] = this.checkIfRoomHaveRoads(room);
+        Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.HAVE_LINK_KEY] = this.checkIfRoomHaveLinks(room);
     } // end of updateRoomLimits
-
+    checkIfRoomHaveLinks(room) {
+        const links = room.find(FIND_STRUCTURES, {
+            filter: (s) => s.structureType === STRUCTURE_LINK
+        });
+        debugConsole.debugText("populationManager", "Links found: " + links.length);
+        return links.length >= POPULATION_MODULE_CONFIG.LINK_THRESHOLD;
+    }
     /**
      * Ελέγχει αν υπάρχουν επαρκείς δρόμοι στο δωμάτιο.
      * @param {Room} room 

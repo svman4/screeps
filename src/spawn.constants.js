@@ -1,6 +1,11 @@
 /**
  * Σταθερές και ρυθμίσεις για το σύστημα παραγωγής Creeps.
- * Version 1.1
+ 
+ * Version 1.2.0: Προσθήκη νέων ρόλων και αναδιάρθρωση των ρυθμίσεων.
+ * Version 1.1.0: Προσθήκη μεθόδου flush() για εκκαθάριση της ουράς.
+ * Version 1.0.2: Προσθήκη stale request handling (timeout για παλιά αιτήματα).
+ * Version 1.0.1: Βελτίωση του ελέγχου διπλοτύπων με βάση το sourceId και targetRoom.
+ * Version 1.0.0: Αρχική υλοποίηση βασισμένη σε Singleton Pattern.
  */
 
 
@@ -50,12 +55,14 @@ const POPULATION_GLOBAL_CONFIG = {
     MEMORY_KEY: 'populationLimits2',
     RECOVERY_KEY: 'isRecovery',
     HAVE_ROAD_KEY: 'hasRoads',
+    HAVE_LINK_KEY: 'hasLinks',
     MEMORY_KEY_CREEP: "creeps",
     MEMORY_KEY_PARTS: "parts"
 
 };
 const SPAWN_MANAGER_CONFIG = {
-    POPULATION_LIMIT_REFRESH_RATE: 50 //κάθε 50 TT
+    POPULATION_LIMIT_REFRESH_RATE: 50, //κάθε 50 TT
+    CREEP_PARTS_THRESHOLD: 0.3 // Αν η διαφορά στα parts είναι μικρότερη από 30%, περιμένουμε να πεθάνουν τα παλιά creeps για να κάνουμε πιο αποδοτική αντικατάσταση.
 }
 // --- MODULE SPECIFIC CONFIGURATION ---
 // Ρυθμίσεις που αφορούν αποκλειστικά τη λογική του Population Manager
@@ -76,7 +83,8 @@ const POPULATION_MODULE_CONFIG = {
     // Logistics
     EXTENSION_CARRY_BONUS: 10,   // Σταθερό quota για τον ανεφοδιασμό extensions
     DISTANCE_PADDING: 1.1,       // 10% έξτρα carry για κάλυψη απωλειών/κίνησης
-    ROAD_THRESHOLD: 10           // Ελάχιστος αριθμός δρόμων για να θεωρηθεί το δωμάτιο "στρωμένο"
+    ROAD_THRESHOLD: 10,           // Ελάχιστος αριθμός δρόμων για να θεωρηθεί το δωμάτιο "στρωμένο"
+    LINK_THRESHOLD: 2           // Ελάχιστος αριθμός link για να θεωρηθεί το δωμάτιο "εξοπλισμένο με links"
 };
 module.exports = {
     NEED_REPLACEMENT_FLAG,

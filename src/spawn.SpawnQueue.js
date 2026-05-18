@@ -53,6 +53,8 @@ class SpawnQueue {
                 priority: request.priority,
                 homeRoom: request.homeRoom,
                 targetRoom: request.targetRoom || request.homeRoom,
+                body: request.body,
+                budget: request.budget,
                 memory: request.memory || {},
                 addedAt: Game.time // Χρήσιμο για τον εντοπισμό stale requests
             });
@@ -61,6 +63,14 @@ class SpawnQueue {
             return true;
         }
         return false;
+    }
+    /**
+     * 
+     * @param {string} roomName 
+     */
+    flushOnRoom(roomName) {
+        _.remove(this.data, r => r.homeRoom === roomName || r.targetRoom === roomName);
+        console.log("flushOnRoom " + roomName);
     }
 
     /**

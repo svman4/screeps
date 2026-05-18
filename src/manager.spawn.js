@@ -1,10 +1,11 @@
 /**
  * MODULE: Global Spawn Manager
- * VERSION: 3.1.0
+ * VERSION: 3.2.0
  * TYPE: Modular Class-based Singleton
  * ΠΕΡΙΓΡΑΦΗ: Κεντρικός διαχειριστής παραγωγής. Χρησιμοποιεί την κλάση SpawnQueue
  * για τη διαχείριση των αιτημάτων και το populationManager για το Recovery Mode.
  * * CHANGE LOG:
+ * 3.2.0: - Προσθήκη διαχείρισης σημαίας αντικατάστασης για στατικούς harvesters.
  * 3.1.0: - Προσθήκη thresholds για αποφυγή παραγωγής αναποτελεσματικών creeps.
  * 3.0.0: - Κλείδωμα του προ-υπολογισμένου `body` απευθείας στην ουρά (addRoleToQueue).
  *        - Υλοποίηση συστήματος "Anti-Energy-Stealing" στην processQueue για αποφυγή
@@ -21,7 +22,7 @@
 const debugConsole = require("utils.debugConsole");
 const SpawnQueue = require('spawn.SpawnQueue');
 const PopulationManager = require('spawn.populationManager');
-const { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG, BODY_ENERGY_LIMITS, PRIORITY, SPAWN_MANAGER_CONFIG } = require('./spawn.constants');
+const { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG, BODY_ENERGY_LIMITS, PRIORITY, SPAWN_MANAGER_CONFIG, NEED_REPLACEMENT_FLAG } = require('./spawn.constants');
 
 class SpawnManager {
     constructor() {
@@ -36,9 +37,9 @@ class SpawnManager {
         this.cleanup();
 
         // Εκτύπωση της ουράς για debugging
-        if (this.queue.length > 0) {
-            debugConsole.debugObject("spawnManager", "--- Current Spawn Queue " + this.queue.length + " ---", this.queue);
-        }
+        // if (this.queue.length > 0) {
+        //     debugConsole.debugObject("spawnManager", "--- Current Spawn Queue (" + this.queue.length + ") ---", this.queue);
+        // }
         // Έλεγχος αναγκών για κάθε δωμάτιο που ελέγχουμε
         for (const roomName in Game.rooms) {
             const room = Game.rooms[roomName];
@@ -60,25 +61,11 @@ class SpawnManager {
             // Κάθε 50tick ή αν δεν υπάρχει πληθυσμός.
             this.populationManager.updateRoomLimits(roomName);
             this.queue.flushOnRoom(roomName); // Καθαρισμός ουράς για το δωμάτιο σε περίπτωση αλλαγής ορίων
-            debugConsole.debugObject("spawnManager", `Checking needs for ${roomName}`, Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY]);
+            // debugConsole.debugObject("spawnManager", `Checking needs for ${roomName}`, Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY]);
         }
         const limits = Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY];
         if (!limits) return;
-        //debugConsole.debugObject("spawnManager", `Checking needs for ${roomName}`, limits);
-        /*
-            {
-  "creeps": {
-    "simpleHarvester": 0,
-    "staticHarvester": 2
-  },
-  "parts": {
-    "hauler": 11,
-    "upgrader": 18,
-    "builder": 0
-  },
-  "isRecovery": false
-}
-        */
+
         // 1. Έλεγχος βάσει αριθμού Creeps (κυρίως για Harvesters σε Recovery/Early stage)
 
         if (limits[POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]) {
@@ -101,7 +88,30 @@ class SpawnManager {
                 this.handlePartsBasedNeed(roomName, role, currentParts, targetParts);
             }
         }
-        // TODO ελεγχος για σηκωμένες σημαίες αντικατάστασης.
+        // έλεγχος για σηκωμένες σημαίες αντικατάστασης
+        const creepWithFlag = _.filter(Game.creeps, c => c.memory.homeRoom === roomName && c.memory[NEED_REPLACEMENT_FLAG] === true);
+        if (creepWithFlag && creepWithFlag.length === 0) {
+            return;
+        }
+        //debugConsole.debugObject("spawnManager", `Checking for replacement flags in ${roomName}`, creepWithFlag);
+        const maxEnergyAvailable = Game.rooms[roomName].energyCapacityAvailable;
+
+        creepWithFlag.forEach(creep => {
+            if (creep.ticksToLive) {
+                if (creep.memory.role = ROLES.STATIC_HARVESTER) {
+                    const body = this.calculateBody(roomName, creep.memory.role, maxEnergyAvailable, 0);
+
+                    this.addRoleToQueue(
+                        roomName,
+                        creep.memory.role,
+                        this.getBodyCost(body),
+                        body, { sourceId: creep.memory.sourceId, init: true }, creep.memory.targetRoom);
+                    creep.memory[NEED_REPLACEMENT_FLAG] = false; // reset flag
+                    debugConsole.debugText("spawnManager", `Creep ${creep.name} is flagged for replacement. Requesting new ${creep.memory.role}.`);
+                }
+            }
+        });
+
     } // end of checkRoomNeeds
     /**
      * Διαχείριση αναγκών με βάση το ΠΛΗΘΟΣ των creeps (π.χ. Harvesters).
@@ -173,6 +183,10 @@ class SpawnManager {
             body = this.calculateBody(roomName, role, maxEnergyAvailable, diffParts);
             this.addRoleToQueue(roomName, role, this.getBodyCost(body), body);
         }
+        /*TODO υπάρχει περίπτωση που χρειάζονται 18parts για upgrader.
+        Υπάρχουν 2 upgrader. Ο πρώτος με 10parts και ο άλλος με 8.
+        Είναι σωστό αλλά θα πρέπει να δημιουργεί ένα τεράστιο με 18parts.
+        */
 
     }
     /**

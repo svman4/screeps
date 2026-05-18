@@ -71,7 +71,7 @@ class SpawnQueue {
      */
     flushOnRoom(roomName) {
         _.remove(this.data, r => r.homeRoom === roomName || r.targetRoom === roomName);
-        console.log("flushOnRoom " + roomName);
+        //console.log("flushOnRoom " + roomName);
     }
 
     /**

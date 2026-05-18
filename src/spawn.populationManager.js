@@ -236,8 +236,8 @@ class PopulationManager {
             },
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
                 [ROLES.HAULER]: 0,
-                [ROLES.UPGRADER]: 2,
-                [ROLES.BUILDER]: 0
+                [ROLES.UPGRADER]: 3,
+                [ROLES.BUILDER]: 5
                 // this._calculateCarryQuota(context)
             },
             isRecovery: false
@@ -279,7 +279,6 @@ class PopulationManager {
         const links = room.find(FIND_STRUCTURES, {
             filter: (s) => s.structureType === STRUCTURE_LINK
         });
-        debugConsole.debugText("populationManager", "Links found: " + links.length);
         return links.length >= POPULATION_MODULE_CONFIG.LINK_THRESHOLD;
     }
     /**

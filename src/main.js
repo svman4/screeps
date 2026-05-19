@@ -66,7 +66,7 @@ module.exports.loop = function () {
 
             // HIGH PRIORITY - Πάντα τρέχουν
             runAndCatch((name) => defenceManager.run(name), "Error on defenceManager (" + roomName + ")", roomName);
-           // runAndCatch((name) => militaryController.run(name), "Error on militaryController (" + roomName + ")", roomName);
+            // runAndCatch((name) => militaryController.run(name), "Error on militaryController (" + roomName + ")", roomName);
 
             runAndCatch((name) => logisticsManager.run(name), "Error on logisticsManager (" + roomName + ")", roomName);
 
@@ -85,8 +85,8 @@ module.exports.loop = function () {
     runAndCatch(() => roleManager.run(), "Error on roleManager");
 
     runAndCatch(() => spawnManager.run(), "error on spawnManager");
-    runAndCatch(() => expansionManager.run(), "error on expansionManager");
-    //runAndCatch(expansionManager.run, "error on expansionManager");
+    //runAndCatch(() => expansionManager.run(), "error on expansionManager");
+
     runAndCatch(pixels.run, "Error on pixels");;
     if (Game.time % 10 === 0) {
         var endCpu = Game.cpu.getUsed();

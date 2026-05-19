@@ -1,6 +1,5 @@
 /**
  * MODULE: Global Spawn Manager
- * VERSION: 3.2.0
  * TYPE: Modular Class-based Singleton
  * ΠΕΡΙΓΡΑΦΗ: Κεντρικός διαχειριστής παραγωγής. Χρησιμοποιεί την κλάση SpawnQueue
  * για τη διαχείριση των αιτημάτων και το populationManager για το Recovery Mode.
@@ -40,6 +39,9 @@ class SpawnManager {
         // if (this.queue.length > 0) {
         //     debugConsole.debugObject("spawnManager", "--- Current Spawn Queue (" + this.queue.length + ") ---", this.queue);
         // }
+        //if (this.queue.length > 0) {
+        //    debugConsole.debugObject("spawnManager", "--- Current Spawn Queue " + this.queue.length + " ---", this.queue);
+        //}
         // Έλεγχος αναγκών για κάθε δωμάτιο που ελέγχουμε
         for (const roomName in Game.rooms) {
             const room = Game.rooms[roomName];
@@ -157,7 +159,7 @@ class SpawnManager {
                 return;
             }
         });
-    }
+    } // end of handleStaticHarvesterNeed
     /**
          * Διαχείριση αναγκών με βάση τα BODY PARTS (π.χ. Haulers, Upgraders, Builders).
          */
@@ -223,34 +225,36 @@ class SpawnManager {
      */
     processQueue() {
         if (this.queue.length === 0) return;
+        //debugConsole.debugText("spawnManager", "Processing spawn queue... queue length: " + this.queue.length);
+        this.queue.sort(); // Ταξινόμηση βάσει προτεραιότητας
 
-        for (let i = 0; i < this.queue.length; i++) {
-            const request = this.queue.getAt(i);
-            const spawn = this.findBestSpawn(request);
-            //debugConsole.debugObject("spawn", "processQueue", request);
 
-            if (spawn) {
-                const energyToUse = Math.min(spawn.room.energyAvailable, request.energyBudget || spawn.room.energyAvailable);
-                const body = request.body;
-                const name = `${request.role}_${request.homeRoom}_${Game.time % 10000}`;
-                let mem = {
-                    role: request.role,
-                    homeRoom: request.homeRoom,
-                    targetRoom: request.targetRoom,
-                    ...request.memory
-                };
+        const request = this.queue.getAt(0);
+        const spawn = this.findBestSpawn(request);
+        //debugConsole.debugObject("spawn", "processQueue", request);
 
-                const result = spawn.spawnCreep(body, name, {
-                    memory: mem
-                });
+        if (spawn) {
+            const energyToUse = Math.min(spawn.room.energyAvailable, request.energyBudget || spawn.room.energyAvailable);
+            const body = request.body;
+            const name = `${request.role}_${request.homeRoom}_${Game.time % 10000}`;
+            let mem = {
+                role: request.role,
+                homeRoom: request.homeRoom,
+                targetRoom: request.targetRoom,
+                ...request.memory
+            };
 
-                if (result === OK) {
-                    debugConsole.debugText("spawnManager", `Spawning ${name} at ${spawn.name} for ${request.targetRoom}`);
-                    this.queue.removeAt(i);
-                    i--; // Διόρθωση index μετά την αφαίρεση
-                }
+            const result = spawn.spawnCreep(body, name, {
+                memory: mem
+            });
+
+            if (result === OK) {
+                debugConsole.debugText("spawnManager", `Spawning ${name} at ${spawn.name} for ${request.targetRoom}`);
+                this.queue.removeAt(0);
+                i--; // Διόρθωση index μετά την αφαίρεση
             }
         }
+
     }
 
     /**

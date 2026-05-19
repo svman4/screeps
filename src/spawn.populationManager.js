@@ -236,8 +236,8 @@ class PopulationManager {
             },
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
                 [ROLES.HAULER]: 0,
-                [ROLES.UPGRADER]: 3,
-                [ROLES.BUILDER]: 5
+                [ROLES.UPGRADER]: 2,
+                [ROLES.BUILDER]: 0
                 // this._calculateCarryQuota(context)
             },
             isRecovery: false

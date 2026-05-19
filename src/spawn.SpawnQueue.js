@@ -12,7 +12,7 @@
  * 1.0.1: Βελτίωση του ελέγχου διπλοτύπων με βάση το sourceId και targetRoom.
  * 1.0.0: Αρχική υλοποίηση βασισμένη σε Singleton Pattern.
  */
-
+const debugConsole = require("utils.debugConsole");
 class SpawnQueue {
     constructor() {
         // Αρχικοποίηση στη Memory αν δεν υπάρχει

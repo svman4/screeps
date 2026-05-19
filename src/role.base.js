@@ -1,10 +1,11 @@
 /**
  * MODULE: Role Base Class
- * Version: 1.2.1
+ * Version: 1.2.2
  * Author: Screeps Architect
  * Description: Η βασική κλάση από την οποία κληρονομούν όλοι οι ρόλοι των Creeps.
  * Περιλαμβάνει κοινές λειτουργίες κίνησης, συλλογής ενέργειας και διαχείρισης κύκλου ζωής.
  * * CHANGELOG:
+ * 1.2.2: αλλάγη στην getEnergyFrom ContainersorStorage για να προτιμά πηγές που έχουν αρκετή ενέργεια για να γεμίσουν το creep σε 1-2 γύρους, αποφεύγοντας να "ξεζουμίζουμε" μικρές ποσότητες.
  * 1.2.1: Σταθεροποίηση του upgrade range εντός της συνάρτησης upgradeController.
  * 1.2.0: Πλήρης αναδιάρθρωση JSDoc, βελτιστοποίηση CPU cycles και προσθήκη ασφαλειών.
  * 1.1.2: Εισαγωγή μεταβλητής CREEP_SPAWN_TIME αντί για hardcoded τιμή.
@@ -54,7 +55,7 @@ class BaseRole {
                 return true;
             }
         }
-        
+
         return false;
     }
 
@@ -97,7 +98,7 @@ class BaseRole {
         const { x, y } = this.creep.pos;
         return x === 0 || x === 49 || y === 0 || y === 49;
     }
- 
+
     /**
      * Κεντρική μέθοδος συλλογής ενέργειας με σειρά προτεραιότητας:
      * 1. Links -> 2. Containers/Storage -> 3. Dropped -> 4. Ruins -> 5. Harvesting.
@@ -140,7 +141,7 @@ class BaseRole {
     getEnergyFromContainersorStorage(resource = RESOURCE_ENERGY) {
         const target = this.creep.pos.findClosestByPath(FIND_STRUCTURES, {
             filter: s => (s.structureType === STRUCTURE_CONTAINER || s.structureType === STRUCTURE_STORAGE) &&
-                         s.store[resource] > 0
+                s.store[resource] > (this.creep.store.getCapacity() / 3) // Προτιμούμε πηγές που έχουν αρκετή ενέργεια για να γεμίσουν το creep σε 1-2 γύρους, αποφεύγοντας να "ξεζουμίζουμε" μικρές ποσότητες.
         });
 
         if (target) {
@@ -152,7 +153,7 @@ class BaseRole {
             return true;
         }
         return false;
-    }
+    } //  end of getEnergyFromContainersorStorage
 
     /**
      * Αναζήτηση για Minerals (εκτός ενέργειας) σε Containers.
@@ -160,8 +161,8 @@ class BaseRole {
      */
     getAnyMineralFromContainers() {
         const target = this.creep.pos.findClosestByPath(FIND_STRUCTURES, {
-            filter: s => (s.structureType === STRUCTURE_CONTAINER) && 
-                         Object.keys(s.store).some(res => res !== RESOURCE_ENERGY && s.store[res] > 0)
+            filter: s => (s.structureType === STRUCTURE_CONTAINER) &&
+                Object.keys(s.store).some(res => res !== RESOURCE_ENERGY && s.store[res] > 0)
         });
 
         if (target) {
@@ -203,8 +204,8 @@ class BaseRole {
      * @returns {boolean}
      */
     getEnergyFromRuins() {
-        const ruin = this.creep.pos.findClosestByPath(FIND_RUINS, { 
-            filter: s => s.store[RESOURCE_ENERGY] > 40 
+        const ruin = this.creep.pos.findClosestByPath(FIND_RUINS, {
+            filter: s => s.store[RESOURCE_ENERGY] > 40
         });
 
         if (ruin) {
@@ -242,7 +243,7 @@ class BaseRole {
     fillSpawnExtension() {
         const target = this.creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {
             filter: s => (s.structureType === STRUCTURE_EXTENSION || s.structureType === STRUCTURE_SPAWN) &&
-                         s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+                s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
         });
 
         if (target) {
@@ -262,14 +263,14 @@ class BaseRole {
      */
     buildStructures() {
         // Πρώτα κτίζουμε τα πάντα εκτός από δρόμους
-        let targets = this.creep.room.find(FIND_CONSTRUCTION_SITES, { 
-            filter: s => s.structureType !== STRUCTURE_ROAD 
+        let targets = this.creep.room.find(FIND_CONSTRUCTION_SITES, {
+            filter: s => s.structureType !== STRUCTURE_ROAD
         });
-        
+
         // Αν δεν υπάρχουν άλλα κτίρια, κτίζουμε τους δρόμους
         if (targets.length === 0) {
-            targets = this.creep.room.find(FIND_CONSTRUCTION_SITES, { 
-                filter: s => s.structureType === STRUCTURE_ROAD 
+            targets = this.creep.room.find(FIND_CONSTRUCTION_SITES, {
+                filter: s => s.structureType === STRUCTURE_ROAD
             });
         }
 
@@ -294,7 +295,7 @@ class BaseRole {
     upgradeController() {
         const controller = this.creep.room.controller;
         if (controller) {
-            const range = 3; 
+            const range = 3;
             if (this.creep.pos.inRangeTo(controller, range)) {
                 this.creep.upgradeController(controller);
             } else {
@@ -311,25 +312,25 @@ class BaseRole {
      */
     checkYield() {
         const priorityRoles = ['LDHarvester', 'hauler', 'supporter'];
-        
+
         // Εύρεση creep σε απόσταση 1 που ίσως εμποδίζεται
         const blocker = this.creep.pos.findInRange(FIND_MY_CREEPS, 1).find(
             c => c.id !== this.creep.id && priorityRoles.includes(c.memory.role) && c.fatigue === 0
         );
-        
+
         if (!blocker) return false;
-        
+
         // Αν όντως κλείνουμε το δρόμο, προσπαθούμε να βρούμε κενό tile γύρω μας
         if (movementManager.isBlockingPath(this.creep)) {
             const directions = [TOP, TOP_RIGHT, RIGHT, BOTTOM_RIGHT, BOTTOM, BOTTOM_LEFT, LEFT, TOP_LEFT];
             for (let dir of directions) {
                 const nx = this.creep.pos.x + (dir === RIGHT || dir === TOP_RIGHT || dir === BOTTOM_RIGHT ? 1 : dir === LEFT || dir === TOP_LEFT || dir === BOTTOM_LEFT ? -1 : 0);
                 const ny = this.creep.pos.y + (dir === BOTTOM || dir === BOTTOM_RIGHT || dir === BOTTOM_LEFT ? 1 : dir === TOP || dir === TOP_RIGHT || dir === TOP_LEFT ? -1 : 0);
-                
+
                 if (nx >= 0 && nx <= 49 && ny >= 0 && ny <= 49) {
                     const terrain = this.creep.room.getTerrain().get(nx, ny);
                     if (terrain !== TERRAIN_MASK_WALL) {
-                        const isBlocked = this.creep.room.lookForAt(LOOK_STRUCTURES, nx, ny).some(s => 
+                        const isBlocked = this.creep.room.lookForAt(LOOK_STRUCTURES, nx, ny).some(s =>
                             OBSTACLE_OBJECT_TYPES.includes(s.structureType) && (s.structureType !== STRUCTURE_RAMPART || !s.my)
                         );
                         if (!isBlocked) {

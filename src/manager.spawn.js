@@ -1,9 +1,11 @@
 /**
  * MODULE: Global Spawn Manager
+ * VERSION: 3.2.1
  * TYPE: Modular Class-based Singleton
  * ΠΕΡΙΓΡΑΦΗ: Κεντρικός διαχειριστής παραγωγής. Χρησιμοποιεί την κλάση SpawnQueue
  * για τη διαχείριση των αιτημάτων και το populationManager για το Recovery Mode.
  * * CHANGE LOG:
+ 
  * 3.2.0: - Προσθήκη διαχείρισης σημαίας αντικατάστασης για στατικούς harvesters.
  * 3.1.0: - Προσθήκη thresholds για αποφυγή παραγωγής αναποτελεσματικών creeps.
  * 3.0.0: - Κλείδωμα του προ-υπολογισμένου `body` απευθείας στην ουρά (addRoleToQueue).
@@ -36,9 +38,6 @@ class SpawnManager {
         this.cleanup();
 
         // Εκτύπωση της ουράς για debugging
-        // if (this.queue.length > 0) {
-        //     debugConsole.debugObject("spawnManager", "--- Current Spawn Queue (" + this.queue.length + ") ---", this.queue);
-        // }
         //if (this.queue.length > 0) {
         //    debugConsole.debugObject("spawnManager", "--- Current Spawn Queue " + this.queue.length + " ---", this.queue);
         //}

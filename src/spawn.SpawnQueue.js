@@ -69,17 +69,15 @@ class SpawnQueue {
      * 
      * @param {string} roomName 
      */
-    flushOnRoom(roomName) {
-        // debugConsole.debugText("SpawnQueue", `Flushing requests related to room ${roomName}... queue length before: ${this.data.length}`);
+     flushOnRoom(roomName) {
+        
         _.remove(this.data, r => r.homeRoom === roomName || r.targetRoom === roomName);
-        // debugConsole.debugText("SpawnQueue", `Flush complete. Queue length after: ${this.data.length}`);
 
 
-    } // end of flushOnRoom()
+    }
 
     /**
      * Ταξινομεί την ουρά βάσει προτεραιότητας.
-     * Τα αιτήματα με υψηλότερη προτεραιότητα (μικρότερο νούμερο) θα βρίσκονται στην αρχή της ουράς.
      * Χρησιμοποιεί το flag _needsSort για αποφυγή περιττών calculations στο ίδιο tick.
      */
     sort() {
@@ -91,7 +89,6 @@ class SpawnQueue {
                 }
                 return a.addedAt - b.addedAt;
             });
-            Memory.spawnQueue = this.data; // Ενημέρωση στη Memory μετά την ταξινόμηση
             this._needsSort = false;
         }
     }

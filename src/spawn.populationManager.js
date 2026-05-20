@@ -188,7 +188,7 @@ class PopulationManager {
             sources: sources,
             spawns: spawns,
             storage: storage,
-            hasContainers: containers.length > 0,
+            hasContainers: containers.length > 2,
             links: links,
             hasConstruction: construction.length > 0,
             isRecovery: (!hasWork || !hasCarry) && room.controller && room.controller.level > 1
@@ -220,7 +220,9 @@ class PopulationManager {
                 [ROLES.STATIC_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
             },
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
-                [ROLES.HAULER]: this._calculateCarryQuota(context)
+                [ROLES.HAULER]: this._calculateCarryQuota(context),
+                [ROLES.UPGRADER]: 5,
+                [ROLES.BUILDER]: 8
             },
             isRecovery: false
         };
@@ -232,12 +234,12 @@ class PopulationManager {
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
                 [ROLES.SIMPLE_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE,
-                [ROLES.STATIC_HARVESTER]: 0
+                [ROLES.STATIC_HARVESTER]:0//context.sources.length * POPULATION_MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
             },
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
                 [ROLES.HAULER]: 0,
                 [ROLES.UPGRADER]: 2,
-                [ROLES.BUILDER]: 0
+                [ROLES.BUILDER]: 2
                 // this._calculateCarryQuota(context)
             },
             isRecovery: false

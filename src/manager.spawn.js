@@ -5,7 +5,6 @@
  * ΠΕΡΙΓΡΑΦΗ: Κεντρικός διαχειριστής παραγωγής. Χρησιμοποιεί την κλάση SpawnQueue
  * για τη διαχείριση των αιτημάτων και το populationManager για το Recovery Mode.
  * * CHANGE LOG:
- 
  * 3.2.0: - Προσθήκη διαχείρισης σημαίας αντικατάστασης για στατικούς harvesters.
  * 3.1.0: - Προσθήκη thresholds για αποφυγή παραγωγής αναποτελεσματικών creeps.
  * 3.0.0: - Κλείδωμα του προ-υπολογισμένου `body` απευθείας στην ουρά (addRoleToQueue).
@@ -99,7 +98,7 @@ class SpawnManager {
 
         creepWithFlag.forEach(creep => {
             if (creep.ticksToLive) {
-                if (creep.memory.role = ROLES.STATIC_HARVESTER) {
+                if (creep.memory.role === ROLES.STATIC_HARVESTER) {
                     const body = this.calculateBody(roomName, creep.memory.role, maxEnergyAvailable, 0);
 
                     this.addRoleToQueue(
@@ -158,7 +157,6 @@ class SpawnManager {
                 return;
             }
         });
-    } // end of handleStaticHarvesterNeed
     /**
          * Διαχείριση αναγκών με βάση τα BODY PARTS (π.χ. Haulers, Upgraders, Builders).
          */
@@ -302,8 +300,8 @@ class SpawnManager {
                 break;
             case ROLES.SIMPLE_HARVESTER:
                 parts = 0;
-                while (this.getBodyCost(body) + 200 <= maxEnergy && parts <= diffParts) {
-                    body.push(WORK, CARRY, MOVE);
+                while (this.getBodyCost(body) + 250 <= maxEnergy && parts <= diffParts) {
+                    body.push(WORK,CARRY,MOVE, MOVE);
                     parts++;
                 }
                 break;
@@ -332,8 +330,8 @@ class SpawnManager {
 
             case ROLES.BUILDER:
                 parts = 0;
-                while (this.getBodyCost(body) + 200 <= maxEnergy && parts < diffParts) {
-                    body.push(WORK, CARRY, MOVE);
+                while (this.getBodyCost(body) + 250 <= maxEnergy && parts < diffParts) {
+                    body.push(WORK, CARRY,MOVE, MOVE);
                     parts++;
                 }
                 break;

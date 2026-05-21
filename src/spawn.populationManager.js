@@ -276,6 +276,7 @@ class PopulationManager {
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.RECOVERY_KEY] = limits.isRecovery;
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.HAVE_ROAD_KEY] = this.checkIfRoomHaveRoads(room);
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.HAVE_LINK_KEY] = this.checkIfRoomHaveLinks(room);
+        Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.ROOM_LEVEL_KEY] =room.controller.level;
     } // end of updateRoomLimits
     checkIfRoomHaveLinks(room) {
         const links = room.find(FIND_STRUCTURES, {

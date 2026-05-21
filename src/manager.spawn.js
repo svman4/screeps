@@ -1,6 +1,6 @@
 /**
  * MODULE: Global Spawn Manager
- * VERSION: 3.2.1
+ * VERSION: 3.2.0
  * TYPE: Modular Class-based Singleton
  * ΠΕΡΙΓΡΑΦΗ: Κεντρικός διαχειριστής παραγωγής. Χρησιμοποιεί την κλάση SpawnQueue
  * για τη διαχείριση των αιτημάτων και το populationManager για το Recovery Mode.
@@ -168,7 +168,7 @@ class SpawnManager {
         const maxEnergyAvailable = room.energyCapacityAvailable;
         const diffParts = targetParts - currentParts;
         if (diffParts <= 0) return; // Δεν χρειάζεται να κάνουμε τίποτα αν έχουμε ήδη αρκετά parts
-        if (diffParts <= targetParts * SPAWN_MANAGER_CONFIG.CREEP_PARTS_THRESHOLD) return; // Αν η διαφορά είναι μικρότερη από 20% του στόχου, περιμένουμε να πεθάνουν τα παλιά creeps για να κάνουμε πιο αποδοτική αντικατάσταση.
+        //if (diffParts <= targetParts * SPAWN_MANAGER_CONFIG.CREEP_PARTS_THRESHOLD) return; // Αν η διαφορά είναι μικρότερη από 20% του στόχου, περιμένουμε να πεθάνουν τα παλιά creeps για να κάνουμε πιο αποδοτική αντικατάσταση.
 
         const isRecovery = Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.RECOVERY_KEY];
         let body = [];
@@ -283,13 +283,14 @@ class SpawnManager {
         let body = [];
         const hasRoads = Memory.rooms[roomName] ? Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.HAVE_ROAD_KEY] : false;
         const hasLinks = Memory.rooms[roomName] ? Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.HAVE_LINK_KEY] : false;
+        const roomLevel=Memory.rooms[roomName]?Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.ROOM_LEVEL_KEY] : 1;
+        
         let parts = 0;
-        if (role === ROLES.STATIC_HARVESTER || role === ROLES.SIMPLE_HARVESTER) {
-            diffParts = 5;
-        }
+        let costPerUnit=0;
         switch (role) {
 
             case ROLES.STATIC_HARVESTER:
+                diffParts = 5;
                 body = [WORK, WORK, MOVE]; // Minimum base
                 parts = 2;
                 if (hasLinks) {
@@ -303,6 +304,7 @@ class SpawnManager {
                 }
                 break;
             case ROLES.SIMPLE_HARVESTER:
+                diffParts = 5;
                 parts = 0;
                 while (this.getBodyCost(body) + 250 <= maxEnergy && parts <= diffParts) {
                     body.push(WORK,CARRY,MOVE, MOVE);
@@ -312,7 +314,7 @@ class SpawnManager {
             case ROLES.HAULER:
                 // 2:1 ratio CARRY:MOVE αν υπάρχουν δρόμοι, 1:1 αν όχι
                 parts = 0;
-                const costPerUnit = hasRoads ? 150 : 100; // [C,C,M] vs [C,M]
+                costPerUnit = hasRoads ? 150 : 100; // [C,C,M] vs [C,M]
                 while (this.getBodyCost(body) + costPerUnit <= maxEnergy && parts < diffParts) {
                     if (hasRoads) {
                         body.push(CARRY, CARRY, MOVE);
@@ -326,9 +328,24 @@ class SpawnManager {
                 break;
             case ROLES.UPGRADER:
                 parts = 0;
-                while (this.getBodyCost(body) + 250 <= maxEnergy && parts < diffParts) {
-                    body.push(WORK,  CARRY, MOVE, MOVE);
-                    parts += 2;
+                
+                costPerUnit = hasRoads ? 200 : 250; // [C,C,M] vs [C,M]
+                costPerUnit=(roomLevel>3)?350:250;
+                while (this.getBodyCost(body) + costPerUnit <= maxEnergy && parts < diffParts) {
+                    
+                    if(roomLevel>3) {
+                        if((diffParts-parts)===1) {
+                            body.push(WORK,  CARRY,MOVE);
+                            parts += 1;       
+                        } else {
+                            body.push(WORK,WORK,  CARRY, MOVE,MOVE);
+                            parts += 2;   
+                        }
+                    } else {
+                        body.push(WORK,  CARRY, MOVE, MOVE);
+                        parts += 1;
+                    }
+                    
                 }
                 break;
 

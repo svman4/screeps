@@ -72,7 +72,7 @@ class SpawnQueue {
      flushOnRoom(roomName) {
         
         _.remove(this.data, r => r.homeRoom === roomName || r.targetRoom === roomName);
-
+        Memory.spawnQueue = this.data; // Ενημέρωση στη Memory μετά την ταξινόμηση
 
     }
 
@@ -91,6 +91,7 @@ class SpawnQueue {
             });
             this._needsSort = false;
         }
+        Memory.spawnQueue = this.data; // Ενημέρωση στη Memory μετά την ταξινόμηση
     }
 
     /**
@@ -99,6 +100,7 @@ class SpawnQueue {
      */
     removeAt(index) {
         this.data.splice(index, 1);
+        Memory.spawnQueue = this.data; // Ενημέρωση στη Memory μετά την ταξινόμηση
     }
 
     /**
@@ -142,6 +144,7 @@ class SpawnQueue {
                 console.log(`[SpawnQueue] Cleaned ${initialLength - this.data.length} stale requests.`);
             }
         }
+        Memory.spawnQueue = this.data; // Ενημέρωση στη Memory μετά την ταξινόμηση
     }
 } // end of class
 

@@ -295,7 +295,7 @@ class BaseRole {
     upgradeController() {
         const controller = this.creep.room.controller;
         if (controller) {
-            const range = 3; 
+            const range = 2; 
             if (this.creep.pos.inRangeTo(controller, range)) {
                 this.creep.upgradeController(controller);
             } else {

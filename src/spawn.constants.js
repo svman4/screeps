@@ -57,7 +57,8 @@ const POPULATION_GLOBAL_CONFIG = {
     HAVE_ROAD_KEY: 'hasRoads',
     HAVE_LINK_KEY: 'hasLinks',
     MEMORY_KEY_CREEP: "creeps",
-    MEMORY_KEY_PARTS: "parts"
+    MEMORY_KEY_PARTS: "parts",
+    ROOM_LEVEL_KEY:"level"
 
 };
 const SPAWN_MANAGER_CONFIG = {

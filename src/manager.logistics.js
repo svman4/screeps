@@ -213,7 +213,7 @@ const logisticsManager = {
                     }
                     break;
                 case STRUCTURE_CONTAINER:
-                    if (s.store[RESOURCE_ENERGY] > 100 && this.isContainerNearSource(s)) {
+                    if (s.store[RESOURCE_ENERGY] > 250 && this.isContainerNearSource(s)) {
                         priority = PRIORITIES.SOURCE_CONTAINER;
                         condition = true;
                     }
@@ -276,7 +276,8 @@ const logisticsManager = {
                     }
                     break;
                 case STRUCTURE_CONTAINER:
-                    if (s.store[RESOURCE_ENERGY] > 400 && this.isContainerNearSource(s)) {
+
+                    if (s.store[RESOURCE_ENERGY] > 250 && this.isContainerNearSource(s)) {
                         priority = PRIORITIES.SOURCE_CONTAINER;
                         condition = true;
                     }

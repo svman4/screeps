@@ -118,7 +118,7 @@ class BaseRole {
      */
     getEnergyFromLink(resource = RESOURCE_ENERGY) {
         const link = this.creep.pos.findInRange(FIND_MY_STRUCTURES, 3, {
-            filter: (s) => s.structureType === STRUCTURE_LINK && s.store[resource] > 0
+            filter: (s) => s.structureType === STRUCTURE_LINK && s.store[resource] >(this.creep.store.getCapacity()/3)
         })[0];
 
         if (link) {
@@ -138,9 +138,10 @@ class BaseRole {
      * @returns {boolean}
      */
     getEnergyFromContainersorStorage(resource = RESOURCE_ENERGY) {
+        
         const target = this.creep.pos.findClosestByPath(FIND_STRUCTURES, {
             filter: s => (s.structureType === STRUCTURE_CONTAINER || s.structureType === STRUCTURE_STORAGE) &&
-                         s.store[resource] > 0
+                         s.store[resource] > (this.creep.store.getCapacity()/3)
         });
 
         if (target) {
@@ -294,7 +295,7 @@ class BaseRole {
     upgradeController() {
         const controller = this.creep.room.controller;
         if (controller) {
-            const range = 3; 
+            const range = 2; 
             if (this.creep.pos.inRangeTo(controller, range)) {
                 this.creep.upgradeController(controller);
             } else {

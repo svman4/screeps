@@ -1,26 +1,18 @@
 /**
  * MODULE: Spawn Queue Manager
- * VERSION: 1.1.0
+ * VERSION: 1.2.0
  * TYPE: Persistence Layer Class
  * * ΠΕΡΙΓΡΑΦΗ:
  * Διαχειρίζεται την ουρά παραγωγής των creeps στη Memory. 
  * Εξασφαλίζει ότι δεν υπάρχουν διπλότυπα αιτήματα και διατηρεί τη σειρά προτεραιότητας.
  * * CHANGE LOG:
+ * 1.2.0: Προσθήκη flushOnRoom() για εκκαθάριση αιτημάτων που σχετίζονται με συγκεκριμένο δωμάτιο (home ή target).
  * 1.1.0: Προσθήκη μεθόδου flush() για εκκαθάριση της ουράς.
  * 1.0.2: Προσθήκη stale request handling (timeout για παλιά αιτήματα).
  * 1.0.1: Βελτίωση του ελέγχου διπλοτύπων με βάση το sourceId και targetRoom.
  * 1.0.0: Αρχική υλοποίηση βασισμένη σε Singleton Pattern.
  */
-const DEBUG_STATE = true;
-const debugText = function (text) {
-    if (DEBUG_STATE) {
-        console.log(`[SpawnManager] ${text}`);
-    }
-}
-const debugObject = function (obj, text) {
-    if (!DEBUG_STATE) return;
-    console.log(text + "\n" + JSON.stringify(obj, null, 2));
-}
+const debugConsole = require("utils.debugConsole");
 class SpawnQueue {
     constructor() {
         // Αρχικοποίηση στη Memory αν δεν υπάρχει
@@ -62,14 +54,26 @@ class SpawnQueue {
                 priority: request.priority,
                 homeRoom: request.homeRoom,
                 targetRoom: request.targetRoom || request.homeRoom,
+                body: request.body,
+                budget: request.budget,
                 memory: request.memory || {},
                 addedAt: Game.time // Χρήσιμο για τον εντοπισμό stale requests
             });
-
+            Memory.spawnQueue = this.data; // Ενημέρωση στη Memory μετά την ταξινόμηση
             this._needsSort = true;
             return true;
         }
         return false;
+    }
+    /**
+     * 
+     * @param {string} roomName 
+     */
+     flushOnRoom(roomName) {
+        
+        _.remove(this.data, r => r.homeRoom === roomName || r.targetRoom === roomName);
+        Memory.spawnQueue = this.data; // Ενημέρωση στη Memory μετά την ταξινόμηση
+
     }
 
     /**
@@ -87,6 +91,7 @@ class SpawnQueue {
             });
             this._needsSort = false;
         }
+        Memory.spawnQueue = this.data; // Ενημέρωση στη Memory μετά την ταξινόμηση
     }
 
     /**
@@ -95,6 +100,7 @@ class SpawnQueue {
      */
     removeAt(index) {
         this.data.splice(index, 1);
+        Memory.spawnQueue = this.data; // Ενημέρωση στη Memory μετά την ταξινόμηση
     }
 
     /**
@@ -104,9 +110,7 @@ class SpawnQueue {
     get length() {
         return this.data.length;
     }
-    get info() {
-        return this.data;
-    }
+
     /**
      * Λήψη αιτήματος βάσει θέσης.
      * @param {number} index 
@@ -130,7 +134,6 @@ class SpawnQueue {
      * @private
      */
     _cleanStaleRequests() {
-     
         if (Game.time % 100 === 0) {
             const TIMEOUT = 500;
             const initialLength = this.data.length;
@@ -141,7 +144,8 @@ class SpawnQueue {
                 console.log(`[SpawnQueue] Cleaned ${initialLength - this.data.length} stale requests.`);
             }
         }
-    } 
+        Memory.spawnQueue = this.data; // Ενημέρωση στη Memory μετά την ταξινόμηση
+    }
 } // end of class
 
 module.exports = SpawnQueue;

@@ -90,7 +90,6 @@ class PopulationManager {
 
         return Math.max(availableWork, 1);
     }
-
     /**
      * Κατανομή των διαθέσιμων WORK parts σε Builders και Upgraders (Μπαίνουν στη λίστα 'parts').
      */

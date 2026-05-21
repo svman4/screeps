@@ -1,6 +1,6 @@
 /**
  * MODULE: Role Base Class
- * Version: 1.2.2
+ * Version: 1.2.1
  * Author: Screeps Architect
  * Description: Η βασική κλάση από την οποία κληρονομούν όλοι οι ρόλοι των Creeps.
  * Περιλαμβάνει κοινές λειτουργίες κίνησης, συλλογής ενέργειας και διαχείρισης κύκλου ζωής.
@@ -54,7 +54,7 @@ class BaseRole {
                 return true;
             }
         }
-
+        
         return false;
     }
 
@@ -97,7 +97,7 @@ class BaseRole {
         const { x, y } = this.creep.pos;
         return x === 0 || x === 49 || y === 0 || y === 49;
     }
-
+ 
     /**
      * Κεντρική μέθοδος συλλογής ενέργειας με σειρά προτεραιότητας:
      * 1. Links -> 2. Containers/Storage -> 3. Dropped -> 4. Ruins -> 5. Harvesting.
@@ -141,7 +141,7 @@ class BaseRole {
         
         const target = this.creep.pos.findClosestByPath(FIND_STRUCTURES, {
             filter: s => (s.structureType === STRUCTURE_CONTAINER || s.structureType === STRUCTURE_STORAGE) &&
-                s.store[resource] > (this.creep.store.getCapacity() / 3) // Προτιμούμε πηγές που έχουν αρκετή ενέργεια για να γεμίσουν το creep σε 1-2 γύρους, αποφεύγοντας να "ξεζουμίζουμε" μικρές ποσότητες.
+                         s.store[resource] > (this.creep.store.getCapacity()/3)
         });
 
         if (target) {
@@ -153,7 +153,7 @@ class BaseRole {
             return true;
         }
         return false;
-    } //  end of getEnergyFromContainersorStorage
+    }
 
     /**
      * Αναζήτηση για Minerals (εκτός ενέργειας) σε Containers.
@@ -161,8 +161,8 @@ class BaseRole {
      */
     getAnyMineralFromContainers() {
         const target = this.creep.pos.findClosestByPath(FIND_STRUCTURES, {
-            filter: s => (s.structureType === STRUCTURE_CONTAINER) &&
-                Object.keys(s.store).some(res => res !== RESOURCE_ENERGY && s.store[res] > 0)
+            filter: s => (s.structureType === STRUCTURE_CONTAINER) && 
+                         Object.keys(s.store).some(res => res !== RESOURCE_ENERGY && s.store[res] > 0)
         });
 
         if (target) {
@@ -263,14 +263,14 @@ class BaseRole {
      */
     buildStructures() {
         // Πρώτα κτίζουμε τα πάντα εκτός από δρόμους
-        let targets = this.creep.room.find(FIND_CONSTRUCTION_SITES, {
-            filter: s => s.structureType !== STRUCTURE_ROAD
+        let targets = this.creep.room.find(FIND_CONSTRUCTION_SITES, { 
+            filter: s => s.structureType !== STRUCTURE_ROAD 
         });
         
         // Αν δεν υπάρχουν άλλα κτίρια, κτίζουμε τους δρόμους
         if (targets.length === 0) {
-            targets = this.creep.room.find(FIND_CONSTRUCTION_SITES, {
-                filter: s => s.structureType === STRUCTURE_ROAD
+            targets = this.creep.room.find(FIND_CONSTRUCTION_SITES, { 
+                filter: s => s.structureType === STRUCTURE_ROAD 
             });
         }
 

@@ -233,7 +233,7 @@ class PopulationManager {
     _getEarlyGameLimits(context) {
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
-                [ROLES.SIMPLE_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE,
+                [ROLES.SIMPLE_HARVESTER]: context.sources.length*  POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE,
                 [ROLES.STATIC_HARVESTER]:0//context.sources.length * POPULATION_MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
             },
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {

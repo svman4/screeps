@@ -80,7 +80,7 @@ const POPULATION_MODULE_CONFIG = {
     SURPLUS_SCALER: 50,          // Πόσο επιθετικά αυξάνουμε τα parts στο πλεόνασμα
     MAX_UPGRADER_WORK_RCL8: 15,  // Το όριο του controller στο RCL 8 (15 energy/tick cap)
     STATIC_HARVESTERS_PER_SOURCE: 1,
-    SIMPLE_HARVESTERS_PER_SOURCE: 1,
+    SIMPLE_HARVESTERS_PER_SOURCE: 2,
     // Logistics
     EXTENSION_CARRY_BONUS: 10,   // Σταθερό quota για τον ανεφοδιασμό extensions
     DISTANCE_PADDING: 1.1,       // 10% έξτρα carry για κάλυψη απωλειών/κίνησης

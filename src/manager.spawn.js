@@ -37,9 +37,9 @@ class SpawnManager {
         this.cleanup();
 
         // Εκτύπωση της ουράς για debugging
-        //if (this.queue.length > 0) {
-        //    debugConsole.debugObject("spawnManager", "--- Current Spawn Queue " + this.queue.length + " ---", this.queue);
-        //}
+        //  if (this.queue.length > 0) {
+        //      debugConsole.debugObject("spawnManager", "--- Current Spawn Queue " + this.queue.length + " ---", this.queue);
+        //  }
         // Έλεγχος αναγκών για κάθε δωμάτιο που ελέγχουμε
         for (const roomName in Game.rooms) {
             const room = Game.rooms[roomName];
@@ -157,6 +157,7 @@ class SpawnManager {
                 return;
             }
         });
+    }
     /**
          * Διαχείριση αναγκών με βάση τα BODY PARTS (π.χ. Haulers, Upgraders, Builders).
          */
@@ -220,6 +221,9 @@ class SpawnManager {
     /**
      * Επεξεργάζεται την ουρά και αναθέτει παραγωγή στα διαθέσιμα Spawns.
      */
+    /**
+     * Επεξεργάζεται την ουρά και αναθέτει παραγωγή στα διαθέσιμα Spawns.
+     */
     processQueue() {
         if (this.queue.length === 0) return;
         //debugConsole.debugText("spawnManager", "Processing spawn queue... queue length: " + this.queue.length);
@@ -248,7 +252,7 @@ class SpawnManager {
             if (result === OK) {
                 debugConsole.debugText("spawnManager", `Spawning ${name} at ${spawn.name} for ${request.targetRoom}`);
                 this.queue.removeAt(0);
-                i--; // Διόρθωση index μετά την αφαίρεση
+                
             }
         }
 
@@ -290,10 +294,10 @@ class SpawnManager {
                 parts = 2;
                 if (hasLinks) {
                     body.push(CARRY);// Αν έχουμε link, προσθέτουμε ένα CARRY για να μεταφέρουμε ενέργεια στο link.
-                    parts++;
+                    
                 }
                 // Οι Static Harvesters χρειάζονται max 5-6 WORK. Πάνω από 800 energy είναι overkill.
-                while (this.getBodyCost(body) + 100 <= maxEnergy && parts <= diffParts) {
+                while (this.getBodyCost(body) + 100 <= maxEnergy && parts < diffParts) {
                     body.push(WORK);
                     parts++;
                 }
@@ -322,8 +326,8 @@ class SpawnManager {
                 break;
             case ROLES.UPGRADER:
                 parts = 0;
-                while (this.getBodyCost(body) + 350 <= maxEnergy && parts < diffParts) {
-                    body.push(WORK, WORK, CARRY, MOVE, MOVE);
+                while (this.getBodyCost(body) + 250 <= maxEnergy && parts < diffParts) {
+                    body.push(WORK,  CARRY, MOVE, MOVE);
                     parts += 2;
                 }
                 break;

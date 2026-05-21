@@ -118,7 +118,7 @@ class BaseRole {
      */
     getEnergyFromLink(resource = RESOURCE_ENERGY) {
         const link = this.creep.pos.findInRange(FIND_MY_STRUCTURES, 3, {
-            filter: (s) => s.structureType === STRUCTURE_LINK && s.store[resource] > 0
+            filter: (s) => s.structureType === STRUCTURE_LINK && s.store[resource] >(this.creep.store.getCapacity()/3)
         })[0];
 
         if (link) {

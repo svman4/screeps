@@ -52,7 +52,7 @@ const NEED_REPLACEMENT_FLAG = "needReplacementFlag";
 // --- GLOBAL CONFIGURATION ---
 
 const POPULATION_GLOBAL_CONFIG = {
-    MEMORY_KEY: 'populationLimits2',
+    MEMORY_KEY: 'populationLimits',
     RECOVERY_KEY: 'isRecovery',
     HAVE_ROAD_KEY: 'hasRoads',
     HAVE_LINK_KEY: 'hasLinks',

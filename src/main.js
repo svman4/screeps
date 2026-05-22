@@ -8,9 +8,12 @@ main.js
  ΘΑ πρέπει να φτιάχνονται δρόμοι άμεσα ή σε επόμενα rcl?
  TODO αλλαγή από builder/upgrader σε taskManager.
  -Δημιουργία role worker
+ 
+ TODO ΘΑ πρέπει πρώτα να χτίζονται το link του controller και της πιο απομακρυσμένης πηγής, έπειτα του storage και μετέπειτα τα υπόλοιπα Link.
+
+TODO όταν ο hauler δεν έχει δουλειά να πηγαίνει κάπου εκτός δρόμου. Ειδικά σε μεγάλα επίπεδα
 
 TODO να υπολογίζει την ένεργεια ανά tick ωστε να μπαίνουν τα κατάλληλα workpart σε upgrader Και builder.Έχω κρατήσει POPULATION_MODULE_CONFIG.MAINTENANCE_BUFFER που σε μερικά δωμάτια είναι αρκετά σε άλλα οριακά.
-
  */
 var spawnManager = require('manager.spawn');
 var defenceManager = require('manager.defense');

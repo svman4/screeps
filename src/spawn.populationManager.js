@@ -128,7 +128,7 @@ class PopulationManager {
          * Τα carry που χρειάζονται από τις πηγές μέχρι το target(storage)
          */
         let totalCarryRequired = 0;
-        if (context.links && context.links.length >= context.sources.length + 2) {
+        if (context.links && context.links.length >= context.sources.length +0) {
             //debugConsole.debugText("populationManager","Links cover all sources and target, no carry needed from sources to target");
             totalCarryRequired += 0;
             /* αν έχουμε όλα τα links ολοκληρώμενα (όσα είναι οι πηγές + του storage+του controller) 
@@ -144,7 +144,7 @@ class PopulationManager {
         //debugConsole.debugText("populationManager", "-------");
         //debugConsole.debugText("populationManager", "totalCarry after sources" + totalCarryRequired + "links " + context.links.length);
         // ΥΠολογίζει τα carry Που χρειάζονται από το target στο controller
-        if (context.links && context.links.length >= context.sources.length + 2) {
+        if (context.links && context.links.length >= context.sources.length +0) {
             totalCarryRequired += 0;
             //  debugConsole.debugText("populationManager", "Links cover all sources and target, no carry needed from target to controller");
             /* έφοσον έχουμε πάνω από τρία link σημαίνει πως τουλάχιστον δύο πηγές γεμίζουν το link του controller οπότε και δε χρειάζεται

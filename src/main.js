@@ -25,6 +25,9 @@ var roleManager = require('manager.role');
 var market = require('manager.market');
 var pixels = require('manager.pixels');
 var linkManager = require('manager.link');
+const RoomCache = require('RoomCache');
+
+
 global.RoomInfo = function () {
     let answer = "\n--- 🏰 Controller Progress Report ---\n";
 
@@ -32,8 +35,9 @@ global.RoomInfo = function () {
     const myRooms = Object.values(Game.rooms).filter(r => r.controller && r.controller.my);
 
     if (myRooms.length === 0) return "No rooms with active visibility found.";
-
+	
     for (const room of myRooms) {
+		
         const controller = room.controller;
 
         // Αν είναι Level 8, δεν υπάρχει πρόοδος προς το επόμενο level
@@ -61,7 +65,7 @@ module.exports.loop = function () {
     if (!Memory.rooms) {
         Memory.rooms = {};
     }
-
+	RoomCache.clearTickCaches();
     // Εκτέλεση ανά δωμάτιο
     for (const roomName in Game.rooms) {
         const room = Game.rooms[roomName];

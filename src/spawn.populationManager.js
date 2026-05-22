@@ -37,6 +37,8 @@
  */
 const { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG } = require('./spawn.constants');
 const debugConsole = require("utils.debugConsole");
+
+var roomCache = require('utils.RoomCache');
 class PopulationManager {
     constructor() {
         // Ο constructor παραμένει καθαρός από σταθερές παραμέτρους
@@ -119,44 +121,38 @@ class PopulationManager {
      * Υπολογισμός CARRY parts για Haulers βασισμένος σε Round-trip Distance.
      */
     _calculateCarryQuota(context) {
-        const target = context.storage || (context.spawns && context.spawns.length > 0 ? context.spawns[0] : null);
+        var cache = roomCache.in(context.room.name);
+        const target = cache.center;
         if (!target) return 10;
 
         const FALLBACK_DISTANCE = 25;
         const ENERGY_INCOME_TICK = 10;
+
+        let totalCarryRequired = 0;
         /**
          * Τα carry που χρειάζονται από τις πηγές μέχρι το target(storage)
          */
-        let totalCarryRequired = 0;
-        if (context.links && context.links.length >= context.sources.length +0) {
-            //debugConsole.debugText("populationManager","Links cover all sources and target, no carry needed from sources to target");
-            totalCarryRequired += 0;
-            /* αν έχουμε όλα τα links ολοκληρώμενα (όσα είναι οι πηγές + του storage+του controller) 
-            τότε δε χρειάζεται να υπολογίσουμε την απόσταση από κάθε πηγή σε target | storage.
-            */
-        } else {
-            context.sources.forEach(source => {
-                const range = target.pos.getRangeTo(source);
-                const distance = (range !== Infinity) ? range : FALLBACK_DISTANCE;
-                totalCarryRequired += (ENERGY_INCOME_TICK * distance * 2) / CARRY_CAPACITY;
-            });
+
+
+
+        for (const source of context.sources) {
+
+            if (cache.getSourceLink(source.id)) continue; // αν η πηγή έχει link δε χρειάζεται να υπολογίσουμε carry για αυτή την πηγή
+
+
+            const range = cache.getSourceDistance(source.id);
+            const distance = (range !== Infinity) ? range : FALLBACK_DISTANCE;
+            totalCarryRequired += (ENERGY_INCOME_TICK * distance * 2) / CARRY_CAPACITY;
+
         }
-        //debugConsole.debugText("populationManager", "-------");
-        //debugConsole.debugText("populationManager", "totalCarry after sources" + totalCarryRequired + "links " + context.links.length);
+
         // ΥΠολογίζει τα carry Που χρειάζονται από το target στο controller
-        if (context.links && context.links.length >= context.sources.length +0) {
-            totalCarryRequired += 0;
-            //  debugConsole.debugText("populationManager", "Links cover all sources and target, no carry needed from target to controller");
-            /* έφοσον έχουμε πάνω από τρία link σημαίνει πως τουλάχιστον δύο πηγές γεμίζουν το link του controller οπότε και δε χρειάζεται
-                να πηγαίνει hauler
-            */
-        } else {
-            const controllerRange = target.pos.getRangeTo(context.room.controller);
+        if (!cache.controllerLink) {
+            const controllerRange = cache.controllerDistance;
             const controllerDistance = (controllerRange !== Infinity) ? controllerRange : FALLBACK_DISTANCE;
             const upgradeRate = Math.min(this._calculateAvailableWorkParts(context), 15);
             totalCarryRequired += (upgradeRate * controllerDistance * 2) / CARRY_CAPACITY;
         }
-        //debugConsole.debugText("populationManager", "totalCarry after controller " + totalCarryRequired);
         // ---------
         totalCarryRequired = (totalCarryRequired + POPULATION_MODULE_CONFIG.EXTENSION_CARRY_BONUS) * POPULATION_MODULE_CONFIG.DISTANCE_PADDING;
 
@@ -167,20 +163,23 @@ class PopulationManager {
      * Δημιουργία Context για το δωμάτιο (Caching δεδομένων για τον υπολογισμό).
      */
     _createContext(room) {
-        const sources = room.find(FIND_SOURCES);
+        const cache = roomCache.in(room.name);
+        const sources = cache.sources;
         const spawns = room.find(FIND_MY_SPAWNS);
         const storage = room.storage;
-        const containers = room.find(FIND_STRUCTURES, {
-            filter: s => s.structureType === STRUCTURE_CONTAINER
-        });
-        const construction = room.find(FIND_CONSTRUCTION_SITES);
+        const containers = cache.containers;
+        // room.find(FIND_STRUCTURES, {
+        //     filter: s => s.structureType === STRUCTURE_CONTAINER
+        // });
+        const construction = cache.constructionSites;
+        //room.find(FIND_CONSTRUCTION_SITES);
 
         const creeps = room.find(FIND_MY_CREEPS);
         const hasWork = creeps.some(c => c.getActiveBodyparts(WORK) > 0);
         const hasCarry = creeps.some(c => c.getActiveBodyparts(CARRY) > 0);
-        const links = room.find(FIND_STRUCTURES, {
-            filter: s => s.structureType === STRUCTURE_LINK
-        });
+        // const links = room.find(FIND_STRUCTURES, {
+        //     filter: s => s.structureType === STRUCTURE_LINK
+        // });
         const answer = {
             room: room,
             level: room.controller ? room.controller.level : 0,
@@ -188,7 +187,7 @@ class PopulationManager {
             spawns: spawns,
             storage: storage,
             hasContainers: containers.length > 2,
-            links: links,
+            //links: links,
             hasConstruction: construction.length > 0,
             isRecovery: (!hasWork || !hasCarry) && room.controller && room.controller.level > 1
         };
@@ -232,8 +231,8 @@ class PopulationManager {
     _getEarlyGameLimits(context) {
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
-                [ROLES.SIMPLE_HARVESTER]: context.sources.length*  POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE,
-                [ROLES.STATIC_HARVESTER]:0//context.sources.length * POPULATION_MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
+                [ROLES.SIMPLE_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE,
+                [ROLES.STATIC_HARVESTER]: 0//context.sources.length * POPULATION_MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
             },
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
                 [ROLES.HAULER]: 0,
@@ -274,24 +273,18 @@ class PopulationManager {
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY] = limits;
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.RECOVERY_KEY] = limits.isRecovery;
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.HAVE_ROAD_KEY] = this.checkIfRoomHaveRoads(room);
-        Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.HAVE_LINK_KEY] = this.checkIfRoomHaveLinks(room);
-        Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.ROOM_LEVEL_KEY] =room.controller.level;
+        Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.HAVE_LINK_KEY] = roomCache.in(roomName).links.length > 0;
+        Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.ROOM_LEVEL_KEY] = room.controller.level;
     } // end of updateRoomLimits
-    checkIfRoomHaveLinks(room) {
-        const links = room.find(FIND_STRUCTURES, {
-            filter: (s) => s.structureType === STRUCTURE_LINK
-        });
-        return links.length >= POPULATION_MODULE_CONFIG.LINK_THRESHOLD;
-    }
+
     /**
      * Ελέγχει αν υπάρχουν επαρκείς δρόμοι στο δωμάτιο.
      * @param {Room} room 
      * @returns {boolean}
      */
     checkIfRoomHaveRoads(room) {
-        const roads = room.find(FIND_STRUCTURES, {
-            filter: (s) => s.structureType === STRUCTURE_ROAD
-        });
+        var cache = roomCache.in(room.name);
+        const roads = _.filter(cache.myStructures, (s) => s.structureType === STRUCTURE_ROAD);
         return roads.length >= POPULATION_MODULE_CONFIG.ROAD_THRESHOLD;
     }
 } // end of class PopulationManager

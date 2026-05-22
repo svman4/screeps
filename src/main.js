@@ -13,7 +13,6 @@ main.js
 
 TODO όταν ο hauler δεν έχει δουλειά να πηγαίνει κάπου εκτός δρόμου. Ειδικά σε μεγάλα επίπεδα
 
-TODO να υπολογίζει την ένεργεια ανά tick ωστε να μπαίνουν τα κατάλληλα workpart σε upgrader Και builder.Έχω κρατήσει POPULATION_MODULE_CONFIG.MAINTENANCE_BUFFER που σε μερικά δωμάτια είναι αρκετά σε άλλα οριακά.
  */
 var spawnManager = require('manager.spawn');
 var defenceManager = require('manager.defense');
@@ -25,19 +24,19 @@ var roleManager = require('manager.role');
 var market = require('manager.market');
 var pixels = require('manager.pixels');
 var linkManager = require('manager.link');
-const RoomCache = require('RoomCache');
-
+var roomCache = require('utils.RoomCache');
 
 global.RoomInfo = function () {
     let answer = "\n--- 🏰 Controller Progress Report ---\n";
+
+
 
     // Φιλτράρουμε τα δωμάτια που μας ανήκουν και έχουμε ορατότητα
     const myRooms = Object.values(Game.rooms).filter(r => r.controller && r.controller.my);
 
     if (myRooms.length === 0) return "No rooms with active visibility found.";
-	
+
     for (const room of myRooms) {
-		
         const controller = room.controller;
 
         // Αν είναι Level 8, δεν υπάρχει πρόοδος προς το επόμενο level
@@ -65,16 +64,18 @@ module.exports.loop = function () {
     if (!Memory.rooms) {
         Memory.rooms = {};
     }
-	RoomCache.clearTickCaches();
+    roomCache.clearTickCaches();  // Καθαρισμός cache ανά tick για όλα τα δωμάτια
     // Εκτέλεση ανά δωμάτιο
     for (const roomName in Game.rooms) {
-        const room = Game.rooms[roomName];
+        const room = roomCache.in(roomName).room; // Εξασφαλίζουμε ότι το RoomCache είναι έτοιμο για το δωμάτιο
+
+
         if (room.controller && room.controller.my) {
             //    console.log(`🏠 Επεξεργασία δωματίου: ${roomName} (RCL: ${room.controller.level})`);
 
             // HIGH PRIORITY - Πάντα τρέχουν
             runAndCatch((name) => defenceManager.run(name), "Error on defenceManager (" + roomName + ")", roomName);
-           // runAndCatch((name) => militaryController.run(name), "Error on militaryController (" + roomName + ")", roomName);
+            // runAndCatch((name) => militaryController.run(name), "Error on militaryController (" + roomName + ")", roomName);
 
             runAndCatch((name) => logisticsManager.run(name), "Error on logisticsManager (" + roomName + ")", roomName);
 
@@ -95,11 +96,11 @@ module.exports.loop = function () {
     runAndCatch(() => spawnManager.run(), "error on spawnManager");
     //runAndCatch(() => expansionManager.run(), "error on expansionManager");
     //runAndCatch(expansionManager.run, "error on expansionManager");
-    runAndCatch(pixels.run, "Error on pixels");;
+    runAndCatch(pixels.run, "Error on pixels");
     if (Game.time % 10 === 0) {
         var endCpu = Game.cpu.getUsed();
         var cpuUsed = (endCpu - startCpu).toFixed(3);
-        if (cpuUsed > 10) {
+        if (cpuUsed > 1) {
             console.log(`CPU Bucket: ${Game.cpu.bucket} | Creeps: ${Object.keys(Game.creeps).length} | cpusUser: ${cpuUsed} | ${Game.time}`);
         }
     }

@@ -13,6 +13,7 @@
  */
 
 const movementManager = require('manager.movement');
+const roomCache = require('./utils.RoomCache');
 
 class BaseRole {
     /**
@@ -54,7 +55,7 @@ class BaseRole {
                 return true;
             }
         }
-        
+
         return false;
     }
 
@@ -97,7 +98,7 @@ class BaseRole {
         const { x, y } = this.creep.pos;
         return x === 0 || x === 49 || y === 0 || y === 49;
     }
- 
+
     /**
      * Κεντρική μέθοδος συλλογής ενέργειας με σειρά προτεραιότητας:
      * 1. Links -> 2. Containers/Storage -> 3. Dropped -> 4. Ruins -> 5. Harvesting.
@@ -118,7 +119,7 @@ class BaseRole {
      */
     getEnergyFromLink(resource = RESOURCE_ENERGY) {
         const link = this.creep.pos.findInRange(FIND_MY_STRUCTURES, 3, {
-            filter: (s) => s.structureType === STRUCTURE_LINK && s.store[resource] >(this.creep.store.getCapacity()/3)
+            filter: (s) => s.structureType === STRUCTURE_LINK && s.store[resource] > (this.creep.store.getCapacity() / 3)
         })[0];
 
         if (link) {
@@ -138,10 +139,10 @@ class BaseRole {
      * @returns {boolean}
      */
     getEnergyFromContainersorStorage(resource = RESOURCE_ENERGY) {
-        
+
         const target = this.creep.pos.findClosestByPath(FIND_STRUCTURES, {
             filter: s => (s.structureType === STRUCTURE_CONTAINER || s.structureType === STRUCTURE_STORAGE) &&
-                         s.store[resource] > (this.creep.store.getCapacity()/3)
+                s.store[resource] > (this.creep.store.getCapacity() / 3)
         });
 
         if (target) {
@@ -161,8 +162,8 @@ class BaseRole {
      */
     getAnyMineralFromContainers() {
         const target = this.creep.pos.findClosestByPath(FIND_STRUCTURES, {
-            filter: s => (s.structureType === STRUCTURE_CONTAINER) && 
-                         Object.keys(s.store).some(res => res !== RESOURCE_ENERGY && s.store[res] > 0)
+            filter: s => (s.structureType === STRUCTURE_CONTAINER) &&
+                Object.keys(s.store).some(res => res !== RESOURCE_ENERGY && s.store[res] > 0)
         });
 
         if (target) {
@@ -204,8 +205,8 @@ class BaseRole {
      * @returns {boolean}
      */
     getEnergyFromRuins() {
-        const ruin = this.creep.pos.findClosestByPath(FIND_RUINS, { 
-            filter: s => s.store[RESOURCE_ENERGY] > 40 
+        const ruin = this.creep.pos.findClosestByPath(FIND_RUINS, {
+            filter: s => s.store[RESOURCE_ENERGY] > 40
         });
 
         if (ruin) {
@@ -243,7 +244,7 @@ class BaseRole {
     fillSpawnExtension() {
         const target = this.creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {
             filter: s => (s.structureType === STRUCTURE_EXTENSION || s.structureType === STRUCTURE_SPAWN) &&
-                         s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+                s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
         });
 
         if (target) {
@@ -263,15 +264,18 @@ class BaseRole {
      */
     buildStructures() {
         // Πρώτα κτίζουμε τα πάντα εκτός από δρόμους
-        let targets = this.creep.room.find(FIND_CONSTRUCTION_SITES, { 
-            filter: s => s.structureType !== STRUCTURE_ROAD 
-        });
-        
+        let targets = roomCache.in(this.creep.room.name).constructionSites.filter(s => s.structureType !== STRUCTURE_ROAD);
+
+        // let targets = this.creep.room.find(FIND_CONSTRUCTION_SITES, { 
+        //     filter: s => s.structureType !== STRUCTURE_ROAD 
+        // });
+
         // Αν δεν υπάρχουν άλλα κτίρια, κτίζουμε τους δρόμους
         if (targets.length === 0) {
-            targets = this.creep.room.find(FIND_CONSTRUCTION_SITES, { 
-                filter: s => s.structureType === STRUCTURE_ROAD 
-            });
+            targets = roomCache.in(this.creep.room.name).constructionSites.filter(s => s.structureType === STRUCTURE_ROAD);
+            // targets = this.creep.room.find(FIND_CONSTRUCTION_SITES, { 
+            //     filter: s => s.structureType === STRUCTURE_ROAD 
+            // });
         }
 
         if (targets.length > 0) {
@@ -295,7 +299,7 @@ class BaseRole {
     upgradeController() {
         const controller = this.creep.room.controller;
         if (controller) {
-            const range = 2; 
+            const range = 2;
             if (this.creep.pos.inRangeTo(controller, range)) {
                 this.creep.upgradeController(controller);
             } else {
@@ -312,25 +316,25 @@ class BaseRole {
      */
     checkYield() {
         const priorityRoles = ['LDHarvester', 'hauler', 'supporter'];
-        
+
         // Εύρεση creep σε απόσταση 1 που ίσως εμποδίζεται
         const blocker = this.creep.pos.findInRange(FIND_MY_CREEPS, 1).find(
             c => c.id !== this.creep.id && priorityRoles.includes(c.memory.role) && c.fatigue === 0
         );
-        
+
         if (!blocker) return false;
-        
+
         // Αν όντως κλείνουμε το δρόμο, προσπαθούμε να βρούμε κενό tile γύρω μας
         if (movementManager.isBlockingPath(this.creep)) {
             const directions = [TOP, TOP_RIGHT, RIGHT, BOTTOM_RIGHT, BOTTOM, BOTTOM_LEFT, LEFT, TOP_LEFT];
             for (let dir of directions) {
                 const nx = this.creep.pos.x + (dir === RIGHT || dir === TOP_RIGHT || dir === BOTTOM_RIGHT ? 1 : dir === LEFT || dir === TOP_LEFT || dir === BOTTOM_LEFT ? -1 : 0);
                 const ny = this.creep.pos.y + (dir === BOTTOM || dir === BOTTOM_RIGHT || dir === BOTTOM_LEFT ? 1 : dir === TOP || dir === TOP_RIGHT || dir === TOP_LEFT ? -1 : 0);
-                
+
                 if (nx >= 0 && nx <= 49 && ny >= 0 && ny <= 49) {
                     const terrain = this.creep.room.getTerrain().get(nx, ny);
                     if (terrain !== TERRAIN_MASK_WALL) {
-                        const isBlocked = this.creep.room.lookForAt(LOOK_STRUCTURES, nx, ny).some(s => 
+                        const isBlocked = this.creep.room.lookForAt(LOOK_STRUCTURES, nx, ny).some(s =>
                             OBSTACLE_OBJECT_TYPES.includes(s.structureType) && (s.structureType !== STRUCTURE_RAMPART || !s.my)
                         );
                         if (!isBlocked) {

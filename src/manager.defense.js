@@ -1,25 +1,28 @@
+var roomCache = require("utils.RoomCache");
 var towerController = {
-    
+
     /**
      * Η κύρια συνάρτηση ελέγχου των Towers σε ένα συγκεκριμένο δωμάτιο.
      * @param {string} roomName - Το όνομα του δωματίου που πρέπει να διαχειριστεί.
      */
-    run: function(roomName) {
+    run: function (roomName) {
         const room = Game.rooms[roomName];
         if (!room) return;
-       if (Game.time % 3000 === 0) {
-           this.refreshWallThreshold(room);
-          
-           
-       }
+        if (Game.time % 3000 === 0) {
+            this.refreshWallThreshold(room);
+
+
+        }
         const towers = room.find(FIND_MY_STRUCTURES, {
             filter: { structureType: STRUCTURE_TOWER }
         });
 
         if (towers.length === 0) return;
 
-        // Βελτιωμένο cache για μεγαλύτερη αποδοτικότητα
-        const hostiles = room.find(FIND_HOSTILE_CREEPS);
+
+        //const hostiles = room.find(FIND_HOSTILE_CREEPS); 
+
+        const hostiles = roomCache.in(roomName).hostileCreeps;
         const woundedCreeps = room.find(FIND_MY_CREEPS, {
             filter: creep => creep.hits < creep.hitsMax
         });
@@ -55,22 +58,22 @@ var towerController = {
             }
         }
     },
-    
+
 
     /**
      * Βρίσκει τον καλύτερο στόχο για επίθεση
      */
-    findBestAttackTarget: function(tower, hostiles, room) {
+    findBestAttackTarget: function (tower, hostiles, room) {
         // Προτεραιότητα σε επικίνδυνους εχθρούς (με attack parts)
-        const dangerous = hostiles.filter(creep => 
-            creep.getActiveBodyparts(ATTACK) > 0 || 
+        const dangerous = hostiles.filter(creep =>
+            creep.getActiveBodyparts(ATTACK) > 0 ||
             creep.getActiveBodyparts(RANGED_ATTACK) > 0 ||
             creep.getActiveBodyparts(HEAL) > 0 ||
             creep.getActiveBodyparts(WORK) > 0
         );
 
         const targets = dangerous.length > 0 ? dangerous : hostiles;
-        
+
         // Βελτιωμένη επιλογή: προτεραιότητα σε εχθρούς που επιτίθενται σε κρίσιμες δομές
         const criticalStructures = room.find(FIND_MY_STRUCTURES, {
             filter: structure => {
@@ -101,7 +104,7 @@ var towerController = {
     /**
      * Βρίσκει το πιο τραυματισμένο creep
      */
-    findMostInjuredCreep: function(woundedCreeps) {
+    findMostInjuredCreep: function (woundedCreeps) {
         return woundedCreeps.reduce((mostInjured, creep) => {
             if (!mostInjured) return creep;
             const injuredPercent = (creep.hits / creep.hitsMax);
@@ -113,28 +116,28 @@ var towerController = {
     /**
      * Βρίσκει τον καλύτερο στόχο για επισκευή
      */
-    findBestRepairTarget: function(tower, room) {
+    findBestRepairTarget: function (tower, room) {
         const structures = room.find(FIND_STRUCTURES, {
             filter: structure => {
                 if (structure.hits >= structure.hitsMax) return false;
-                
+
                 // Προτεραιότητα σε κρίσιμες δομές
                 const criticalTypes = [
-                    STRUCTURE_SPAWN, 
-                    STRUCTURE_EXTENSION, 
+                    STRUCTURE_SPAWN,
+                    STRUCTURE_EXTENSION,
                     STRUCTURE_TOWER,
                     STRUCTURE_STORAGE,
                     STRUCTURE_TERMINAL
                 ];
-                
+
                 if (criticalTypes.includes(structure.structureType)) {
                     return true;
                 }
 
                 // Προστατευμένες δομές (τείχη/ramparts) - δυναμικά όρια
-                if (structure.structureType === STRUCTURE_WALL || 
+                if (structure.structureType === STRUCTURE_WALL ||
                     structure.structureType === STRUCTURE_RAMPART) {
-                    const limit = this.calculateWallLimit(room,room.controller ? room.controller.level : 1);
+                    const limit = this.calculateWallLimit(room, room.controller ? room.controller.level : 1);
                     return structure.hits < limit;
                 }
 
@@ -149,11 +152,11 @@ var towerController = {
         structures.sort((a, b) => {
             const priorityA = this.getStructurePriority(a);
             const priorityB = this.getStructurePriority(b);
-            
+
             if (priorityA !== priorityB) {
                 return priorityB - priorityA;
             }
-            
+
             // Αν ίδια προτεραιότητα, επέλεξε το πιο κατεστραμμένο
             const damagePercentA = a.hits / a.hitsMax;
             const damagePercentB = b.hits / b.hitsMax;
@@ -166,7 +169,7 @@ var towerController = {
     /**
      * Επιστρέφει την προτεραιότητα μιας δομής (υψηλότερος αριθμός = υψηλότερη προτεραιότητα)
      */
-    getStructurePriority: function(structure) {
+    getStructurePriority: function (structure) {
         const priorities = {
             [STRUCTURE_SPAWN]: 100,
             [STRUCTURE_TOWER]: 90,
@@ -187,60 +190,60 @@ var towerController = {
 
         return priorities[structure.structureType] || 5;
     },
-    refreshWallThreshold:function(room) {
+    refreshWallThreshold: function (room) {
         if (!room) {
             return;
         }
         const step = 1000;
-        
-        if(!Memory.rooms[room.name]) Memory.rooms[room.name] = {wallLimit:10000};
-        
-        
+
+        if (!Memory.rooms[room.name]) Memory.rooms[room.name] = { wallLimit: 10000 };
+
+
         const walls = room.find(FIND_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART });
-        if (walls.length===0) {
+        if (walls.length === 0) {
             return;
         }
-        let hits_minimum_value=  _.min(walls, 'hits').hits;
-        hits_minimum_value=Math.max(room.controller.level*10000,hits_minimum_value);
+        let hits_minimum_value = _.min(walls, 'hits').hits;
+        hits_minimum_value = Math.max(room.controller.level * 10000, hits_minimum_value);
         hits_minimum_value = Math.floor(hits_minimum_value / step) * step;
-        if(room.controller.level===8) {
-            
-            hits_minimum_value+=1000;
-            hits_minimum_value=Math.min(hits_minimum_value,100000000);
-            
+        if (room.controller.level === 8) {
+
+            hits_minimum_value += 1000;
+            hits_minimum_value = Math.min(hits_minimum_value, 100000000);
+
         } else {
-            hits_minimum_value+=1000;
-            hits_minimum_value=Math.min(hits_minimum_value,100000000);
-           // hits_minimum_value=15000*room.controller.level;
-           
+            hits_minimum_value += 1000;
+            hits_minimum_value = Math.min(hits_minimum_value, 100000000);
+            // hits_minimum_value=15000*room.controller.level;
+
         }
-        if(!Memory.rooms[room.name]) Memory.rooms[room.name] = {};
+        if (!Memory.rooms[room.name]) Memory.rooms[room.name] = {};
         Memory.rooms[room.name].wallLimit = hits_minimum_value;
-        
+
         //console.log(room.name+"_"+ room.controller.level+" hit "+room.memory.wallLimit);
     },
     /**
      * Υπολογίζει το όριο hits για τα τείχη/ramparts ανάλογα με το επίπεδο του controller
      */
-    calculateWallLimit: function(room,controllerLevel) {
+    calculateWallLimit: function (room, controllerLevel) {
         // Δυναμικό όριο που αυξάνεται με το επίπεδο
-        let limit=20000;
-        if(room && room.memory.wallLimit) {
-            limit=room.memory.wallLimit;
+        let limit = 20000;
+        if (room && room.memory.wallLimit) {
+            limit = room.memory.wallLimit;
         }
-     
+
         return limit;
     },
 
     /**
      * Καθορίζει αν πρέπει να γίνει επισκευή βάσει energy και απειλών
      */
-    shouldRepair: function(tower, hostiles) {
+    shouldRepair: function (tower, hostiles) {
         // Αν υπάρχουν εχθροί, επισκευή μόνο με υψηλή energy
         if (hostiles.length > 0) {
             return tower.energy > tower.energyCapacity * 0.7; // 70% capacity
         }
-        
+
         // Χωρίς εχθρούς, επισκευή με οποιαδήποτε energy
         return tower.energy > 0;
     }

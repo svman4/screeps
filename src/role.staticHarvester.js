@@ -57,15 +57,8 @@ class StaticHarvester extends BaseRole {
      * Εντοπίζει το container αποθήκευσης κοντά στην πηγή.
      */
     resolveContainer(source) {
-        let container = Game.getObjectById(this.creep.memory.containerId);
-        if (!container && this.creep.ticksToLive % 10 === 0) {
-            const containersInRoom = roomCache.getContainers(this.creep.room.name);
-            const containers = containersInRoom.filter(s => s.pos.inRangeTo(source.pos, 1));
-            if (containers.length > 0) {
-                container = containers[0];
-                this.creep.memory.containerId = container.id;
-            }
-        }
+        let container = roomCache.in(this.creep.room.name).getSourceContainer(source.id);
+
         return container;
     }
 

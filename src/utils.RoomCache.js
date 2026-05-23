@@ -104,7 +104,12 @@ class RoomCacheInstance {
         this._tickCache = {};
         Memory.rooms[this.roomName].cache = this.cache;
     }
-
+    run() {
+        this.clearTickCache(); // Καθαρισμός tick cache στην αρχή του run για να διασφαλίσουμε φρέσκα δεδομένα
+        if (Game.time % 500) {
+            this.rorceRefresh();
+        }
+    }
     forceRefresh() {
         this.cache.sourceIds = null;
         this.cache.controllerLinkId = null;
@@ -117,8 +122,11 @@ class RoomCacheInstance {
         this.cache.lastUpdated = Game.time;
         this.cache.sourceDistanceIds = {};
         this.cache.center = {};
+        this.cache.containers = null;
+        this.cache.links = null;
         this._tickCache = {};
     }
+
 
     // =========================================================================
     // ΠΡΟΣΒΑΣΗ ΣΕ ΣΤΑΤΙΚΑ ΔΕΔΟΜΕΝΑ (Persistent Cache)
@@ -192,6 +200,16 @@ class RoomCacheInstance {
 
 
     }
+    getSourceContainer(sourceId) {
+        if (!this.cache.sourceContainerIds)
+            this.cache.sourceContainerIds = {};
+        if (this.cache.sourceContainerIds[sourceId] === undefined || this.cache.sourceContainerIds[sourceId] === null) {
+            const source = Game.getObjectById(sourceId);
+            const container = this.containers.filter(c => c.pos.isNearTo(source))[0];
+            this.cache.sourceContainerIds[sourceId] = container ? container.id : null;
+        }
+        return Game.getObjectById(this.cache.sourceContainerIds[sourceId]);
+    }
     getSourceLink(sourceId) {
         if (!this.cache.sourceLinkIds) this.cache.sourceLinkIds = {};
 
@@ -206,6 +224,16 @@ class RoomCacheInstance {
 
         }
         return Game.getObjectById(this.cache.sourceLinkIds[sourceId]);
+    }
+    get sourceContainers() {
+        const sourceIDs = this.sourceIds;
+
+        // Χρησιμοποιούμε .map() για να επιστρέψουμε έναν πίνακα με τα αντικείμενα
+        const containers = sourceIDs.map(sourceID => {
+            return this.getSourceContainer(sourceID); // Διορθώθηκε το 'this.cache.' σε 'this.'
+        }).filter(Boolean); // Φιλτράρει τυχόν null αν κάποια πηγή δεν έχει ακόμα container
+
+        return containers;
     }
 
     get recoveryContainer() {
@@ -255,17 +283,17 @@ class RoomCacheInstance {
     }
 
     get containers() {
-        if (!this._tickCache.containers) {
-            this._tickCache.containers = this.structures.filter(s => s.structureType === STRUCTURE_CONTAINER);
+        if (!this.cache.containers) {
+            this.cache.containers = this.structures.filter(s => s.structureType === STRUCTURE_CONTAINER);
         }
-        return this._tickCache.containers;
+        return this.cache.containers;
     }
 
     get links() {
-        if (!this._tickCache.links) {
-            this._tickCache.links = this.myStructures.filter(s => s.structureType === STRUCTURE_LINK);
+        if (!this.cache.links) {
+            this.cache.links = this.myStructures.filter(s => s.structureType === STRUCTURE_LINK).map(s => s.id);
         }
-        return this._tickCache.links;
+        return this.cache.links;
     }
     get myCreeps() {
         if (!this._tickCache.myCreeps) {

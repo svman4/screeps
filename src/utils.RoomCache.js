@@ -267,7 +267,13 @@ class RoomCacheInstance {
         }
         return this._tickCache.links;
     }
-
+    get myCreeps() {
+        if (!this._tickCache.myCreeps) {
+            if (!this.room) return [];
+            this._tickCache.myCreeps = this.room.find(FIND_MY_CREEPS);
+        }
+        return this._tickCache.myCreeps;
+    }
     get hostileCreeps() {
         if (!this._tickCache.hostileCreeps) {
             if (!this.room) return [];

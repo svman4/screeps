@@ -25,7 +25,7 @@ var market = require('manager.market');
 var pixels = require('manager.pixels');
 var linkManager = require('manager.link');
 var roomCache = require('utils.RoomCache');
-
+var RollingAverage = require('utils.RollingAverage');
 global.RoomInfo = function () {
     let answer = "\n--- 🏰 Controller Progress Report ---\n";
 
@@ -57,7 +57,7 @@ global.RoomInfo = function () {
     return answer;
 }; // Βοηθητική συνάρτηση για οπτική πληροφόρηση
 
-
+const cpuRollingAverage = new RollingAverage(50);
 module.exports.loop = function () {
     var startCpu = Game.cpu.getUsed();
     // Αρχικοποίηση Memory
@@ -97,11 +97,12 @@ module.exports.loop = function () {
     //runAndCatch(() => expansionManager.run(), "error on expansionManager");
     //runAndCatch(expansionManager.run, "error on expansionManager");
     runAndCatch(pixels.run, "Error on pixels");
+    var endCpu = Game.cpu.getUsed();
+    var cpuUsed = (endCpu - startCpu).toFixed(3);
+    cpuRollingAverage.add(cpuUsed);
     if (Game.time % 10 === 0) {
-        var endCpu = Game.cpu.getUsed();
-        var cpuUsed = (endCpu - startCpu).toFixed(3);
         if (cpuUsed > 1) {
-            console.log(`CPU Bucket: ${Game.cpu.bucket} | Creeps: ${Object.keys(Game.creeps).length} | cpusUser: ${cpuUsed} | ${Game.time}`);
+            console.log(`CPU Bucket: ${Game.cpu.bucket} | Creeps: ${Object.keys(Game.creeps).length} | cpusUser: ${cpuRollingAverage.get()} | ${Game.time}`);
         }
     }
 };

@@ -24,6 +24,8 @@ const SpawnQueue = require('spawn.SpawnQueue');
 const PopulationManager = require('spawn.populationManager');
 const { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG, BODY_ENERGY_LIMITS, PRIORITY, SPAWN_MANAGER_CONFIG, NEED_REPLACEMENT_FLAG } = require('./spawn.constants');
 
+const roomCache = require('utils.RoomCache');
+
 class SpawnManager {
     constructor() {
         this.queue = new SpawnQueue();
@@ -61,17 +63,20 @@ class SpawnManager {
             // Κάθε 50tick ή αν δεν υπάρχει πληθυσμός.
             this.populationManager.updateRoomLimits(roomName);
             this.queue.flushOnRoom(roomName); // Καθαρισμός ουράς για το δωμάτιο σε περίπτωση αλλαγής ορίων
-            // debugConsole.debugObject("spawnManager", `Checking needs for ${roomName}`, Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY]);
+
         }
+
         const limits = Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY];
         if (!limits) return;
 
+        let cache = roomCache.in(roomName);
         // 1. Έλεγχος βάσει αριθμού Creeps (κυρίως για Harvesters σε Recovery/Early stage)
 
         if (limits[POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]) {
             for (const role in limits[POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]) {
-                const currentCount = _.filter(Game.creeps, c => c.memory.homeRoom === roomName && c.memory.role === role).length;
+                const currentCount = _.filter(cache.myCreeps, c => c.memory.role === role).length;
                 const targetCount = limits[POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP][role];
+
 
                 if (currentCount < targetCount) {
                     this.handleCountBasedNeed(roomName, role, currentCount, targetCount);
@@ -89,11 +94,12 @@ class SpawnManager {
             }
         }
         // έλεγχος για σηκωμένες σημαίες αντικατάστασης
-        const creepWithFlag = _.filter(Game.creeps, c => c.memory.homeRoom === roomName && c.memory[NEED_REPLACEMENT_FLAG] === true);
+
+        const creepWithFlag = _.filter(cache.myCreeps, c => c.memory[NEED_REPLACEMENT_FLAG] === true);
         if (creepWithFlag && creepWithFlag.length === 0) {
             return;
         }
-        //debugConsole.debugObject("spawnManager", `Checking for replacement flags in ${roomName}`, creepWithFlag);
+
         const maxEnergyAvailable = Game.rooms[roomName].energyCapacityAvailable;
 
         creepWithFlag.forEach(creep => {
@@ -107,7 +113,7 @@ class SpawnManager {
                         this.getBodyCost(body),
                         body, { sourceId: creep.memory.sourceId, init: true }, creep.memory.targetRoom);
                     creep.memory[NEED_REPLACEMENT_FLAG] = false; // reset flag
-                    debugConsole.debugText("spawnManager", `Creep ${creep.name} is flagged for replacement. Requesting new ${creep.memory.role}.`);
+                    // debugConsole.debugText("spawnManager", `Creep ${creep.name} is flagged for replacement. Requesting new ${creep.memory.role}.`);
                 }
             }
         });
@@ -142,8 +148,8 @@ class SpawnManager {
     } // end of handleCountBasedNeed
     handleStaticHarvesterNeed(roomName, budget, body) {
         const room = Game.rooms[roomName];
-        const creepsInRoom = _.filter(Game.creeps, c => c.memory.homeRoom === roomName);
-        const sources = room.find(FIND_SOURCES);
+        const creepsInRoom = roomCache.in(roomName).myCreeps;
+        const sources = roomCache.in(roomName).sources;
         const roleName = ROLES.STATIC_HARVESTER;
         sources.forEach(source => {
 
@@ -252,7 +258,7 @@ class SpawnManager {
             if (result === OK) {
                 debugConsole.debugText("spawnManager", `Spawning ${name} at ${spawn.name} for ${request.targetRoom}`);
                 this.queue.removeAt(0);
-                
+
             }
         }
 
@@ -283,10 +289,10 @@ class SpawnManager {
         let body = [];
         const hasRoads = Memory.rooms[roomName] ? Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.HAVE_ROAD_KEY] : false;
         const hasLinks = Memory.rooms[roomName] ? Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.HAVE_LINK_KEY] : false;
-        const roomLevel=Memory.rooms[roomName]?Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.ROOM_LEVEL_KEY] : 1;
-        
+        const roomLevel = Memory.rooms[roomName] ? Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.ROOM_LEVEL_KEY] : 1;
+
         let parts = 0;
-        let costPerUnit=0;
+        let costPerUnit = 0;
         switch (role) {
 
             case ROLES.STATIC_HARVESTER:
@@ -295,7 +301,7 @@ class SpawnManager {
                 parts = 2;
                 if (hasLinks) {
                     body.push(CARRY);// Αν έχουμε link, προσθέτουμε ένα CARRY για να μεταφέρουμε ενέργεια στο link.
-                    
+
                 }
                 // Οι Static Harvesters χρειάζονται max 5-6 WORK. Πάνω από 800 energy είναι overkill.
                 while (this.getBodyCost(body) + 100 <= maxEnergy && parts < diffParts) {
@@ -307,7 +313,7 @@ class SpawnManager {
                 diffParts = 5;
                 parts = 0;
                 while (this.getBodyCost(body) + 250 <= maxEnergy && parts <= diffParts) {
-                    body.push(WORK,CARRY,MOVE, MOVE);
+                    body.push(WORK, CARRY, MOVE, MOVE);
                     parts++;
                 }
                 break;
@@ -328,31 +334,31 @@ class SpawnManager {
                 break;
             case ROLES.UPGRADER:
                 parts = 0;
-                
+
                 costPerUnit = hasRoads ? 200 : 250; // [C,C,M] vs [C,M]
-                costPerUnit=(roomLevel>3)?350:250;
+                costPerUnit = (roomLevel > 3) ? 350 : 250;
                 while (this.getBodyCost(body) + costPerUnit <= maxEnergy && parts < diffParts) {
-                    
-                    if(roomLevel>3) {
-                        if((diffParts-parts)===1) {
-                            body.push(WORK,  CARRY,MOVE);
-                            parts += 1;       
+
+                    if (roomLevel > 3) {
+                        if ((diffParts - parts) === 1) {
+                            body.push(WORK, CARRY, MOVE);
+                            parts += 1;
                         } else {
-                            body.push(WORK,WORK,  CARRY, MOVE,MOVE);
-                            parts += 2;   
+                            body.push(WORK, WORK, CARRY, MOVE, MOVE);
+                            parts += 2;
                         }
                     } else {
-                        body.push(WORK,  CARRY, MOVE, MOVE);
+                        body.push(WORK, CARRY, MOVE, MOVE);
                         parts += 1;
                     }
-                    
+
                 }
                 break;
 
             case ROLES.BUILDER:
                 parts = 0;
                 while (this.getBodyCost(body) + 250 <= maxEnergy && parts < diffParts) {
-                    body.push(WORK, CARRY,MOVE, MOVE);
+                    body.push(WORK, CARRY, MOVE, MOVE);
                     parts++;
                 }
                 break;

@@ -2,12 +2,12 @@
  * File: manager.movement.js
  */
 
-let matrixCache = {}; 
+let matrixCache = {};
 let lastMatrixUpdate = {};
-
+let roomCache = require('utils.RoomCache');
 const movementManager = {
 
-    getRoomCostMatrix: function(roomName) {
+    getRoomCostMatrix: function (roomName) {
         if (matrixCache[roomName] && lastMatrixUpdate[roomName] > Game.time - 50) {
             return matrixCache[roomName];
         }
@@ -17,18 +17,20 @@ const movementManager = {
 
         const costs = new PathFinder.CostMatrix;
 
-        room.find(FIND_STRUCTURES).forEach(function(struct) {
+
+        roomCache.in(roomName).structures.forEach(function (struct) {
             if (struct.structureType === STRUCTURE_ROAD) {
                 costs.set(struct.pos.x, struct.pos.y, 1);
-            } else if (struct.structureType !== STRUCTURE_CONTAINER && 
-                       (struct.structureType !== STRUCTURE_RAMPART || !struct.my)) {
+            } else if (struct.structureType !== STRUCTURE_CONTAINER &&
+                (struct.structureType !== STRUCTURE_RAMPART || !struct.my)) {
                 costs.set(struct.pos.x, struct.pos.y, 0xff);
             }
         });
 
-        room.find(FIND_CONSTRUCTION_SITES).forEach(function(site) {
-            if (site.structureType !== STRUCTURE_ROAD && 
-                site.structureType !== STRUCTURE_CONTAINER && 
+
+        roomCache.in(roomName).structures.forEach(function (site) {
+            if (site.structureType !== STRUCTURE_ROAD &&
+                site.structureType !== STRUCTURE_CONTAINER &&
                 site.structureType !== STRUCTURE_RAMPART) {
                 costs.set(site.pos.x, site.pos.y, 0xff);
             }
@@ -39,7 +41,7 @@ const movementManager = {
         return costs;
     },
 
-    smartMove: function(creep, target, range = 1) {
+    smartMove: function (creep, target, range = 1) {
         if (!target) return ERR_INVALID_TARGET;
         const targetPos = target.pos || target;
 
@@ -57,7 +59,7 @@ const movementManager = {
         const isStuck = creep.memory._stuckCount > 2;
 
         const ret = PathFinder.search(
-            creep.pos, 
+            creep.pos,
             { pos: targetPos, range: range },
             {
                 plainCost: 2,
@@ -68,7 +70,7 @@ const movementManager = {
                         costs = costs.clone();
                         const room = Game.rooms[roomName];
                         if (room) {
-                            room.find(FIND_CREEPS).forEach(c => {
+                            roomCache.in(roomName).myCreeps.forEach(c => {
                                 if (c.id !== creep.id) costs.set(c.pos.x, c.pos.y, 0xff);
                             });
                         }
@@ -83,23 +85,23 @@ const movementManager = {
             const nextStep = ret.path[0];
             // Καταγραφή επόμενου βήματος για το Yield logic
             creep.memory._nextStep = { x: nextStep.x, y: nextStep.y, t: Game.time };
-            
+
             const direction = creep.pos.getDirectionTo(nextStep);
             return creep.move(direction);
         } else {
-            return creep.moveTo(targetPos, { reusePath: 10, visualizePathStyle: {stroke: '#ffaa00'} });
+            return creep.moveTo(targetPos, { reusePath: 10, visualizePathStyle: { stroke: '#ffaa00' } });
         }
     },
 
     // Ελέγχει αν κάποιο άλλο creep θέλει να πατήσει εδώ που είμαστε
-    isBlockingPath: function(creep) {
+    isBlockingPath: function (creep) {
         const scanner = creep.pos.findInRange(FIND_MY_CREEPS, 1, {
             filter: (c) => {
-                return c.id !== creep.id && 
-                       c.memory._nextStep && 
-                       c.memory._nextStep.t === Game.time &&
-                       c.memory._nextStep.x === creep.pos.x && 
-                       c.memory._nextStep.y === creep.pos.y;
+                return c.id !== creep.id &&
+                    c.memory._nextStep &&
+                    c.memory._nextStep.t === Game.time &&
+                    c.memory._nextStep.x === creep.pos.x &&
+                    c.memory._nextStep.y === creep.pos.y;
             }
         });
         return scanner.length > 0;

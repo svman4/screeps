@@ -1,7 +1,7 @@
 /*
 main.js
  Version 1.3.1 
-	έγινε σχόλιο η expansion.run()
+    έγινε σχόλιο η expansion.run()
  Version 1.3.0
 
  TODO Στο rcl=3 να φτιάχνεται το πρώτο remote room. Static harverster και remoteHauler χωρίς preserve. Στο 4 μετά τη δημιουργία του storage το δεύτερο
@@ -11,6 +11,7 @@ main.js
  
  TODO ΘΑ πρέπει πρώτα να χτίζονται το link του controller και της πιο απομακρυσμένης πηγής, έπειτα του storage και μετέπειτα τα υπόλοιπα Link.
 
+TODO όταν ο hauler δεν έχει δουλειά να πηγαίνει κάπου εκτός δρόμου. Ειδικά σε μεγάλα επίπεδα
 
  */
 var spawnManager = require('manager.spawn');
@@ -20,20 +21,24 @@ var expansionManager = require('manager.expansion');
 var logisticsManager = require('manager.logistics');
 const militaryController = require('manager.military');
 var roleManager = require('manager.role');
-var market=require('manager.market');
-var pixels=require('manager.pixels');
-var linkManager=require('manager.link');
- global.RoomInfo = function() {
+var market = require('manager.market');
+var pixels = require('manager.pixels');
+var linkManager = require('manager.link');
+var roomCache = require('utils.RoomCache');
+var RollingAverage = require('utils.RollingAverage');
+global.RoomInfo = function () {
     let answer = "\n--- 🏰 Controller Progress Report ---\n";
-    
+
+
+
     // Φιλτράρουμε τα δωμάτια που μας ανήκουν και έχουμε ορατότητα
     const myRooms = Object.values(Game.rooms).filter(r => r.controller && r.controller.my);
-    
+
     if (myRooms.length === 0) return "No rooms with active visibility found.";
 
     for (const room of myRooms) {
         const controller = room.controller;
-        
+
         // Αν είναι Level 8, δεν υπάρχει πρόοδος προς το επόμενο level
         if (controller.level === 8) {
             answer += `Room ${room.name}: [Lvl ${controller.level}] - Max Level ✨\n`;
@@ -41,105 +46,104 @@ var linkManager=require('manager.link');
         }
         const remaining = controller.progressTotal - controller.progress;
         const progressPercent = (controller.progress / controller.progressTotal) * 100;
-        
+
         // Μορφοποίηση χιλιάδων
         const formattedRemaining = remaining.toLocaleString('el-GR');
-        
-        
+
+
         answer += `Room ${room.name}: [Lvl ${controller.level}] -> ${formattedRemaining} left (${progressPercent.toFixed(2)}% done)\n`;
     }
-    
+
     return answer;
 }; // Βοηθητική συνάρτηση για οπτική πληροφόρηση
 
-
+const cpuRollingAverage = new RollingAverage(50);
 module.exports.loop = function () {
-     var startCpu = Game.cpu.getUsed();
-    // Memory Cleanup
-    for (const name in Memory.creeps) {
-        if (!Game.creeps[name]) {
-            delete Memory.creeps[name];
-        }
-    }
-     try {
+    var startCpu = Game.cpu.getUsed();
     // Αρχικοποίηση Memory
     if (!Memory.rooms) {
         Memory.rooms = {};
     }
-
+    roomCache.clearTickCaches();  // Καθαρισμός cache ανά tick για όλα τα δωμάτια
     // Εκτέλεση ανά δωμάτιο
     for (const roomName in Game.rooms) {
-        const room = Game.rooms[roomName];
+        const room = roomCache.in(roomName).room; // Εξασφαλίζουμε ότι το RoomCache είναι έτοιμο για το δωμάτιο
+
+
         if (room.controller && room.controller.my) {
-        //    console.log(`🏠 Επεξεργασία δωματίου: ${roomName} (RCL: ${room.controller.level})`);
-            
+            //    console.log(`🏠 Επεξεργασία δωματίου: ${roomName} (RCL: ${room.controller.level})`);
+
             // HIGH PRIORITY - Πάντα τρέχουν
-            militaryController.run(roomName);
-            defenceManager.run(roomName);
-            //spawnManager.run(roomName);
-            logisticsManager.run(roomName);
+            runAndCatch((name) => defenceManager.run(name), "Error on defenceManager (" + roomName + ")", roomName);
+            // runAndCatch((name) => militaryController.run(name), "Error on militaryController (" + roomName + ")", roomName);
 
-            
-			linkManager.run(roomName)
+            runAndCatch((name) => logisticsManager.run(name), "Error on logisticsManager (" + roomName + ")", roomName);
 
-            // MEDIUM PRIORITY - Τρέχουν πιο σπάνια
-            constructionManager.run(roomName);
+            runAndCatch((name) => linkManager.run(name), "error on linkmanager (" + roomName + ")", roomName);
 
-            market.run(roomName);
-            
-            
-            
-             //Οπτική πληροφόρηση
-             if (Memory.debug.status  ) {
-                 showRoomInfo(room);
-             }
-        }
-    } 
-    roleManager.run();	
-    spawnManager.run();
-    //expansionManager.run();
-    pixels.run();
-    if (Game.time % 10 === 0) {
-        var endCpu = Game.cpu.getUsed();
-        var cpuUsed = (endCpu - startCpu).toFixed(3);
-        if(cpuUsed>10) {
-            console.log(`CPU Bucket: ${Game.cpu.bucket} | Creeps: ${Object.keys(Game.creeps).length} | cpusUser: ${cpuUsed} | ${Game.time}`);
+            runAndCatch((name) => constructionManager.run(name), "error on constructionManager (" + roomName + ")", roomName);
+            runAndCatch((name) => market.run(name), "error on market (" + roomName + ")", roomName);
+
+
+            //Οπτική πληροφόρηση
+            if (Memory.debug.status) {
+                showRoomInfo(room);
+            }
         }
     }
-     } catch (error) {
-        console.log(`🔴 ΣΦΑΛΜΑ: ${error.message}`);
-        console.log(`📋 Stack: ${error.stack}`);
+    runAndCatch(() => roleManager.run(), "Error on roleManager");
+
+    runAndCatch(() => spawnManager.run(), "error on spawnManager");
+    //runAndCatch(() => expansionManager.run(), "error on expansionManager");
+    //runAndCatch(expansionManager.run, "error on expansionManager");
+    runAndCatch(pixels.run, "Error on pixels");
+    var endCpu = Game.cpu.getUsed();
+    var cpuUsed = (endCpu - startCpu).toFixed(3);
+    cpuRollingAverage.add(cpuUsed);
+    if (Game.time % 10 === 0) {
+        if (cpuUsed > 1) {
+            console.log(`CPU Bucket: ${Game.cpu.bucket} | Creeps: ${Object.keys(Game.creeps).length} | cpusUser: ${cpuRollingAverage.get()} | ${Game.time}`);
+        }
     }
 };
+function runAndCatch(action, message, ...args) {
+    try {
+        action(...args);
+    } catch (error) {
+        console.log(`${message}: ${error.message}</span>`);
+        // Προαιρετικά: εκτύπωσε και το stack trace αν είσαι σε debug mode
+        console.log(error.stack);
+    }
+} // end of runAndCatch
 function showRoomInfo(room) {
     const visual = new RoomVisual(room.name);
     const creeps = room.find(FIND_MY_CREEPS);
-    
+
     // Πληροφορίες πληθυσμού
     const roles = {};
     creeps.forEach(creep => {
         const role = creep.memory.role || 'unknown';
         roles[role] = (roles[role] || 0) + 1;
     });
-    
+
     let infoText = `Pop: ${creeps.length}`;
     for (const role in roles) {
         infoText += ` ${role}:${roles[role]}`;
     }
-    
+
     // Πληροφορίες ενέργειας
     const energyInfo = `Energy: ${room.energyAvailable}/${room.energyCapacityAvailable}`;
-    
+
     visual.text(infoText, 1, 1, { align: 'left', color: '#ffffff' });
     visual.text(energyInfo, 1, 2, { align: 'left', color: '#ffff00' });
-    
+
     // Πληροφορίες controller
     if (room.controller) {
         const controllerInfo = `RCL: ${room.controller.level} Progress: ${room.controller.progress}/${room.controller.progressTotal}`;
         visual.text(controllerInfo, 1, 3, { align: 'left', color: '#00ff00' });
     }
-    const constructionText=`construction sites :${room.find(FIND_CONSTRUCTION_SITES).length}`;
-    visual.text(constructionText,1,4,{ align: 'left', color: '#ffffff' });
+    const constructionText = `construction sites :${room.find(FIND_CONSTRUCTION_SITES).length}`;
+    visual.text(constructionText, 1, 4, { align: 'left', color: '#ffffff' });
     // Πληροφορίες ουράς logistics (αν υπάρχουν)
     if (Memory.energyQueue && Memory.energyQueue[room.name]) {
         logisticsManager.showQueueInfo(room);
@@ -150,7 +154,7 @@ function showRoomInfo(room) {
  * * Χρήση στην κονσόλα: exportRoom('E12S28')
  */
 
-global.exportRoom = function(roomName) {
+global.exportRoom = function (roomName) {
     const room = Game.rooms[roomName];
     if (!room) {
         return "Error: Δεν έχω visibility στο δωμάτιο " + roomName;
@@ -189,7 +193,7 @@ global.exportRoom = function(roomName) {
     const structures = room.find(FIND_STRUCTURES);
     structures.forEach(s => {
         if (s.structureType === STRUCTURE_CONTROLLER) return; // Το έχουμε ήδη σε ξεχωριστό field
-        
+
         if (!output.buildings[s.structureType]) {
             output.buildings[s.structureType] = [];
         }

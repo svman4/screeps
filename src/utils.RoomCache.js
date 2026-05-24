@@ -25,7 +25,7 @@ class RoomCache {
         if (!this._rooms[roomName]) {
             this._rooms[roomName] = new RoomCacheInstance(roomName);
         }
-        return this._rooms[roomName];
+        return this._rooms[roomName]||null;
     }
 
     /**
@@ -102,7 +102,8 @@ class RoomCacheInstance {
 
     clearTickCache() {
         this._tickCache = {};
-        Memory.rooms[this.roomName].cache = this.cache;
+        if(Memory.rooms[this.roomName])
+            Memory.rooms[this.roomName].cache = this.cache;
     }
     run() {
         this.clearTickCache(); // Καθαρισμός tick cache στην αρχή του run για να διασφαλίσουμε φρέσκα δεδομένα
@@ -121,7 +122,7 @@ class RoomCacheInstance {
         this.cache.center = null;
         this.cache.lastUpdated = Game.time;
         this.cache.sourceDistanceIds = {};
-        this.cache.center = {};
+        this.cache.center = null;
         this.cache.containers = null;
         this.cache.links = null;
         this.cache.patrolPoints = [];
@@ -137,11 +138,15 @@ class RoomCacheInstance {
             if (!this.room) {
                 return null;
             }
-            const target = this.room.storage;// || (context.spawns && context.spawns.length > 0 ? context.spawns[0] : null);
+            const target = this.room.storage|| (context.spawns && context.spawns.length > 0 ? context.spawns[0] : null);
             if (!target) return null;
             this.cache.center = target.pos;
         }
-        return new RoomPosition(this.cache.center.x, this.cache.center.y, this.cache.center.roomName);
+        if (this.cache.center)
+            return new RoomPosition(this.cache.center.x, this.cache.center.y, this.cache.center.roomName);
+        else {
+            return null;
+        }
 
     }
     get sourceIds() {
@@ -150,7 +155,7 @@ class RoomCacheInstance {
             const sources = this.room.find(FIND_SOURCES);
             this.cache.sourceIds = sources.map(s => s.id);
         }
-        return this.cache.sourceIds;
+        return this.cache.sourceIds || [];
     }
 
     get sources() {
@@ -175,7 +180,7 @@ class RoomCacheInstance {
             });
             this.cache.controllerLinkId = links.length > 0 ? links[0].id : null;
         }
-        return Game.getObjectById(this.cache.controllerLinkId);
+        return Game.getObjectById(this.cache.controllerLinkId) || null;
     }
 
     get storageLink() {
@@ -187,7 +192,7 @@ class RoomCacheInstance {
             });
             this.cache.storageLinkId = links.length > 0 ? links[0].id : null;
         }
-        return Game.getObjectById(this.cache.storageLinkId);
+        return Game.getObjectById(this.cache.storageLinkId) || null;
     }
     getSourceDistance(sourceId) {
         if (!this.cache.sourceDistanceIds) this.cache.sourceDistanceIds = {};
@@ -199,7 +204,7 @@ class RoomCacheInstance {
 
             this.cache.sourceDistanceIds[sourceId] = source.pos.getRangeTo(center);
         }
-        return this.cache.sourceDistanceIds[sourceId];
+        return this.cache.sourceDistanceIds[sourceId] || null;
 
 
     }
@@ -211,7 +216,7 @@ class RoomCacheInstance {
             const container = this.containers.filter(c => c.pos.isNearTo(source))[0];
             this.cache.sourceContainerIds[sourceId] = container ? container.id : null;
         }
-        return Game.getObjectById(this.cache.sourceContainerIds[sourceId]);
+        return Game.getObjectById(this.cache.sourceContainerIds[sourceId]) || null;
     }
     getSourceLink(sourceId) {
         if (!this.cache.sourceLinkIds) this.cache.sourceLinkIds = {};
@@ -226,7 +231,7 @@ class RoomCacheInstance {
             this.cache.sourceLinkIds[sourceId] = links.length > 0 ? links[0].id : null;
 
         }
-        return Game.getObjectById(this.cache.sourceLinkIds[sourceId]);
+        return Game.getObjectById(this.cache.sourceLinkIds[sourceId]) || null;
     }
     get sourceContainers() {
         const sourceIDs = this.sourceIds;
@@ -236,11 +241,11 @@ class RoomCacheInstance {
             return this.getSourceContainer(sourceID); // Διορθώθηκε το 'this.cache.' σε 'this.'
         }).filter(Boolean); // Φιλτράρει τυχόν null αν κάποια πηγή δεν έχει ακόμα container
 
-        return containers;
+        return containers || [];
     }
 
     get recoveryContainer() {
-        if (!this.recoveryContainerId) {
+        if (!this.cache.recoveryContainerId) {
             if (!this.room) return null;
             const spawns = this.room.find(FIND_MY_SPAWNS);
             if (spawns.length === 0) return null;
@@ -248,9 +253,9 @@ class RoomCacheInstance {
             const containers = spawns[0].pos.findInRange(FIND_STRUCTURES, 4, {
                 filter: s => s.structureType === STRUCTURE_CONTAINER
             });
-            this.recoveryContainerId = containers.length > 0 ? containers[0].id : null;
+            this.cache.recoveryContainerId = containers.length > 0 ? containers[0].id : null;
         }
-        return Game.getObjectById(this.recoveryContainerId);
+        return Game.getObjectById(this.cache.recoveryContainerId) || null ;
     }
 
     get controllerContainer() {
@@ -262,7 +267,7 @@ class RoomCacheInstance {
             });
             this.cache.controllerContainerId = containers.length > 0 ? containers[0].id : null;
         }
-        return Game.getObjectById(this.cache.controllerContainerId);
+        return Game.getObjectById(this.cache.controllerContainerId) || null;
     }
     get patrolPoints() {
         if (!this.cache.patrolPoints) {
@@ -278,7 +283,7 @@ class RoomCacheInstance {
 
             //spawn
         }
-        return this.cache.patrolPoints;
+        return this.cache.patrolPoints || [];
 
     }
 
@@ -291,14 +296,14 @@ class RoomCacheInstance {
             if (!this.room) return [];
             this._tickCache.myStructures = this.room.find(FIND_MY_STRUCTURES);
         }
-        return this._tickCache.myStructures;
+        return this._tickCache.myStructures || [];
     }
 
     get groupedStructures() {
         if (!this._tickCache.groupedStructures) {
             this._tickCache.groupedStructures = _.groupBy(this.structures, 'structureType');
         }
-        return this._tickCache.groupedStructures;
+        return this._tickCache.groupedStructures || [];
     }
 
     get containers() {
@@ -313,28 +318,28 @@ class RoomCacheInstance {
             if (!this.room) return [];
             this._tickCache.structures = this.room.find(FIND_STRUCTURES);
         }
-        return this._tickCache.structures;
+        return this._tickCache.structures || [] ;
     }
 
     get links() {
         if (!this.cache.links) {
             this.cache.links = this.groupedStructures[STRUCTURE_LINK] || [];
         }
-        return this.cache.links;
+        return this.cache.links || [];
     }
     get myCreeps() {
         if (!this._tickCache.myCreeps) {
             if (!this.room) return [];
             this._tickCache.myCreeps = this.room.find(FIND_MY_CREEPS);
         }
-        return this._tickCache.myCreeps;
+        return this._tickCache.myCreeps || [] ;
     }
     get hostileCreeps() {
         if (!this._tickCache.hostileCreeps) {
             if (!this.room) return [];
             this._tickCache.hostileCreeps = this.room.find(FIND_HOSTILE_CREEPS);
         }
-        return this._tickCache.hostileCreeps;
+        return this._tickCache.hostileCreeps || [];
     }
 
     get constructionSites() {
@@ -342,7 +347,7 @@ class RoomCacheInstance {
             if (!this.room) return [];
             this._tickCache.constructionSites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
         }
-        return this._tickCache.constructionSites;
+        return this._tickCache.constructionSites || [] ;
     }
 
     get damagedStructures() {
@@ -353,14 +358,14 @@ class RoomCacheInstance {
                     s.structureType !== STRUCTURE_RAMPART;
             });
         }
-        return this._tickCache.damagedStructures;
+        return this._tickCache.damagedStructures || [];
     }
     get ruins() {
         if (!this._tickCache.ruins) {
             if (!this.room) return [];
             this._tickCache.ruins = this.room.find(FIND_RUINS);
         }
-        return this._tickCache.ruins;
+        return this._tickCache.ruins || [];
     }
     get droppedEnergy() {
         if (!this._tickCache.droppedEnergy) {
@@ -369,7 +374,7 @@ class RoomCacheInstance {
                 filter: r => r.resourceType === RESOURCE_ENERGY
             });
         }
-        return this._tickCache.droppedEnergy;
+        return this._tickCache.droppedEnergy || [];
     }
 }
 

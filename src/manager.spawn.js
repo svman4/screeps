@@ -37,7 +37,9 @@ class SpawnManager {
      */
     run() {
         this.cleanup();
-
+        if (Game.time % SPAWN_MANAGER_CONFIG.POPULATION_LIMIT_REFRESH_RATE === 0 ) {
+            this.queue.flush(); // Καθαρισμός ουράς για το δωμάτιο σε περίπτωση αλλαγής ορίων
+        }
         // Εκτύπωση της ουράς για debugging
         //  if (this.queue.length > 0) {
         //      debugConsole.debugObject("spawnManager", "--- Current Spawn Queue " + this.queue.length + " ---", this.queue);
@@ -62,7 +64,7 @@ class SpawnManager {
         if (Game.time % SPAWN_MANAGER_CONFIG.POPULATION_LIMIT_REFRESH_RATE === 0 || !Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY]) {
             // Κάθε 50tick ή αν δεν υπάρχει πληθυσμός.
             this.populationManager.updateRoomLimits(roomName);
-            this.queue.flushOnRoom(roomName); // Καθαρισμός ουράς για το δωμάτιο σε περίπτωση αλλαγής ορίων
+            
 
         }
 
@@ -337,6 +339,7 @@ class SpawnManager {
 
                 costPerUnit = hasRoads ? 200 : 250; // [C,C,M] vs [C,M]
                 costPerUnit = (roomLevel > 3) ? 350 : 250;
+                
                 while (this.getBodyCost(body) + costPerUnit <= maxEnergy && parts < diffParts) {
 
                     if (roomLevel > 3) {

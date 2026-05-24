@@ -139,16 +139,19 @@ class BaseRole {
      * @returns {boolean}
      */
     getEnergyFromContainersorStorage(resource = RESOURCE_ENERGY) {
-        const containers = roomCache.in(this.creep.room.name).groupedStructures[STRUCTURE_CONTAINER];
+        const containers = roomCache.in(this.creep.room.name).containers;
         const storage = this.creep.room.storage || null;
-        const store = [...containers, storage].filter(
+		let stores=[...containers];
+		if(storage) stores.push(storage);
+		
+        stores = stores.filter(
             s => s.store[resource] > (this.creep.store.getCapacity() * 0.3)
         );
 
 
-        if (store.length === 0)
+        if (stores.length === 0)
             return false;
-        const target = this.creep.pos.findClosestByRange(store);
+        const target = this.creep.pos.findClosestByRange(stores);
 
         // const target = this.creep.pos.findClosestByPath(FIND_STRUCTURES, {
         // filter: s => (s.structureType === STRUCTURE_CONTAINER || s.structureType === STRUCTURE_STORAGE) &&
@@ -217,15 +220,15 @@ class BaseRole {
      * @returns {boolean}
      */
     getEnergyFromRuins() {
-        const ruins = RoomCache.in(this.creep.room.name).ruins.filter(s => s.store[RESOURCE_ENERGY] > 40);
+        const ruins = roomCache.in(this.creep.room.name).ruins.filter(s => s.store[RESOURCE_ENERGY] > 40);
         const target = this.creep.pos.findClosestByRange(ruins);
 
 
-        if (ruins) {
-            if (this.creep.pos.inRangeTo(ruin, 1)) {
-                this.creep.withdraw(ruin, RESOURCE_ENERGY);
+        if (target) {
+            if (this.creep.pos.inRangeTo(target, 1)) {
+                this.creep.withdraw(target, RESOURCE_ENERGY);
             } else {
-                movementManager.smartMove(this.creep, ruin, 1);
+                movementManager.smartMove(this.creep, target, 1);
             }
             return true;
         }
@@ -254,12 +257,17 @@ class BaseRole {
      * @returns {boolean}
      */
     fillSpawnExtension() {
-        const spawns = roomCache.in(this.creep.room.name).groupedStructures[STRUCTURE_SPAWN].filter(
-            s.store.getFreeCapacity(RESOURCE_ENERGY) > 0);
-
-        const extensions = roomCache.in(this.creep.room.name).groupedStructures[STRUCTURE_EXTENSION].filter(
-            s.store.getFreeCapacity(RESOURCE_ENERGY) > 0);
-        const structures = [...spawns, ...extensions];
+        let structures=[];
+		let spawns = roomCache.in(this.creep.room.name).groupedStructures[STRUCTURE_SPAWN];
+		if(spawns) structures.push(...spawns);
+		
+		let extensions=roomCache.in(this.creep.room.name).groupedStructures[STRUCTURE_EXTENSION];
+		if(extensions) structures.push(...extensions);
+		
+		structures=structures.filter(
+            s=>s.store.getFreeCapacity(RESOURCE_ENERGY) > 0);
+		       
+        
         const target = this.creep.pos.findClosestByRange(structures);
 
         if (target) {

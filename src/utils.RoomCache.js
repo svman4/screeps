@@ -106,8 +106,8 @@ class RoomCacheInstance {
     }
     run() {
         this.clearTickCache(); // Καθαρισμός tick cache στην αρχή του run για να διασφαλίσουμε φρέσκα δεδομένα
-        if (Game.time % 500) {
-            this.rorceRefresh();
+        if (Game.time % 500===0) {
+            this.forceRefresh();
         }
     }
     forceRefresh() {
@@ -137,9 +137,11 @@ class RoomCacheInstance {
                 return null;
             }
             const target = this.room.storage;// || (context.spawns && context.spawns.length > 0 ? context.spawns[0] : null);
-            this.cache.center = target.pos;
+            if (!target) return null;
+			this.cache.center = target.pos;
         }
-        return this.cache.center;
+		return new RoomPosition(this.cache.center.x, this.cache.center.y, this.cache.center.roomName);
+        
     }
     get sourceIds() {
         if (!this.cache.sourceIds || this.cache.sourceIds.length === 0) {
@@ -273,7 +275,21 @@ class RoomCacheInstance {
         }
         return this._tickCache.myStructures;
     }
+	
+	get groupedStructures() {
+    if (!this._tickCache.groupedStructures) {
+        this._tickCache.groupedStructures = _.groupBy(this.structures, 'structureType');
+    }
+    return this._tickCache.groupedStructures;
+}
 
+	get containers() {
+    return this.groupedStructures[STRUCTURE_CONTAINER] || [];
+	}
+
+	get roads() {
+    return this.groupedStructures[STRUCTURE_ROAD] || [];
+}
     get structures() {
         if (!this._tickCache.structures) {
             if (!this.room) return [];
@@ -282,16 +298,9 @@ class RoomCacheInstance {
         return this._tickCache.structures;
     }
 
-    get containers() {
-        if (!this.cache.containers) {
-            this.cache.containers = this.structures.filter(s => s.structureType === STRUCTURE_CONTAINER);
-        }
-        return this.cache.containers;
-    }
-
     get links() {
         if (!this.cache.links) {
-            this.cache.links = this.myStructures.filter(s => s.structureType === STRUCTURE_LINK).map(s => s.id);
+            this.cache.links = this.groupedStructures[STRUCTURE_LINK] || [];
         }
         return this.cache.links;
     }

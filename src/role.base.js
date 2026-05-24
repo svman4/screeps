@@ -139,11 +139,21 @@ class BaseRole {
      * @returns {boolean}
      */
     getEnergyFromContainersorStorage(resource = RESOURCE_ENERGY) {
-
-        const target = this.creep.pos.findClosestByPath(FIND_STRUCTURES, {
-            filter: s => (s.structureType === STRUCTURE_CONTAINER || s.structureType === STRUCTURE_STORAGE) &&
-                s.store[resource] > (this.creep.store.getCapacity() / 3)
-        });
+		const containers=roomCache.in(this.creep.room.name).groupedStructures[STRUCTURE_CONTAINER];
+		const storage=this.creep.room.storage ||null;
+		const store=[...containers,storage].filter(
+		s=>s.store[resource]>(this.creep.store.getCapacity()*0.3)
+		);
+		
+		
+		if (store.length===0 )
+			return false;
+		const target=this.creep.pos.findClosestByRange(store);
+		
+        // const target = this.creep.pos.findClosestByPath(FIND_STRUCTURES, {
+            // filter: s => (s.structureType === STRUCTURE_CONTAINER || s.structureType === STRUCTURE_STORAGE) &&
+                // s.store[resource] > (this.creep.store.getCapacity() / 3)
+        // });
 
         if (target) {
             if (this.creep.pos.inRangeTo(target, 1)) {
@@ -207,13 +217,11 @@ class BaseRole {
      * @returns {boolean}
      */
     getEnergyFromRuins() {
-        const ruins = RoomCache.in(this.creep.room.name).ruins.filter(s=>s.store[RESOURCE_ENERGY]/40);
+        const ruins = RoomCache.in(this.creep.room.name).ruins.filter(s=>s.store[RESOURCE_ENERGY]>40);
 		const target=this.creep.pos.findClosestByRange(ruins);
-		//this.creep.pos.findClosestByPath(FIND_RUINS, {
-            //filter: s => s.store[RESOURCE_ENERGY] > 40
-        //});
 		
-        if (ruin) {
+		
+        if (ruins) {
             if (this.creep.pos.inRangeTo(ruin, 1)) {
                 this.creep.withdraw(ruin, RESOURCE_ENERGY);
             } else {
@@ -248,22 +256,12 @@ class BaseRole {
     fillSpawnExtension() {
 		const spawns = roomCache.in(this.creep.room.name).groupedStructures[STRUCTURE_SPAWN].filter(
 		s.store.getFreeCapacity(RESOURCE_ENERGY) > 0);
-		let target=null;
-		if(spawns.length!=0) {
-			
-			target=this.creep.pos.findClosestByRange(spawns);
-		}
-		const extensions=roomCache.in(this.creep.room.name).groupedStructures[STRUCTURE_EXTENSION].filter(
-		s.store.getFreeCapacity(RESOURCE_ENERGY) > 0);;
-		if(extensions.length!=0) {
-			target=this.creep.pos.findClosestByRange(extensions);
-		}
 		
-        //const target = this.creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {
-            //filter: s => (s.structureType === STRUCTURE_EXTENSION || s.structureType === STRUCTURE_SPAWN) &&
-              //  s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
-        //});
-
+		const extensions=roomCache.in(this.creep.room.name).groupedStructures[STRUCTURE_EXTENSION].filter(
+		s.store.getFreeCapacity(RESOURCE_ENERGY) > 0);
+		const structures=[...spawns,...extensions];
+		const target=this.creep.pos.findClosestByRange(structures);
+		
         if (target) {
             if (this.creep.pos.inRangeTo(target, 1)) {
                 this.creep.transfer(target, RESOURCE_ENERGY);

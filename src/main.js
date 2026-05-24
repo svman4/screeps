@@ -57,7 +57,7 @@ global.RoomInfo = function () {
     return answer;
 }; // Βοηθητική συνάρτηση για οπτική πληροφόρηση
 
-const cpuRollingAverage = new RollingAverage(50);
+const cpuRollingAverage = new RollingAverage(20);
 module.exports.loop = function () {
     var startCpu = Game.cpu.getUsed();
     // Αρχικοποίηση Memory

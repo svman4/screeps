@@ -28,14 +28,14 @@ const PRIORITIES = {
 };
 
 const TARGET_FULL_PERCENT = {
-    TERMINAL: 0.01,
+    TERMINAL: 0.00,
     STORAGE: 0.8,
     TOWER: 0.8,
     CONTROLLER_CONTAINER: 0.6,
-    FACTORY: 0.01,
-    LAB: 0.01,
-    NUKER: 0.01,
-    POWER_SPAWN: 1
+    FACTORY: 0.00,
+    LAB: 0.00,
+    NUKER: 0.00,
+    POWER_SPAWN: 0
 };
 
 const MIN_LIFE_TO_LIVE = 50;
@@ -181,7 +181,10 @@ const logisticsManager = {
         });
         const controllerContainer = roomCache.in(room.name).controllerContainer;
 
-        if (controllerContainer && controllerContainer.store && controllerContainer.store[RESOURCE_ENERGY] < controllerContainer.store.getCapacity(RESOURCE_ENERGY) * TARGET_FULL_PERCENT.CONTROLLER_CONTAINER) {
+        if (controllerContainer &&
+            controllerContainer.store &&
+            controllerContainer.store[RESOURCE_ENERGY] <
+            controllerContainer.store.getCapacity(RESOURCE_ENERGY) * TARGET_FULL_PERCENT.CONTROLLER_CONTAINER) {
             targets.push({
                 id: controllerContainer.id, type: 'controllerContainer', priority: PRIORITIES.CONTROLLER_CONTAINER, obj: controllerContainer
             });
@@ -189,124 +192,97 @@ const logisticsManager = {
 
         return targets.sort((a, b) => b.priority - a.priority);
     },
-
+    /**
+     * Για έναν δεδομένο στόχο, βρίσκει όλες τις πιθανές πηγές ενέργειας στο δωμάτιο, αξιολογεί την προτεραιότητά τους και επιστρέφει μια ταξινομημένη λίστα.
+      - Περιλαμβάνει dropped energy, ruins, και διάφορες δομές (links, containers, terminal, storage) με βάση συγκεκριμένες συνθήκες.
+      - Κάθε πηγή επιστρέφεται με ένα αντικείμενο που περιέχει το id, τον τύπο της πηγής, την προτεραιότητα και το ίδιο το αντικείμενο για εύκολη πρόσβαση αργότερα.    
+     */
     findSourcesForTarget: function (room, target) {
         const sources = [];
-        roomCache.in(room.name).droppedEnergy
+        const cache = roomCache.in(room.name);
+        cache.droppedEnergy
             .filter(r => r.amount > 200)
-            .forEach(energy => sources.push({
-                id: energy.id, type: 'dropped', priority: PRIORITIES.DROP_ENERGY, obj: energy
-            }));
+            .forEach(energy =>
+                sources.push(
+                    {
+                        id: energy.id,
+                        type: 'dropped',
+                        priority: PRIORITIES.DROP_ENERGY,
+                        obj: energy
+                    }));
+        const ruins = cache.ruins.filter(r => r.store[RESOURCE_ENERGY] > 50);
+        ruins.forEach(ruin =>
+            sources.push(
+                {
+                    id: ruin.id,
+                    type: 'ruin',
+                    priority: PRIORITIES.RUIN,
+                    obj: ruin
+                }));
 
-        // 1. Dropped Energy
-        // room.find(FIND_DROPPED_RESOURCES, {
-        //     filter: r => r.resourceType === RESOURCE_ENERGY && r.amount > 200
-        // }).forEach(energy => sources.push({
-        //     id: energy.id, type: 'dropped', priority: PRIORITIES.DROP_ENERGY, obj: energy
-        // }));
+        const storageLink = cache.storageLink;
+        if (storageLink && storageLink.store[RESOURCE_ENERGY] > 0) {
+            sources.push(
+                {
+                    id: storageLink.id,
+                    type: storageLink.structureType.toLowerCase(),
+                    priority: PRIORITIES.STORAGE_LINK,
+                    obj: storageLink
+                });
+        }
 
-        // 2. Structures
-        roomCache.in(room.name).structures.forEach(s => {
-            let priority = 0;
-            let condition = false;
-            if (s.id === target.id) return;
-
-            switch (s.structureType) {
-                case STRUCTURE_LINK:
-                    // Αν είναι το Storage Link, δίνουμε μέγιστη προτεραιότητα για να αδειάσει
-                    if (room.memory[STORAGE_LINK_ID] === s.id && s.store[RESOURCE_ENERGY] > 0) {
-                        priority = PRIORITIES.STORAGE_LINK;
-                        condition = true;
-                    }
-                    break;
-                case STRUCTURE_CONTAINER:
-                    if (s.store[RESOURCE_ENERGY] > 250 && this.isContainerNearSource(s)) {
-                        priority = PRIORITIES.SOURCE_CONTAINER;
-                        condition = true;
-                    }
-                    else if (room.memory.recoveryContainerId === s.id && s.store[RESOURCE_ENERGY] > 100) {
-                        priority = PRIORITIES.RECOVERY_CONTAINER;
-                        condition = true;
-                    }
-                    break;
-                case STRUCTURE_TERMINAL:
-                    if (s.my && s.store[RESOURCE_ENERGY] > 1000) {
-                        priority = PRIORITIES.TERMINAL_SOURCE;
-                        condition = true;
-                    }
-                    break;
-                case STRUCTURE_STORAGE:
-                    if (s.my && s.store[RESOURCE_ENERGY] > 1000) {
-                        priority = PRIORITIES.STORAGE_SOURCE;
-                        condition = true;
-                    }
-                    break;
-                default:
-                    return;
-            }
-            if (condition) {
-                sources.push({ id: s.id, type: s.structureType.toLowerCase(), priority: priority, obj: s });
+        cache.sourceContainers.forEach(s => {
+            if (s.store[RESOURCE_ENERGY] > 250) {
+                sources.push(
+                    {
+                        id: s.id,
+                        type: s.structureType.toLowerCase(),
+                        priority: PRIORITIES.SOURCE_CONTAINER,
+                        obj: s
+                    });
             }
         });
+        const recoveryContainer = cache.recoveryContainer;
+        if (recoveryContainer && recoveryContainer.store[RESOURCE_ENERGY] > 100) {
+            sources.push(
+                {
+                    id: recoveryContainer.id,
+                    type: recoveryContainer.structureType.toLowerCase(), priority: PRIORITIES.RECOVERY_CONTAINER,
+                    obj: recoveryContainer
+                });
+        }
 
-        // 3. Ruins
-        room.find(FIND_RUINS, {
-            filter: ruin => ruin.store[RESOURCE_ENERGY] > 50
-        }).forEach(ruin => sources.push({
-            id: ruin.id, type: 'ruin', priority: PRIORITIES.RUIN, obj: ruin
-        }));
+        const terminal = room.terminal;
+        if (terminal && terminal.store[RESOURCE_ENERGY] > 1000) {
+            sources.push(
+                {
+                    id: terminal.id,
+                    type: terminal.structureType.toLowerCase(),
+                    priority: PRIORITIES.TERMINAL_SOURCE,
+                    obj: terminal
+                }
+            );
+        }
+        if (target && room.storage && room.storage.store[RESOURCE_ENERGY] > 1000) {
+            sources.push(
+                {
+                    id: room.storage.id,
+                    type: 'storage',
+                    priority: PRIORITIES.STORAGE_SOURCE,
+                    obj: room.storage
+                });
+        }
 
         return sources.sort((a, b) => b.priority - a.priority);
     },
 
     findCleanupSources: function (room) {
         const sources = [];
-        const storage = room.storage;
 
-        this.findSourcesForTarget(room, { id: null }).forEach(source => {
-            if (source.type === 'dropped' || source.type === 'ruin' || (room.memory[STORAGE_LINK_ID] === source.id)) {
-                sources.push(source);
-            }
-        });
 
-        roomCache.in(room.name).structures.forEach(s => {
-            if (storage && s.id === storage.id) return;
 
-            let priority = 0;
-            let condition = false;
-
-            switch (s.structureType) {
-                case STRUCTURE_LINK:
-                    if (room.memory[STORAGE_LINK_ID] === s.id && s.store[RESOURCE_ENERGY] > 0) {
-                        priority = PRIORITIES.STORAGE_LINK;
-                        condition = true;
-                    }
-                    break;
-                case STRUCTURE_CONTAINER:
-
-                    if (s.store[RESOURCE_ENERGY] > 250 && this.isContainerNearSource(s)) {
-                        priority = PRIORITIES.SOURCE_CONTAINER;
-                        condition = true;
-                    }
-                    else if (room.memory.recoveryContainerId === s.id && s.store[RESOURCE_ENERGY] > 100) {
-                        priority = PRIORITIES.RECOVERY_CONTAINER;
-                        condition = true;
-                    }
-                    break;
-                case STRUCTURE_TERMINAL:
-                    if (s.my && s.store[RESOURCE_ENERGY] > 50000) {
-                        priority = PRIORITIES.TERMINAL_SOURCE;
-                        condition = true;
-                    }
-                    break;
-                default:
-                    return;
-            }
-            if (condition) {
-                sources.push({ id: s.id, type: s.structureType.toLowerCase(), priority: priority, obj: s });
-            }
-        });
-
+        const sourcesForTarget = this.findSourcesForTarget(room, { id: null });
+        sources.push(...sourcesForTarget);
         return sources.sort((a, b) => b.priority - a.priority);
     },
 
@@ -439,7 +415,7 @@ const logisticsManager = {
     },
 
     runHaulerWithTask: function (creep, assignment) {
-        if (creep.ticksToLive < MIN_LIFE_TO_LIVE && creep.room.memory.recoveryContainerId) {
+        if (creep.ticksToLive < MIN_LIFE_TO_LIVE && roomCache.in(creep.room.name).recoveryContainer) {
             creep.memory.role = "to_be_recycled";
             return;
         }

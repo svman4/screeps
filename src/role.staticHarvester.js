@@ -21,10 +21,9 @@ class StaticHarvester extends BaseRole {
         const source = this.resolveSource();
         if (!source) return;
 
-        const container = this.resolveContainer(source);
+        const container = roomCache.in(this.creep.room.name).getSourceContainer(source.id);
 
-        // Έλεγχος αν ο αντικαταστάτης είναι εδώ για να αποχωρήσει (suicide)
-        if (this.handleRetirement(source)) return;
+
 
         // Διαχείριση κίνησης προς το σημείο εργασίας
         if (this.handlePositioning(source, container)) return;
@@ -40,6 +39,9 @@ class StaticHarvester extends BaseRole {
 
         // Εκτέλεση εξόρυξης
         this.performHarvest(source);
+        // Έλεγχος αν ο αντικαταστάτης είναι εδώ για να αποχωρήσει (suicide)
+        if (this.handleRetirement(source)) return;
+
     }
 
     /**
@@ -53,14 +55,6 @@ class StaticHarvester extends BaseRole {
         return Game.getObjectById(this.creep.memory.sourceId);
     }
 
-    /**
-     * Εντοπίζει το container αποθήκευσης κοντά στην πηγή.
-     */
-    resolveContainer(source) {
-        let container = roomCache.in(this.creep.room.name).getSourceContainer(source.id);
-
-        return container;
-    }
 
     /**
      * Διαχειρίζεται την "αποστρατεία" του creep.
@@ -135,21 +129,14 @@ class StaticHarvester extends BaseRole {
      * Μεταφέρει ενέργεια σε Link αν υπάρχει.
      */
     manageLogistics(container) {
-        if (this.creep.memory.linkId === undefined) {
-            const link = roomCache.in(this.creep.room.name).getSourceLink(this.creep.memory.sourceId);
-            if (link) {
-                this.creep.memory.linkId = link.id;
-            }
 
+        const link = roomCache.in(this.creep.room.name).getSourceLink(this.creep.memory.sourceId);
+        if (link && this.creep.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
+            this.creep.transfer(link, RESOURCE_ENERGY);
         }
 
-        if (this.creep.memory.linkId) {
-            const link = Game.getObjectById(this.creep.memory.linkId);
-            if (link && this.creep.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
-                this.creep.transfer(link, RESOURCE_ENERGY);
-            }
-        }
     }
+
 
     /**
      * Εκτελεί το harvest στην πηγή.

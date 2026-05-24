@@ -106,7 +106,7 @@ class RoomCacheInstance {
     }
     run() {
         this.clearTickCache(); // Καθαρισμός tick cache στην αρχή του run για να διασφαλίσουμε φρέσκα δεδομένα
-        if (Game.time % 500===0) {
+        if (Game.time % 500 === 0) {
             this.forceRefresh();
         }
     }
@@ -124,6 +124,7 @@ class RoomCacheInstance {
         this.cache.center = {};
         this.cache.containers = null;
         this.cache.links = null;
+        this.cache.patrolPoints = [];
         this._tickCache = {};
     }
 
@@ -138,10 +139,10 @@ class RoomCacheInstance {
             }
             const target = this.room.storage;// || (context.spawns && context.spawns.length > 0 ? context.spawns[0] : null);
             if (!target) return null;
-			this.cache.center = target.pos;
+            this.cache.center = target.pos;
         }
-		return new RoomPosition(this.cache.center.x, this.cache.center.y, this.cache.center.roomName);
-        
+        return new RoomPosition(this.cache.center.x, this.cache.center.y, this.cache.center.roomName);
+
     }
     get sourceIds() {
         if (!this.cache.sourceIds || this.cache.sourceIds.length === 0) {
@@ -239,7 +240,7 @@ class RoomCacheInstance {
     }
 
     get recoveryContainer() {
-        if (!this.cache.recoveryContainerId) {
+        if (!this.recoveryContainerId) {
             if (!this.room) return null;
             const spawns = this.room.find(FIND_MY_SPAWNS);
             if (spawns.length === 0) return null;
@@ -247,9 +248,9 @@ class RoomCacheInstance {
             const containers = spawns[0].pos.findInRange(FIND_STRUCTURES, 4, {
                 filter: s => s.structureType === STRUCTURE_CONTAINER
             });
-            this.cache.recoveryContainerId = containers.length > 0 ? containers[0].id : null;
+            this.recoveryContainerId = containers.length > 0 ? containers[0].id : null;
         }
-        return Game.getObjectById(this.cache.recoveryContainerId);
+        return Game.getObjectById(this.recoveryContainerId);
     }
 
     get controllerContainer() {
@@ -263,6 +264,23 @@ class RoomCacheInstance {
         }
         return Game.getObjectById(this.cache.controllerContainerId);
     }
+    get patrolPoints() {
+        if (!this.cache.patrolPoints) {
+            if (!this.room) return [];
+            let points = [];
+            if (this.room.controller) {
+                points.push(this.room.controller.pos);
+            }
+            if (this.room.storage) {
+                points.push(this.room.storage.pos);
+            }
+            this.cache.patrolPoints = points;
+
+            //spawn
+        }
+        return this.cache.patrolPoints;
+
+    }
 
     // =========================================================================
     // ΠΡΟΣΒΑΣΗ ΣΕ ΔΥΝΑΜΙΚΑ ΔΕΔΟΜΕΝΑ (Volatile Tick Cache)
@@ -275,21 +293,21 @@ class RoomCacheInstance {
         }
         return this._tickCache.myStructures;
     }
-	
-	get groupedStructures() {
-    if (!this._tickCache.groupedStructures) {
-        this._tickCache.groupedStructures = _.groupBy(this.structures, 'structureType');
+
+    get groupedStructures() {
+        if (!this._tickCache.groupedStructures) {
+            this._tickCache.groupedStructures = _.groupBy(this.structures, 'structureType');
+        }
+        return this._tickCache.groupedStructures;
     }
-    return this._tickCache.groupedStructures;
-}
 
-	get containers() {
-    return this.groupedStructures[STRUCTURE_CONTAINER] || [];
-	}
+    get containers() {
+        return this.groupedStructures[STRUCTURE_CONTAINER] || [];
+    }
 
-	get roads() {
-    return this.groupedStructures[STRUCTURE_ROAD] || [];
-}
+    get roads() {
+        return this.groupedStructures[STRUCTURE_ROAD] || [];
+    }
     get structures() {
         if (!this._tickCache.structures) {
             if (!this.room) return [];
@@ -337,13 +355,13 @@ class RoomCacheInstance {
         }
         return this._tickCache.damagedStructures;
     }
-	get ruins() {
-		if(!this._tickCache.ruins) {
-			if(!this.room) return [];
-			this._tickCache.ruins=this.room.find(FIND_RUINS);
-		}
-		return this._tickCache.ruins;
-	}
+    get ruins() {
+        if (!this._tickCache.ruins) {
+            if (!this.room) return [];
+            this._tickCache.ruins = this.room.find(FIND_RUINS);
+        }
+        return this._tickCache.ruins;
+    }
     get droppedEnergy() {
         if (!this._tickCache.droppedEnergy) {
             if (!this.room) return [];

@@ -240,15 +240,21 @@ class BaseRole {
      * @returns {boolean}
      */
     gotoHarvesting() {
-        const source = this.creep.pos.findClosestByPath(FIND_SOURCES_ACTIVE);
+        const sources = roomCache.in(this.creep.room.name).sources;
+        const source=this.creep.pos.findClosestByRange(sources);
+        
         if (source) {
             if (this.creep.pos.inRangeTo(source, 1)) {
+                
                 this.creep.harvest(source);
             } else {
+                
                 movementManager.smartMove(this.creep, source, 1);
             }
             return true;
         }
+        
+        
         return false;
     }
 
@@ -269,12 +275,14 @@ class BaseRole {
 		       
         
         const target = this.creep.pos.findClosestByRange(structures);
-
+        
         if (target) {
+            
             if (this.creep.pos.inRangeTo(target, 1)) {
                 this.creep.transfer(target, RESOURCE_ENERGY);
             } else {
                 movementManager.smartMove(this.creep, target, 1);
+                
             }
             return true;
         }

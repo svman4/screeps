@@ -42,11 +42,12 @@ const movementManager = {
     },
 
     smartMove: function (creep, target, range = 1) {
+        
         if (!target) return ERR_INVALID_TARGET;
         const targetPos = target.pos || target;
-
+        
         if (creep.pos.inRangeTo(targetPos, range)) return OK;
-
+        
         // Stuck detection
         const lastPos = creep.memory._lastPos;
         if (lastPos && lastPos.x === creep.pos.x && lastPos.y === creep.pos.y && lastPos.roomName === creep.pos.roomName) {
@@ -55,9 +56,9 @@ const movementManager = {
             creep.memory._stuckCount = 0;
             creep.memory._lastPos = { x: creep.pos.x, y: creep.pos.y, roomName: creep.pos.roomName };
         }
-
+        
         const isStuck = creep.memory._stuckCount > 2;
-
+        
         const ret = PathFinder.search(
             creep.pos,
             { pos: targetPos, range: range },
@@ -80,12 +81,12 @@ const movementManager = {
                 maxOps: 2000
             }
         );
-
+        
         if (ret.path.length > 0) {
             const nextStep = ret.path[0];
             // Καταγραφή επόμενου βήματος για το Yield logic
             creep.memory._nextStep = { x: nextStep.x, y: nextStep.y, t: Game.time };
-
+            
             const direction = creep.pos.getDirectionTo(nextStep);
             return creep.move(direction);
         } else {

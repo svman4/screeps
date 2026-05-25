@@ -138,14 +138,13 @@ class RoomCacheInstance {
             if (!this.room) {
                 return null;
             }
-            const target = this.room.storage|| (context.spawns && context.spawns.length > 0 ? context.spawns[0] : null);
+            const target = this.room.storage || new RoomPosition(27, 15, "W1N3");
             if (!target) return null;
             this.cache.center = target.pos;
         }
-        if (this.cache.center)
+        if (this.cache.center) {
             return new RoomPosition(this.cache.center.x, this.cache.center.y, this.cache.center.roomName);
-        else {
-            return null;
+        
         }
 
     }

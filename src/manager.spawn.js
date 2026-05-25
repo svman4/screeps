@@ -338,11 +338,11 @@ class SpawnManager {
                 parts = 0;
 
                 costPerUnit = hasRoads ? 200 : 250; // [C,C,M] vs [C,M]
-                costPerUnit = (roomLevel > 3) ? 350 : 250;
+                costPerUnit = (roomLevel >= 3) ? 350 : 250;
                 
                 while (this.getBodyCost(body) + costPerUnit <= maxEnergy && parts < diffParts) {
 
-                    if (roomLevel > 3) {
+                    if (roomLevel >= 3) {
                         if ((diffParts - parts) === 1) {
                             body.push(WORK, CARRY, MOVE);
                             parts += 1;

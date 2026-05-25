@@ -134,18 +134,20 @@ class PopulationManager {
          */
 
 
-
-        for (const source of context.sources) {
-
-            if (cache.getSourceLink(source.id)) continue; // αν η πηγή έχει link δε χρειάζεται να υπολογίσουμε carry για αυτή την πηγή
-
+        console.log("start "+totalCarryRequired);
+        for (const source of cache.sources) {
+            const sourceLink=cche.getSourceLink(source.id);
+            console.log("start "+totalCarryRequired);    
+            if (sourceLink ||sourceLink===null ) continue; // αν η πηγή έχει link δε χρειάζεται να υπολογίσουμε carry για αυτή την πηγή
+                console.log("start "+totalCarryRequired);
 
             const range = cache.getSourceDistance(source.id);
             const distance = (range !== Infinity) ? range : FALLBACK_DISTANCE;
+            console.log(source.id +" "+distance);
             totalCarryRequired += (ENERGY_INCOME_TICK * distance * 2) / CARRY_CAPACITY;
 
         }
-
+        console.log("sources "+totalCarryRequired);
         // ΥΠολογίζει τα carry Που χρειάζονται από το target στο controller
         if (!cache.controllerLink) {
             const controllerRange = cache.controllerDistance;
@@ -155,7 +157,7 @@ class PopulationManager {
         }
         // ---------
         totalCarryRequired = (totalCarryRequired + POPULATION_MODULE_CONFIG.EXTENSION_CARRY_BONUS) * POPULATION_MODULE_CONFIG.DISTANCE_PADDING;
-
+        console.log("end "+totalCarryRequired);
         return Math.ceil(totalCarryRequired);
     }
 

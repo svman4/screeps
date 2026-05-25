@@ -168,31 +168,27 @@ class PopulationManager {
      */
     _createContext(room) {
         const cache = roomCache.in(room.name);
-        const sources = cache.sources;
-        const spawns = room.find(FIND_MY_SPAWNS);
-        const storage = room.storage;
-        const containers = cache.containers;
-        // room.find(FIND_STRUCTURES, {
-        //     filter: s => s.structureType === STRUCTURE_CONTAINER
-        // });
-        const construction = cache.constructionSites;
-        //room.find(FIND_CONSTRUCTION_SITES);
-
-        const creeps = room.find(FIND_MY_CREEPS);
-        const hasWork = creeps.some(c => c.getActiveBodyparts(WORK) > 0);
-        const hasCarry = creeps.some(c => c.getActiveBodyparts(CARRY) > 0);
-        // const links = room.find(FIND_STRUCTURES, {
-        //     filter: s => s.structureType === STRUCTURE_LINK
-        // });
-        const answer = {
+		const controller=room.controller;
+		const creeps=cache.myCreeps;
+		
+		// Early exit or safety check if controller is missing
+		const level = controller ? controller.level : 0;
+		// Use filtering logic to derive states
+		const hasWork = creeps.some(c => c.getActiveBodyparts(WORK) > 0 );
+		const hasCarry = creeps.some(c => 
+			c.getActiveBodyparts(CARRY) > 0 && 
+			(c.memory.role === ROLES.HAULER || c.memory.role === ROLES.SIMPLE_HARVESTER)
+		);
+		
+		const answer = {
             room: room,
             level: room.controller ? room.controller.level : 0,
-            sources: sources,
-            spawns: spawns,
-            storage: storage,
-            hasContainers: containers.length > 2,
-            //links: links,
-            hasConstruction: construction.length > 0,
+            sources: cache.sources,
+            spawns: room.find(FIND_MY_SPAWNS),
+            storage: room.storage,
+            hasContainers: cache.containers.length > 2,
+            
+            hasConstruction: cache.constructionSites.length > 0,
             isRecovery: (!hasWork || !hasCarry) && room.controller && room.controller.level > 1
         };
 
@@ -288,7 +284,7 @@ class PopulationManager {
      */
     checkIfRoomHaveRoads(room) {
         var cache = roomCache.in(room.name);
-        const roads = _.filter(cache.myStructures, (s) => s.structureType === STRUCTURE_ROAD);
+        const roads = cache.roads;
         return roads.length >= POPULATION_MODULE_CONFIG.ROAD_THRESHOLD;
     }
 } // end of class PopulationManager

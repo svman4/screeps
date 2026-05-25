@@ -153,8 +153,7 @@ class SpawnManager {
         const creepsInRoom = roomCache.in(roomName).myCreeps;
         const sources = roomCache.in(roomName).sources;
         const roleName = ROLES.STATIC_HARVESTER;
-        sources.forEach(source => {
-
+		for(const source of sources) {
             const harvesterAtSource = _.find(creepsInRoom, c =>
                 c.memory.role === roleName && c.memory.sourceId === source.id
             );
@@ -164,7 +163,7 @@ class SpawnManager {
                 this.addRoleToQueue(roomName, ROLES.STATIC_HARVESTER, budget, body, { sourceId: source.id, init: true });
                 return;
             }
-        });
+        }
     }
     /**
          * Διαχείριση αναγκών με βάση τα BODY PARTS (π.χ. Haulers, Upgraders, Builders).

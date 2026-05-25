@@ -123,7 +123,6 @@ class PopulationManager {
     _calculateCarryQuota(context) {
         var cache = roomCache.in(context.room.name);
         const target = cache.center;
-        debugConsole.debugObject("PopulationManager", "target is", target);
         if (!target) return 10;
 
         const FALLBACK_DISTANCE = 25;
@@ -135,22 +134,22 @@ class PopulationManager {
          */
 
 
-        debugConsole.debugObject("PopulationManager", "sources is ", cache.sources);
+        //debugConsole.debugObject("PopulationManager", "sources is ", cache.sources);
         for (const source of cache.sources) {
-            const sourceLink=cche.getSourceLink(source.id);
-            debugConsole.debugObject("PopulationManager", "osourceLink for source ", sourceLink);
-            if (sourceLink || sourceLink === null)
+            const sourceLink=cache.getSourceLink(source.id);
+            
+            if (sourceLink )
                 continue; // αν η πηγή έχει link δε χρειάζεται να υπολογίσουμε carry για αυτή την πηγή
-            debugConsole.debugText("PopulationManager", "totalCarryPart after source " + source.id +" is " + totalCarryRequired);    
+            
             
 
             const range = cache.getSourceDistance(source.id);
             const distance = (range !== Infinity) ? range : FALLBACK_DISTANCE;
-            console.log(source.id +" "+distance);
+            
             totalCarryRequired += (ENERGY_INCOME_TICK * distance * 2) / CARRY_CAPACITY;
 
         }
-        debugConsole.debugText("PopulationManager", "totalCarryPart after sources is " + totalCarryRequired);
+        
             // ΥΠολογίζει τα carry Που χρειάζονται από το target στο controller
         if (!cache.controllerLink) {
             const controllerRange = cache.controllerDistance;
@@ -160,7 +159,7 @@ class PopulationManager {
         }
         // ---------
         totalCarryRequired = (totalCarryRequired + POPULATION_MODULE_CONFIG.EXTENSION_CARRY_BONUS) * POPULATION_MODULE_CONFIG.DISTANCE_PADDING;
-        debugConsole.debugText("PopulationManager", "totalCarryPart in the end " + totalCarryRequired);
+        
         return Math.ceil(totalCarryRequired);
     }
 

@@ -123,6 +123,7 @@ class PopulationManager {
     _calculateCarryQuota(context) {
         var cache = roomCache.in(context.room.name);
         const target = cache.center;
+        debugConsole.debugObject("PopulationManager", "target is", target);
         if (!target) return 10;
 
         const FALLBACK_DISTANCE = 25;
@@ -134,12 +135,14 @@ class PopulationManager {
          */
 
 
-        console.log("start "+totalCarryRequired);
+        debugConsole.debugObject("PopulationManager", "sources is ", cache.sources);
         for (const source of cache.sources) {
             const sourceLink=cche.getSourceLink(source.id);
-            console.log("start "+totalCarryRequired);    
-            if (sourceLink ||sourceLink===null ) continue; // αν η πηγή έχει link δε χρειάζεται να υπολογίσουμε carry για αυτή την πηγή
-                console.log("start "+totalCarryRequired);
+            debugConsole.debugObject("PopulationManager", "osourceLink for source ", sourceLink);
+            if (sourceLink || sourceLink === null)
+                continue; // αν η πηγή έχει link δε χρειάζεται να υπολογίσουμε carry για αυτή την πηγή
+            debugConsole.debugText("PopulationManager", "totalCarryPart after source " + source.id +" is " + totalCarryRequired);    
+            
 
             const range = cache.getSourceDistance(source.id);
             const distance = (range !== Infinity) ? range : FALLBACK_DISTANCE;
@@ -147,8 +150,8 @@ class PopulationManager {
             totalCarryRequired += (ENERGY_INCOME_TICK * distance * 2) / CARRY_CAPACITY;
 
         }
-        console.log("sources "+totalCarryRequired);
-        // ΥΠολογίζει τα carry Που χρειάζονται από το target στο controller
+        debugConsole.debugText("PopulationManager", "totalCarryPart after sources is " + totalCarryRequired);
+            // ΥΠολογίζει τα carry Που χρειάζονται από το target στο controller
         if (!cache.controllerLink) {
             const controllerRange = cache.controllerDistance;
             const controllerDistance = (controllerRange !== Infinity) ? controllerRange : FALLBACK_DISTANCE;
@@ -157,7 +160,7 @@ class PopulationManager {
         }
         // ---------
         totalCarryRequired = (totalCarryRequired + POPULATION_MODULE_CONFIG.EXTENSION_CARRY_BONUS) * POPULATION_MODULE_CONFIG.DISTANCE_PADDING;
-        console.log("end "+totalCarryRequired);
+        debugConsole.debugText("PopulationManager", "totalCarryPart in the end " + totalCarryRequired);
         return Math.ceil(totalCarryRequired);
     }
 

@@ -163,8 +163,8 @@ class RoomCacheInstance {
     get controllerDistance() {
         if (this.cache.controllerDistance === undefined || this.cache.controllerDistance === null) {
             if (!this.room || !this.room.controller) return Infinity;
-            const center = this.cache.center || null; // Μπορείς να ορίσεις το κέντρο του δωματίου στη cache αν θέλεις, π.χ. κοντά στον controller ή στο storage
-            if (!center) return null;
+            const center = this.center || null; // Μπορείς να ορίσεις το κέντρο του δωματίου στη cache αν θέλεις, π.χ. κοντά στον controller ή στο storage
+            if (!center) return Infinity;
 
             this.cache.controllerDistance = this.room.controller.pos.getRangeTo(center);
         }
@@ -198,7 +198,7 @@ class RoomCacheInstance {
         if (this.cache.sourceDistanceIds[sourceId] === undefined) {
             const source = Game.getObjectById(sourceId);
             if (!source) return null;
-            const center = this.cache.center || null; // Μπορείς να ορίσεις το κέντρο του δωματίου στη cache αν θέλεις, π.χ. κοντά στον controller ή στο storage
+            const center = this.center || null; // Μπορείς να ορίσεις το κέντρο του δωματίου στη cache αν θέλεις, π.χ. κοντά στον controller ή στο storage
             if (!center) return null;
 
             this.cache.sourceDistanceIds[sourceId] = source.pos.getRangeTo(center);

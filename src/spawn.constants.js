@@ -52,13 +52,13 @@ const NEED_REPLACEMENT_FLAG = "needReplacementFlag";
 // --- GLOBAL CONFIGURATION ---
 
 const POPULATION_GLOBAL_CONFIG = {
-    MEMORY_KEY: 'populationLimits2',
+    MEMORY_KEY: 'populationLimits',
     RECOVERY_KEY: 'isRecovery',
     HAVE_ROAD_KEY: 'hasRoads',
     HAVE_LINK_KEY: 'hasLinks',
     MEMORY_KEY_CREEP: "creeps",
     MEMORY_KEY_PARTS: "parts",
-    ROOM_LEVEL_KEY:"level"
+    ROOM_LEVEL_KEY: "level"
 
 };
 const SPAWN_MANAGER_CONFIG = {
@@ -74,7 +74,7 @@ const POPULATION_MODULE_CONFIG = {
     UPGRADE_EFFICIENCY: 1,       // 1 WORK part = 1 energy per tick upgrade
 
     // Economic Balancing
-    MAINTENANCE_BUFFER: 4,       // Ενέργεια που κρατάμε για Towers/Spawning
+    MAINTENANCE_BUFFER: 5,       // Ενέργεια που κρατάμε για Towers/Spawning
     BUILDER_INCOME_SHARE: 0.5,   // Ποσοστό του εισοδήματος που πάει σε χτίσιμο
     MAX_BUILDER_WORK_BASELINE: 10, // Μέγιστο WORK για builders από το τρέχον εισόδημα
     SURPLUS_THRESHOLD: 0.5,      // Πάνω από ποιο ποσοστό Storage θεωρούμε ότι έχουμε πλεόνασμα
@@ -83,7 +83,7 @@ const POPULATION_MODULE_CONFIG = {
     STATIC_HARVESTERS_PER_SOURCE: 1,
     SIMPLE_HARVESTERS_PER_SOURCE: 2,
     // Logistics
-    EXTENSION_CARRY_BONUS: 10,   // Σταθερό quota για τον ανεφοδιασμό extensions
+    EXTENSION_CARRY_BONUS: 9,   // Σταθερό quota για τον ανεφοδιασμό extensions
     DISTANCE_PADDING: 1.1,       // 10% έξτρα carry για κάλυψη απωλειών/κίνησης
     ROAD_THRESHOLD: 30,           // Ελάχιστος αριθμός δρόμων για να θεωρηθεί το δωμάτιο "στρωμένο"
     LINK_THRESHOLD: 2           // Ελάχιστος αριθμός link για να θεωρηθεί το δωμάτιο "εξοπλισμένο με links"

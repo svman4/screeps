@@ -1,6 +1,8 @@
 // manager.logistics.js
-const movementManager = require('manager.movement'); 
-const{STORAGE_LINK_ID}=require('manager.link');
+const movementManager = require('manager.movement');
+const { STORAGE_LINK_ID } = require('manager.link');
+
+const roomCache = require('utils.RoomCache');
 /*
 version 1.1.0
 - Added high priority for Storage Link emptying using room.memory.storageLinkId
@@ -18,30 +20,30 @@ const PRIORITIES = {
     CONTROLLER_CONTAINER: 70,
     LAB: 40,
     TERMINAL_SOURCE: 40,
-    NUKER: 35, 
-    FACTORY: 35, 
+    NUKER: 35,
+    FACTORY: 35,
     POWER_SPAWN: 35,
     STORAGE: 10,
     TERMINAL: 5
 };
 
-const TARGET_FULL_PERCENT = { 
-    TERMINAL: 0.01,
+const TARGET_FULL_PERCENT = {
+    TERMINAL: 0.00,
     STORAGE: 0.8,
     TOWER: 0.8,
     CONTROLLER_CONTAINER: 0.6,
-    FACTORY: 0.01,
-    LAB: 0.01,
-    NUKER : 0.01,
-    POWER_SPAWN : 1 
+    FACTORY: 0.00,
+    LAB: 0.00,
+    NUKER: 0.00,
+    POWER_SPAWN: 0
 };
 
 const MIN_LIFE_TO_LIVE = 50;
 const UPDATE_TASKS_INTERVAL = 2;
 
 const logisticsManager = {
-    
-    init: function(roomName) {
+
+    init: function (roomName) {
         if (!Memory.rooms[roomName]) {
             Memory.rooms[roomName] = {};
         }
@@ -56,12 +58,12 @@ const logisticsManager = {
         }
     },
 
-    run: function(roomName) {
+    run: function (roomName) {
         this.init(roomName);
-        
+
         const room = Game.rooms[roomName];
         if (!room) return;
-        
+
         const roomMemory = room.memory.logistics;
 
         if (Game.time % UPDATE_TASKS_INTERVAL === 0) {
@@ -75,12 +77,12 @@ const logisticsManager = {
             this.cleanupTasks(roomMemory);
         }
     },
-    
-    updateEnergyTasks: function(room, roomMemory) {
+
+    updateEnergyTasks: function (room, roomMemory) {
         const roomName = room.name;
         const tasks = [];
         const deliveryTargets = this.findDeliveryTargets(room);
-        
+
         if (deliveryTargets.length > 0) {
             deliveryTargets.forEach(target => {
                 const sources = this.findSourcesForTarget(room, target);
@@ -108,12 +110,12 @@ const logisticsManager = {
                 });
             }
         }
-        
+
         tasks.sort((a, b) => b.priority - a.priority);
         roomMemory.energyTasks = tasks;
     },
 
-    isSameStructureTypeTransfer: function(source, target) {
+    isSameStructureTypeTransfer: function (source, target) {
         if ((source.type === 'storage' && target.type === 'storage') ||
             (source.type === 'terminal' && target.type === 'terminal') ||
             (source.type === 'storageLink' && target.type === 'storageLink')) {
@@ -126,9 +128,10 @@ const logisticsManager = {
         return false;
     },
 
-    findDeliveryTargets: function(room) {
+    findDeliveryTargets: function (room) {
         const targets = [];
-        const allStructures = room.find(FIND_MY_STRUCTURES);
+        const allStructures = roomCache.in(room.name).structures;
+        // const allStructures = room.find(FIND_MY_STRUCTURES);
 
         allStructures.forEach(s => {
             const freeCapacity = s.store ? s.store.getFreeCapacity(RESOURCE_ENERGY) : 0;
@@ -157,16 +160,16 @@ const logisticsManager = {
                     condition = energyAmount < capacity * TARGET_FULL_PERCENT.TERMINAL;
                     break;
                 case STRUCTURE_FACTORY:
-                    priority=PRIORITIES.FACTORY;
-                    condition=energyAmount<capacity*TARGET_FULL_PERCENT.FACTORY;
+                    priority = PRIORITIES.FACTORY;
+                    condition = energyAmount < capacity * TARGET_FULL_PERCENT.FACTORY;
                     break;
-                case STRUCTURE_NUKER: 
-                    priority=PRIORITIES.NUKER;
-                    condition=energyAmount<capacity*TARGET_FULL_PERCENT.NUKER;
+                case STRUCTURE_NUKER:
+                    priority = PRIORITIES.NUKER;
+                    condition = energyAmount < capacity * TARGET_FULL_PERCENT.NUKER;
                     break;
                 case STRUCTURE_POWER_SPAWN:
-                    priority=PRIORITIES.POWER_SPAWN;
-                    condition=energyAmount<capacity*TARGET_FULL_PERCENT.POWER_SPAWN;
+                    priority = PRIORITIES.POWER_SPAWN;
+                    condition = energyAmount < capacity * TARGET_FULL_PERCENT.POWER_SPAWN;
                     break;
                 default:
                     return;
@@ -176,134 +179,114 @@ const logisticsManager = {
                 targets.push({ id: s.id, type: s.structureType, priority: priority, obj: s });
             }
         });
+        const controllerContainer = roomCache.in(room.name).controllerContainer;
 
-        if (room.memory.controllerContainerId) {
-            const cc = Game.getObjectById(room.memory.controllerContainerId);
-            if (cc && cc.store && cc.store[RESOURCE_ENERGY] < cc.store.getCapacity(RESOURCE_ENERGY) * TARGET_FULL_PERCENT.CONTROLLER_CONTAINER) {
-                targets.push({
-                    id: cc.id, type: 'controllerContainer', priority: PRIORITIES.CONTROLLER_CONTAINER, obj: cc
-                });
-            }
+        if (controllerContainer &&
+            controllerContainer.store &&
+            controllerContainer.store[RESOURCE_ENERGY] <
+            controllerContainer.store.getCapacity(RESOURCE_ENERGY) * TARGET_FULL_PERCENT.CONTROLLER_CONTAINER) {
+            targets.push({
+                id: controllerContainer.id, type: 'controllerContainer', priority: PRIORITIES.CONTROLLER_CONTAINER, obj: controllerContainer
+            });
         }
+
         return targets.sort((a, b) => b.priority - a.priority);
     },
-
-    findSourcesForTarget: function(room, target) {
+    /**
+     * Για έναν δεδομένο στόχο, βρίσκει όλες τις πιθανές πηγές ενέργειας στο δωμάτιο, αξιολογεί την προτεραιότητά τους και επιστρέφει μια ταξινομημένη λίστα.
+      - Περιλαμβάνει dropped energy, ruins, και διάφορες δομές (links, containers, terminal, storage) με βάση συγκεκριμένες συνθήκες.
+      - Κάθε πηγή επιστρέφεται με ένα αντικείμενο που περιέχει το id, τον τύπο της πηγής, την προτεραιότητα και το ίδιο το αντικείμενο για εύκολη πρόσβαση αργότερα.    
+     */
+    findSourcesForTarget: function (room, target) {
         const sources = [];
-        
-        // 1. Dropped Energy
-        room.find(FIND_DROPPED_RESOURCES, {
-            filter: r => r.resourceType === RESOURCE_ENERGY && r.amount > 200
-        }).forEach(energy => sources.push({
-            id: energy.id, type: 'dropped', priority: PRIORITIES.DROP_ENERGY, obj: energy
-        }));
-   
-        // 2. Structures
-        room.find(FIND_STRUCTURES).forEach(s => {
-            let priority = 0;
-            let condition = false;
-            if (s.id === target.id) return;
+        const cache = roomCache.in(room.name);
+        cache.droppedEnergy
+            .filter(r => r.amount > 200)
+            .forEach(energy =>
+                sources.push(
+                    {
+                        id: energy.id,
+                        type: 'dropped',
+                        priority: PRIORITIES.DROP_ENERGY,
+                        obj: energy
+                    }));
+        const ruins = cache.ruins.filter(r => r.store[RESOURCE_ENERGY] > 50);
+        ruins.forEach(ruin =>
+            sources.push(
+                {
+                    id: ruin.id,
+                    type: 'ruin',
+                    priority: PRIORITIES.RUIN,
+                    obj: ruin
+                }));
 
-            switch (s.structureType) {
-                case STRUCTURE_LINK:
-                    // Αν είναι το Storage Link, δίνουμε μέγιστη προτεραιότητα για να αδειάσει
-                    if (room.memory[STORAGE_LINK_ID] === s.id && s.store[RESOURCE_ENERGY] > 0) {
-                        priority = PRIORITIES.STORAGE_LINK;
-                        condition = true;
-                    }
-                    break;
-                case STRUCTURE_CONTAINER:
-                    if (s.store[RESOURCE_ENERGY] > 250 && this.isContainerNearSource(s)) {
-                        priority = PRIORITIES.SOURCE_CONTAINER;
-                        condition = true;
-                    }
-                    else if (room.memory.recoveryContainerId === s.id && s.store[RESOURCE_ENERGY] > 100) {
-                        priority = PRIORITIES.RECOVERY_CONTAINER;
-                        condition = true;
-                    }
-                    break;
-                case STRUCTURE_TERMINAL:
-                    if (s.my && s.store[RESOURCE_ENERGY] > 1000) {
-                        priority = PRIORITIES.TERMINAL_SOURCE; 
-                        condition = true;
-                    }
-                    break;
-                case STRUCTURE_STORAGE:
-                    if (s.my && s.store[RESOURCE_ENERGY] > 1000) {
-                        priority = PRIORITIES.STORAGE_SOURCE;
-                        condition = true;
-                    }
-                    break;
-                default:
-                    return;
-            }
-            if (condition) {
-                sources.push({ id: s.id, type: s.structureType.toLowerCase(), priority: priority, obj: s });
+        const storageLink = cache.storageLink;
+        if (storageLink && storageLink.store[RESOURCE_ENERGY] > 0) {
+            sources.push(
+                {
+                    id: storageLink.id,
+                    type: storageLink.structureType.toLowerCase(),
+                    priority: PRIORITIES.STORAGE_LINK,
+                    obj: storageLink
+                });
+        }
+
+        cache.sourceContainers.forEach(s => {
+            if (s.store[RESOURCE_ENERGY] > 250) {
+                sources.push(
+                    {
+                        id: s.id,
+                        type: s.structureType.toLowerCase(),
+                        priority: PRIORITIES.SOURCE_CONTAINER,
+                        obj: s
+                    });
             }
         });
-        
-        // 3. Ruins
-        room.find(FIND_RUINS, {
-            filter: ruin => ruin.store[RESOURCE_ENERGY] > 50
-        }).forEach(ruin => sources.push({
-            id: ruin.id, type: 'ruin', priority: PRIORITIES.RUIN, obj: ruin
-        }));
+        const recoveryContainer = cache.recoveryContainer;
+        if (recoveryContainer && recoveryContainer.store[RESOURCE_ENERGY] > 100) {
+            sources.push(
+                {
+                    id: recoveryContainer.id,
+                    type: recoveryContainer.structureType.toLowerCase(), priority: PRIORITIES.RECOVERY_CONTAINER,
+                    obj: recoveryContainer
+                });
+        }
+
+        const terminal = room.terminal;
+        if (terminal && terminal.store[RESOURCE_ENERGY] > 1000) {
+            sources.push(
+                {
+                    id: terminal.id,
+                    type: terminal.structureType.toLowerCase(),
+                    priority: PRIORITIES.TERMINAL_SOURCE,
+                    obj: terminal
+                }
+            );
+        }
+        if (target && room.storage && room.storage.store[RESOURCE_ENERGY] > 1000) {
+            sources.push(
+                {
+                    id: room.storage.id,
+                    type: 'storage',
+                    priority: PRIORITIES.STORAGE_SOURCE,
+                    obj: room.storage
+                });
+        }
 
         return sources.sort((a, b) => b.priority - a.priority);
     },
 
-    findCleanupSources: function(room) {
+    findCleanupSources: function (room) {
         const sources = [];
-        const storage = room.storage;
-        
-        this.findSourcesForTarget(room, {id: null}).forEach(source => {
-            if (source.type === 'dropped' || source.type === 'ruin' || (room.memory[STORAGE_LINK_ID] === source.id)) {
-                sources.push(source);
-            }
-        });
 
-        room.find(FIND_STRUCTURES).forEach(s => {
-            if (storage && s.id === storage.id) return;
 
-            let priority = 0;
-            let condition = false;
 
-            switch (s.structureType) {
-                case STRUCTURE_LINK:
-                    if (room.memory[STORAGE_LINK_ID] === s.id && s.store[RESOURCE_ENERGY] > 0) {
-                        priority = PRIORITIES.STORAGE_LINK;
-                        condition = true;
-                    }
-                    break;
-                case STRUCTURE_CONTAINER:
-
-                    if (s.store[RESOURCE_ENERGY] > 250 && this.isContainerNearSource(s)) {
-                        priority = PRIORITIES.SOURCE_CONTAINER;
-                        condition = true;
-                    }
-                    else if (room.memory.recoveryContainerId === s.id && s.store[RESOURCE_ENERGY] > 100) {
-                        priority = PRIORITIES.RECOVERY_CONTAINER;
-                        condition = true;
-                    }
-                    break;
-                case STRUCTURE_TERMINAL:
-                    if (s.my && s.store[RESOURCE_ENERGY] > 50000) {
-                        priority = PRIORITIES.TERMINAL_SOURCE;
-                        condition = true;
-                    }
-                    break;
-                default:
-                    return;
-            }
-            if (condition) {
-                sources.push({ id: s.id, type: s.structureType.toLowerCase(), priority: priority, obj: s });
-            }
-        });
-
+        const sourcesForTarget = this.findSourcesForTarget(room, { id: null });
+        sources.push(...sourcesForTarget);
         return sources.sort((a, b) => b.priority - a.priority);
     },
-    
-    createTask: function(roomName, source, target, taskType) {
+
+    createTask: function (roomName, source, target, taskType) {
         return {
             id: `${source.id}-${target.id}-${Game.time}`,
             room: roomName,
@@ -317,18 +300,19 @@ const logisticsManager = {
         };
     },
 
-    isContainerNearSource: function(container) {
-        return container.pos.findInRange(FIND_SOURCES, 2).length > 0;
+    isContainerNearSource: function (container) {
+        return roomCache.in(container.room.name).sourceContainers.some(c => c.id === container.id);
+
+
     },
-    
-    manageHaulers: function(room, roomMemory) {
+
+    manageHaulers: function (room, roomMemory) {
         const roomName = room.name;
-        const haulers = _.filter(Game.creeps, creep => 
-            creep.memory.role === 'hauler' && 
-            creep.memory.homeRoom === roomName &&
+        const haulers = _.filter(roomCache.in(roomName).myCreeps, creep =>
+            creep.memory.role === 'hauler' &&
             !creep.spawning
         );
-        
+
         const assignments = roomMemory.haulerAssignments;
         const reservations = roomMemory.taskReservations;
         const tasks = roomMemory.energyTasks;
@@ -352,7 +336,7 @@ const logisticsManager = {
         });
     },
 
-    assignTaskToHauler: function(hauler, tasks, assignments, reservations) {
+    assignTaskToHauler: function (hauler, tasks, assignments, reservations) {
         const currentAssignment = assignments[hauler.name];
 
         if (currentAssignment) {
@@ -387,7 +371,7 @@ const logisticsManager = {
         }
     },
 
-    findBestTaskForHauler: function(hauler, tasks, reservations) {
+    findBestTaskForHauler: function (hauler, tasks, reservations) {
         if (tasks.length === 0) return null;
 
         let bestTask = null;
@@ -396,18 +380,18 @@ const logisticsManager = {
 
         for (const task of topTasks) {
             const reservation = reservations[task.id];
-            
+
             if (reservation && reservation.haulerName !== hauler.name) {
                 continue;
             }
-            
+
             const target = Game.getObjectById(task.targetId);
             if (!target) continue;
-            
+
             const distance = hauler.pos.getRangeTo(target);
-            const distancePenalty = distance * 0.1; 
+            const distancePenalty = distance * 0.1;
             const totalScore = task.priority - distancePenalty;
-            
+
             if (totalScore > bestScore) {
                 bestScore = totalScore;
                 bestTask = task;
@@ -417,10 +401,10 @@ const logisticsManager = {
         return bestTask;
     },
 
-    validateTask: function(task) {
+    validateTask: function (task) {
         const source = Game.getObjectById(task.sourceId);
         const target = Game.getObjectById(task.targetId);
-        
+
         if (!source || !target) return false;
         if (source.id === target.id) return false;
 
@@ -430,14 +414,14 @@ const logisticsManager = {
         return hasEnergy && canAcceptEnergy;
     },
 
-    runHaulerWithTask: function(creep, assignment) {
-        if (creep.ticksToLive < MIN_LIFE_TO_LIVE && creep.room.memory.recoveryContainerId) {
+    runHaulerWithTask: function (creep, assignment) {
+        if (creep.ticksToLive < MIN_LIFE_TO_LIVE && roomCache.in(creep.room.name).recoveryContainer) {
             creep.memory.role = "to_be_recycled";
             return;
         }
 
         if (!assignment) return;
-        
+
         const isCarrying = creep.store[RESOURCE_ENERGY] > 0;
 
         if (!isCarrying) {
@@ -447,33 +431,33 @@ const logisticsManager = {
         }
     },
 
-    collectFromSource: function(creep, assignment) {
+    collectFromSource: function (creep, assignment) {
         const source = Game.getObjectById(assignment.sourceId);
-        
+
         if (!source) {
             this.completeTask(creep);
             return;
         }
-        
+
         const hasEnergy = this.checkSourceHasEnergy(source, assignment.sourceType);
         if (!hasEnergy) {
             this.completeTask(creep);
             return;
         }
-        
+
         if (creep.pos.isNearTo(source)) {
             const result = this.withdrawFromSource(creep, source, assignment.sourceType);
             if (result !== OK) {
                 this.completeTask(creep);
             }
         } else {
-            movementManager.smartMove(creep, source, 1); 
+            movementManager.smartMove(creep, source, 1);
         }
     },
 
-    deliverToTarget: function(creep, assignment) {
+    deliverToTarget: function (creep, assignment) {
         const target = Game.getObjectById(assignment.targetId);
-        
+
         if (!target) {
             this.completeTask(creep);
             return;
@@ -493,7 +477,7 @@ const logisticsManager = {
 
         if (creep.pos.isNearTo(target)) {
             const result = creep.transfer(target, RESOURCE_ENERGY);
-            
+
             if (result === OK || result === ERR_FULL) {
                 this.completeTask(creep);
             } else {
@@ -504,7 +488,7 @@ const logisticsManager = {
         }
     },
 
-    checkSourceHasEnergy: function(source, sourceType) {
+    checkSourceHasEnergy: function (source, sourceType) {
         switch (sourceType) {
             case 'dropped': return source.amount > 20;
             case 'ruin': return source.store[RESOURCE_ENERGY] > 20;
@@ -518,7 +502,7 @@ const logisticsManager = {
         }
     },
 
-    withdrawFromSource: function(creep, source, sourceType) {
+    withdrawFromSource: function (creep, source, sourceType) {
         switch (sourceType) {
             case 'dropped': return creep.pickup(source);
             case 'ruin':
@@ -532,18 +516,18 @@ const logisticsManager = {
         }
     },
 
-    completeTask: function(creep) {
+    completeTask: function (creep) {
         const roomName = creep.memory.homeRoom;
         if (!Memory.rooms[roomName] || !Memory.rooms[roomName].logistics) return;
 
         const roomMemory = Memory.rooms[roomName].logistics;
         const assignments = roomMemory.haulerAssignments;
         const reservations = roomMemory.taskReservations;
-        
+
         if (assignments[creep.name]) {
             delete reservations[assignments[creep.name].taskId];
             delete assignments[creep.name];
-            
+
             delete creep.memory._lastPos;
             delete creep.memory._stuckCount;
 
@@ -552,12 +536,12 @@ const logisticsManager = {
         }
     },
 
-    cleanupTasks: function(roomMemory) {
+    cleanupTasks: function (roomMemory) {
         const now = Game.time;
         roomMemory.energyTasks = roomMemory.energyTasks.filter(task => (now - task.created) < 50);
     },
 
-    cleanupReservations: function(roomMemory) {
+    cleanupReservations: function (roomMemory) {
         const reservations = roomMemory.taskReservations;
         const now = Game.time;
 
@@ -569,14 +553,14 @@ const logisticsManager = {
         }
     },
 
-    showTasksInfo: function(room) {
+    showTasksInfo: function (room) {
         const visual = new RoomVisual(room.name);
         if (!room.memory.logistics) return;
         const tasks = room.memory.logistics.energyTasks;
-        
+
         let y = 10;
         visual.text(`Tasks: ${tasks.length}`, 1, y++, { align: 'left', color: '#ffff00' });
-        
+
         tasks.slice(0, 5).forEach((task, index) => {
             const info = `${task.taskType}: ${task.sourceId === room.memory.storageLinkId ? 'STORAGE_LINK' : task.sourceType}->${task.targetType} (prio:${task.priority})`;
             visual.text(info, 1, y++, { align: 'left', color: '#ffffff' });

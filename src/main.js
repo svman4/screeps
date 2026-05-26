@@ -24,8 +24,12 @@ var roleManager = require('manager.role');
 var market = require('manager.market');
 var pixels = require('manager.pixels');
 var linkManager = require('manager.link');
+var roomCache = require('utils.RoomCache');
+var RollingAverage = require('utils.RollingAverage');
 global.RoomInfo = function () {
     let answer = "\n--- 🏰 Controller Progress Report ---\n";
+
+
 
     // Φιλτράρουμε τα δωμάτια που μας ανήκουν και έχουμε ορατότητα
     const myRooms = Object.values(Game.rooms).filter(r => r.controller && r.controller.my);
@@ -53,23 +57,26 @@ global.RoomInfo = function () {
     return answer;
 }; // Βοηθητική συνάρτηση για οπτική πληροφόρηση
 
-
+const cpuRollingAverage = new RollingAverage(20);
 module.exports.loop = function () {
     var startCpu = Game.cpu.getUsed();
     // Αρχικοποίηση Memory
+    respawnDetection();
     if (!Memory.rooms) {
         Memory.rooms = {};
     }
-
+    roomCache.run();  // Καθαρισμός cache ανά tick για όλα τα δωμάτια
     // Εκτέλεση ανά δωμάτιο
     for (const roomName in Game.rooms) {
-        const room = Game.rooms[roomName];
+        const room = roomCache.in(roomName).room; // Εξασφαλίζουμε ότι το RoomCache είναι έτοιμο για το δωμάτιο
+
+
         if (room.controller && room.controller.my) {
             //    console.log(`🏠 Επεξεργασία δωματίου: ${roomName} (RCL: ${room.controller.level})`);
 
             // HIGH PRIORITY - Πάντα τρέχουν
             runAndCatch((name) => defenceManager.run(name), "Error on defenceManager (" + roomName + ")", roomName);
-           // runAndCatch((name) => militaryController.run(name), "Error on militaryController (" + roomName + ")", roomName);
+            // runAndCatch((name) => militaryController.run(name), "Error on militaryController (" + roomName + ")", roomName);
 
             runAndCatch((name) => logisticsManager.run(name), "Error on logisticsManager (" + roomName + ")", roomName);
 
@@ -90,12 +97,13 @@ module.exports.loop = function () {
     runAndCatch(() => spawnManager.run(), "error on spawnManager");
     //runAndCatch(() => expansionManager.run(), "error on expansionManager");
     //runAndCatch(expansionManager.run, "error on expansionManager");
-    runAndCatch(pixels.run, "Error on pixels");;
+    runAndCatch(pixels.run, "Error on pixels");
+    var endCpu = Game.cpu.getUsed();
+    var cpuUsed = (endCpu - startCpu).toFixed(3);
+    cpuRollingAverage.add(cpuUsed);
     if (Game.time % 10 === 0) {
-        var endCpu = Game.cpu.getUsed();
-        var cpuUsed = (endCpu - startCpu).toFixed(3);
-        if (cpuUsed > 10) {
-            console.log(`CPU Bucket: ${Game.cpu.bucket} | Creeps: ${Object.keys(Game.creeps).length} | cpusUser: ${cpuUsed} | ${Game.time}`);
+        if (cpuUsed > 1) {
+            console.log(`CPU Bucket: ${Game.cpu.bucket} | Creeps: ${Object.keys(Game.creeps).length} | cpusUser: ${cpuRollingAverage.get()} | ${Game.time}`);
         }
     }
 };
@@ -108,6 +116,20 @@ function runAndCatch(action, message, ...args) {
         console.log(error.stack);
     }
 } // end of runAndCatch
+function respawnDetection() {
+    // Στην αρχή του main.js
+if (!Memory.lastRoomReset || Game.time < Memory.lastRoomReset) {
+    console.log("Respawn detected or Memory reset! Cleaning...");
+    
+    // Μηδενισμός όλων των απαραίτητων δομών
+    Memory.creeps = {};
+    Memory.spawnQueue = [];
+    Memory.rooms = {}; // Προσοχή: αυτό διαγράφει και τα populationLimits!
+    
+    // Αποθήκευση του τρέχοντος χρόνου για να μην ξανατρέξει
+    Memory.lastRoomReset = Game.time;
+}
+}
 function showRoomInfo(room) {
     const visual = new RoomVisual(room.name);
     const creeps = room.find(FIND_MY_CREEPS);

@@ -5,9 +5,9 @@
  * Διαχειρίζεται εσωτερικά πολλαπλά δωμάτια χωρίς να χρειάζεται ξεχωριστό Registry, μειώνοντας το CPU overhead.
  */
 var debugConsole = require("utils.debugConsole");
-const CONFIG={
-	ROADS_THRESHOLD:30,
-	LINKS_THRESHOLD:2
+const CONFIG = {
+    ROADS_THRESHOLD: 30,
+    LINKS_THRESHOLD: 2
 }
 class RoomCache {
     constructor() {
@@ -29,7 +29,7 @@ class RoomCache {
         if (!this._rooms[roomName]) {
             this._rooms[roomName] = new RoomCacheInstance(roomName);
         }
-        return this._rooms[roomName]||null;
+        return this._rooms[roomName] || null;
     }
 
     /**
@@ -41,18 +41,18 @@ class RoomCache {
             this._rooms[roomName].clearTickCache();
         }
     }
-	run() {
+    run() {
         this.clearTickCaches(); // Καθαρισμός tick cache στην αρχή του run για να διασφαλίσουμε φρέσκα δεδομένα
         if (Game.time % 500 === 0) {
-            
-			this.forceRefreshAll();
+
+            this.forceRefreshAll();
         }
     }
-	forceRefreshAll(){
-		for (const roomName in this._rooms) {
+    forceRefreshAll() {
+        for (const roomName in this._rooms) {
             this._rooms[roomName].forceRefresh();
         }
-	}
+    }
     /**
      * Εξαναγκάζει την ανανέωση των στατικών δεδομένων για ένα ή όλα τα δωμάτια.
      * @param {string} [roomName] - Αν παραλειφθεί, καθαρίζει όλα τα δωμάτια.
@@ -117,10 +117,10 @@ class RoomCacheInstance {
 
     clearTickCache() {
         this._tickCache = {};
-        if(Memory.rooms[this.roomName])
+        if (Memory.rooms[this.roomName])
             Memory.rooms[this.roomName].cache = this.cache;
     }
-    
+
     forceRefresh() {
         this.cache.sourceIds = null;
         this.cache.controllerLinkId = null;
@@ -154,7 +154,7 @@ class RoomCacheInstance {
         }
         if (this.cache.center) {
             return new RoomPosition(this.cache.center.x, this.cache.center.y, this.cache.center.roomName);
-        
+
         }
 
     }
@@ -247,7 +247,7 @@ class RoomCacheInstance {
 
         // Χρησιμοποιούμε .map() για να επιστρέψουμε έναν πίνακα με τα αντικείμενα
         const containers = sourceIDs.map(sourceID => {
-            return this.getSourceContainer(sourceID); // Διορθώθηκε το 'this.cache.' σε 'this.'
+            return this.getSourceContainer(sourceID);
         }).filter(Boolean); // Φιλτράρει τυχόν null αν κάποια πηγή δεν έχει ακόμα container
 
         return containers || [];
@@ -264,7 +264,7 @@ class RoomCacheInstance {
             });
             this.cache.recoveryContainerId = containers.length > 0 ? containers[0].id : null;
         }
-        return Game.getObjectById(this.cache.recoveryContainerId) || null ;
+        return Game.getObjectById(this.cache.recoveryContainerId) || null;
     }
 
     get controllerContainer() {
@@ -291,6 +291,10 @@ class RoomCacheInstance {
             this.cache.patrolPoints = points;
 
             //spawn
+            const spawns = this.groupedStructures[STRUCTURE_SPAWN] || [];
+            spawns.forEach(spawn => {
+                if (spawn.pos) this.cache.patrolPoints.push(spawn.pos);
+            });
         }
         return this.cache.patrolPoints || [];
 
@@ -318,13 +322,13 @@ class RoomCacheInstance {
     get containers() {
         return this.groupedStructures[STRUCTURE_CONTAINER] || [];
     }
-	get hasRoads() {
-		
-		const answer=this.roads.length>CONFIG.ROADS_THRESHOLD;
-		return answer;
-	}
+    get hasRoads() {
+
+        const answer = this.roads.length > CONFIG.ROADS_THRESHOLD;
+        return answer;
+    }
     get roads() {
-		
+
         return this.groupedStructures[STRUCTURE_ROAD] || [];
     }
     get structures() {
@@ -332,27 +336,27 @@ class RoomCacheInstance {
             if (!this.room) return [];
             this._tickCache.structures = this.room.find(FIND_STRUCTURES);
         }
-        return this._tickCache.structures || [] ;
+        return this._tickCache.structures || [];
     }
-	get hasLinks() {
-		const linkNumber=this.links.length;
-		if(linkNumber>=CONFIG.LINKS_THRESHOLD) {
-			return true;
-		} 
-		return false;
-	}
+    get hasLinks() {
+        const linkNumber = this.links.length;
+        if (linkNumber >= CONFIG.LINKS_THRESHOLD) {
+            return true;
+        }
+        return false;
+    }
     get links() {
-        
+
         return this.groupedStructures[STRUCTURE_LINK] || [];
-        
-        
+
+
     }
     get myCreeps() {
         if (!this._tickCache.myCreeps) {
             if (!this.room) return [];
             this._tickCache.myCreeps = this.room.find(FIND_MY_CREEPS);
         }
-        return this._tickCache.myCreeps || [] ;
+        return this._tickCache.myCreeps || [];
     }
     get hostileCreeps() {
         if (!this._tickCache.hostileCreeps) {
@@ -367,7 +371,7 @@ class RoomCacheInstance {
             if (!this.room) return [];
             this._tickCache.constructionSites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
         }
-        return this._tickCache.constructionSites || [] ;
+        return this._tickCache.constructionSites || [];
     }
 
     get damagedStructures() {

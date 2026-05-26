@@ -65,7 +65,7 @@ module.exports.loop = function () {
     if (!Memory.rooms) {
         Memory.rooms = {};
     }
-    roomCache.clearTickCaches();  // Καθαρισμός cache ανά tick για όλα τα δωμάτια
+    roomCache.run();  // Καθαρισμός cache ανά tick για όλα τα δωμάτια
     // Εκτέλεση ανά δωμάτιο
     for (const roomName in Game.rooms) {
         const room = roomCache.in(roomName).room; // Εξασφαλίζουμε ότι το RoomCache είναι έτοιμο για το δωμάτιο

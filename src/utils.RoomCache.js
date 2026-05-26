@@ -5,6 +5,10 @@
  * Διαχειρίζεται εσωτερικά πολλαπλά δωμάτια χωρίς να χρειάζεται ξεχωριστό Registry, μειώνοντας το CPU overhead.
  */
 var debugConsole = require("utils.debugConsole");
+const CONFIG={
+	ROADS_THRESHOLD:30,
+	LINKS_THRESHOLD:2
+}
 class RoomCache {
     constructor() {
         /**
@@ -37,7 +41,18 @@ class RoomCache {
             this._rooms[roomName].clearTickCache();
         }
     }
-
+	run() {
+        this.clearTickCaches(); // Καθαρισμός tick cache στην αρχή του run για να διασφαλίσουμε φρέσκα δεδομένα
+        if (Game.time % 500 === 0) {
+            
+			this.forceRefreshAll();
+        }
+    }
+	forceRefreshAll(){
+		for (const roomName in this._rooms) {
+            this._rooms[roomName].forceRefresh();
+        }
+	}
     /**
      * Εξαναγκάζει την ανανέωση των στατικών δεδομένων για ένα ή όλα τα δωμάτια.
      * @param {string} [roomName] - Αν παραλειφθεί, καθαρίζει όλα τα δωμάτια.
@@ -105,12 +120,7 @@ class RoomCacheInstance {
         if(Memory.rooms[this.roomName])
             Memory.rooms[this.roomName].cache = this.cache;
     }
-    run() {
-        this.clearTickCache(); // Καθαρισμός tick cache στην αρχή του run για να διασφαλίσουμε φρέσκα δεδομένα
-        if (Game.time % 500 === 0) {
-            this.forceRefresh();
-        }
-    }
+    
     forceRefresh() {
         this.cache.sourceIds = null;
         this.cache.controllerLinkId = null;
@@ -308,8 +318,13 @@ class RoomCacheInstance {
     get containers() {
         return this.groupedStructures[STRUCTURE_CONTAINER] || [];
     }
-
+	get hasRoads() {
+		
+		const answer=this.roads.length>CONFIG.ROADS_THRESHOLD;
+		return answer;
+	}
     get roads() {
+		
         return this.groupedStructures[STRUCTURE_ROAD] || [];
     }
     get structures() {
@@ -319,12 +334,18 @@ class RoomCacheInstance {
         }
         return this._tickCache.structures || [] ;
     }
-
+	get hasLinks() {
+		const linkNumber=this.links.length;
+		if(linkNumber>=CONFIG.LINKS_THRESHOLD) {
+			return true;
+		} 
+		return false;
+	}
     get links() {
-        if (!this.cache.links) {
-            this.cache.links = this.groupedStructures[STRUCTURE_LINK] || [];
-        }
-        return this.cache.links || [];
+        
+        return this.groupedStructures[STRUCTURE_LINK] || [];
+        
+        
     }
     get myCreeps() {
         if (!this._tickCache.myCreeps) {

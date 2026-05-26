@@ -288,8 +288,9 @@ class SpawnManager {
      */
     calculateBody(roomName, role, maxEnergy, diffParts) {
         let body = [];
-        const hasRoads = Memory.rooms[roomName] ? Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.HAVE_ROAD_KEY] : false;
-        const hasLinks = Memory.rooms[roomName] ? Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.HAVE_LINK_KEY] : false;
+		const cache=roomCache.in(roomName);
+        const hasRoads = cache.hasRoads;
+        const hasLinks = cache.hasLinks;
         const roomLevel = Memory.rooms[roomName] ? Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.ROOM_LEVEL_KEY] : 1;
 
         let parts = 0;

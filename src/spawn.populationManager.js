@@ -268,12 +268,12 @@ class PopulationManager {
     updateRoomLimits(roomName) {
         const room = Game.rooms[roomName];
         if (!room) return;
-
+		
         const limits = this.calculateLimits(room);
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY] = limits;
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.RECOVERY_KEY] = limits.isRecovery;
-        Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.HAVE_ROAD_KEY] = this.checkIfRoomHaveRoads(room);
-        Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.HAVE_LINK_KEY] = roomCache.in(roomName).links.length > 0;
+        Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.HAVE_ROAD_KEY] = roomCache.in(roomName).hasRoads;
+        Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.HAVE_LINK_KEY] = roomCache.in(roomName).hasLinks;
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.ROOM_LEVEL_KEY] = room.controller.level;
     } // end of updateRoomLimits
 

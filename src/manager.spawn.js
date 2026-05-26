@@ -23,7 +23,7 @@ const debugConsole = require("utils.debugConsole");
 const SpawnQueue = require('spawn.SpawnQueue');
 const PopulationManager = require('spawn.populationManager');
 const { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG, BODY_ENERGY_LIMITS, PRIORITY, SPAWN_MANAGER_CONFIG, NEED_REPLACEMENT_FLAG } = require('./spawn.constants');
-
+const UPGRADER_LIMIT=5;
 const roomCache = require('utils.RoomCache');
 
 class SpawnManager {
@@ -115,6 +115,7 @@ class SpawnManager {
         // Ενημέρωση των ορίων (limits) βάσει της τρέχουσας κατάστασης του δωματίου
         if (Game.time % SPAWN_MANAGER_CONFIG.POPULATION_LIMIT_REFRESH_RATE === 0 || !Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY]) {
             // Κάθε 50tick ή αν δεν υπάρχει πληθυσμός.
+			
             this.populationManager.updateRoomLimits(roomName);
             this.optimizeCreepSizes(roomName);
 
@@ -228,11 +229,17 @@ class SpawnManager {
         const maxEnergyAvailable = room.energyCapacityAvailable;
         const diffParts = targetParts - currentParts;
         if (diffParts <= 0) return; // Δεν χρειάζεται να κάνουμε τίποτα αν έχουμε ήδη αρκετά parts
-        //if (diffParts <= targetParts * SPAWN_MANAGER_CONFIG.CREEP_PARTS_THRESHOLD) return; // Αν η διαφορά είναι μικρότερη από 20% του στόχου, περιμένουμε να πεθάνουν τα παλιά creeps για να κάνουμε πιο αποδοτική αντικατάσταση.
-
+        
         const isRecovery = Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.RECOVERY_KEY];
         let body = [];
-
+		if(role===ROLES.UPGRADER) {
+			
+			const upgraderCounter=roomCache.in(roomName).myCreeps.filter(c=>c.role===ROLES.UPGRADER).length;
+			
+			if(upgraderCounter>UPGRADER_LIMIT) {
+				return;
+			}
+		}
         // 1. Περίπτωση Ελλείμματος (Deficit)
         if (currentParts < targetParts) {
             if (isRecovery) {

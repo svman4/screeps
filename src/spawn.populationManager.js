@@ -144,6 +144,7 @@ class PopulationManager {
 
 
             const range = cache.getSourceDistance(source.id);
+//			debugConsole.debugText("PopulationManager","Source "+source.id+" distance is "+range);
             const distance = (range !== Infinity) ? range : FALLBACK_DISTANCE;
 
             totalCarryRequired += (ENERGY_INCOME_TICK * distance * 2) / CARRY_CAPACITY;

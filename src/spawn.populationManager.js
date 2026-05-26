@@ -189,7 +189,10 @@ class PopulationManager {
             hasContainers: cache.containers.length > 2,
             
             hasConstruction: cache.constructionSites.length > 0,
-            isRecovery: (!hasWork || !hasCarry) && room.controller && room.controller.level > 1
+            isRecovery: (!hasWork || 
+				(!hasCarry && room.energyAvailable < 400)) && 
+				room.controller && 
+				room.controller.level > 1
         };
 
         return answer;

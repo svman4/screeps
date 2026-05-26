@@ -37,7 +37,7 @@ class SpawnManager {
      */
     run() {
         this.cleanup();
-        if (Game.time % SPAWN_MANAGER_CONFIG.POPULATION_LIMIT_REFRESH_RATE === 0 ) {
+        if (Game.time % SPAWN_MANAGER_CONFIG.POPULATION_LIMIT_REFRESH_RATE === 0) {
             this.queue.flush(); // Καθαρισμός ουράς για το δωμάτιο σε περίπτωση αλλαγής ορίων
         }
         // Εκτύπωση της ουράς για debugging
@@ -55,7 +55,59 @@ class SpawnManager {
         // Επεξεργασία της ουράς και εκτέλεση του spawning
         this.processQueue();
     }
+    optimizeCreepSizes(roomName) {
+        const room = Game.rooms[roomName];
+        if (!room) return;
 
+        const cache = roomCache.in(roomName);
+        const maxEnergyAvailable = room.energyCapacityAvailable;
+
+        // Λίστα με τους ρόλους που θέλουμε να συμπτύξουμε (scaling roles)
+        const scalableRoles = [ROLES.HAULER, ROLES.UPGRADER, ROLES.BUILDER];
+
+        scalableRoles.forEach(role => {
+            // Φιλτράρουμε τα ζωντανά creeps του συγκεκριμένου ρόλου στο δωμάτιο
+            const activeCreeps = _.filter(cache.myCreeps, c => c.memory.role === role && (!c.ticksToLive || c.ticksToLive > 100));
+            if (activeCreeps.length <= 1) return; // Αν υπάρχει μόνο ένα ή κανένα, δεν χρειάζεται σύμπτυξη
+
+            // Υπολογίζουμε το μέγιστο δυνατό σώμα που μπορεί να παραχθεί ΑΥΤΗ τη στιγμή
+            // Δίνουμε ένα μεγάλο diffParts (π.χ. 50) για να δούμε το απόλυτο max cap του budget
+            const maxPossibleBody = this.calculateBody(roomName, role, maxEnergyAvailable, 50);
+            const primaryPart = (role === ROLES.HAULER) ? CARRY : WORK;
+            const maxPossibleParts = _.filter(maxPossibleBody, p => p === primaryPart).length;
+
+            if (maxPossibleParts === 0) return;
+
+            // Ταξινομούμε τα creeps από το μικρότερο προς το μεγαλύτερο με βάση τα parts τους
+            const sortedCreeps = _.sortBy(activeCreeps, c => c.getActiveBodyparts(primaryPart));
+
+            let accumulatedParts = 0;
+            let creepsToRecycle = [];
+
+            for (const creep of sortedCreeps) {
+                const currentParts = creep.getActiveBodyparts(primaryPart);
+
+                // Αν το creep έχει ήδη το μέγιστο δυνατό σώμα, το προσπερνάμε
+                if (currentParts >= maxPossibleParts) continue;
+
+                accumulatedParts += currentParts;
+                creepsToRecycle.push(creep);
+
+                // ΑΝ το άθροισμα των parts των μικρών creeps χωράει σε ΕΝΑ νέο μεγάλο creep,
+                // τότε ενεργοποιούμε τη διαδικασία αντικατάστασης/ανακύκλωσης.
+                if (accumulatedParts <= maxPossibleParts && creepsToRecycle.length >= 2) {
+                    creepsToRecycle.forEach(oldCreep => {
+                        // Αλλάζουμε το role σε recycle (το σύστημα του Room σου πρέπει να το διαχειρίζεται αυτό)
+                        oldCreep.memory.role = 'to_be_recycled';
+
+                    });
+
+                    debugConsole.debugText("spawnManager", `[Maximizing] Consolidating ${creepsToRecycle.length} small ${role}s into a larger one in ${roomName}.`);
+                    break; // Σταματάμε για αυτό το tick ώστε να αποφύγουμε μαζικό suicide
+                }
+            }
+        });
+    }
     /**
      * Αναλύει τις ανάγκες του δωματίου και αποφασίζει αν θα ζητήσει νέα creeps.
      */
@@ -64,7 +116,7 @@ class SpawnManager {
         if (Game.time % SPAWN_MANAGER_CONFIG.POPULATION_LIMIT_REFRESH_RATE === 0 || !Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY]) {
             // Κάθε 50tick ή αν δεν υπάρχει πληθυσμός.
             this.populationManager.updateRoomLimits(roomName);
-            
+            this.optimizeCreepSizes(roomName);
 
         }
 
@@ -85,6 +137,7 @@ class SpawnManager {
                 }
             }
         }
+
 
         // 2. Έλεγχος βάσει Body Parts (για Scaling & Efficiency)
         if (limits[POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]) {
@@ -153,7 +206,7 @@ class SpawnManager {
         const creepsInRoom = roomCache.in(roomName).myCreeps;
         const sources = roomCache.in(roomName).sources;
         const roleName = ROLES.STATIC_HARVESTER;
-		for(const source of sources) {
+        for (const source of sources) {
             const harvesterAtSource = _.find(creepsInRoom, c =>
                 c.memory.role === roleName && c.memory.sourceId === source.id
             );
@@ -190,10 +243,7 @@ class SpawnManager {
             body = this.calculateBody(roomName, role, maxEnergyAvailable, diffParts);
             this.addRoleToQueue(roomName, role, this.getBodyCost(body), body);
         }
-        /*TODO υπάρχει περίπτωση που χρειάζονται 18parts για upgrader.
-        Υπάρχουν 2 upgrader. Ο πρώτος με 10parts και ο άλλος με 8.
-        Είναι σωστό αλλά θα πρέπει να δημιουργεί ένα τεράστιο με 18parts.
-        */
+
 
     }
     /**
@@ -241,7 +291,19 @@ class SpawnManager {
         const spawn = this.findBestSpawn(request);
         //debugConsole.debugObject("spawn", "processQueue", request);
 
+
+
+
         if (spawn) {
+
+            // Έλεγχος αν το δωμάτιο έχει ΑΥΤΗ τη στιγμή την ενέργεια για το συγκεκριμένο body
+            const bodyCost = this.getBodyCost(request.body);
+            if (spawn.room.energyAvailable < bodyCost) {
+                // Anti-Energy-Stealing: Αν είναι το πρώτο στην ουρά (υψηλή προτεραιότητα), 
+                // μπλοκάρουμε την παραγωγή άλλων μέχρι να μαζευτεί η ενέργεια.
+                return;
+            }
+
             const energyToUse = Math.min(spawn.room.energyAvailable, request.energyBudget || spawn.room.energyAvailable);
             const body = request.body;
             const name = `${request.role}_${request.homeRoom}_${Game.time % 10000}`;
@@ -288,7 +350,7 @@ class SpawnManager {
      */
     calculateBody(roomName, role, maxEnergy, diffParts) {
         let body = [];
-		const cache=roomCache.in(roomName);
+        const cache = roomCache.in(roomName);
         const hasRoads = cache.hasRoads;
         const hasLinks = cache.hasLinks;
         const roomLevel = Memory.rooms[roomName] ? Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.ROOM_LEVEL_KEY] : 1;
@@ -339,7 +401,7 @@ class SpawnManager {
 
                 costPerUnit = hasRoads ? 200 : 250; // [C,C,M] vs [C,M]
                 costPerUnit = (roomLevel >= 3) ? 350 : 250;
-                
+
                 while (this.getBodyCost(body) + costPerUnit <= maxEnergy && parts < diffParts) {
 
                     if (roomLevel >= 3) {

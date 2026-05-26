@@ -415,7 +415,8 @@ const logisticsManager = {
     },
 
     runHaulerWithTask: function (creep, assignment) {
-        if (creep.ticksToLive < MIN_LIFE_TO_LIVE && roomCache.in(creep.room.name).recoveryContainer) {
+        if (creep.ticksToLive < MIN_LIFE_TO_LIVE) {
+            // Αν ο hauler έχει λίγη ζωή, του αναθέτουμε να πάει για ανακύκλωση αντί να ξεκινήσει νέο task
             creep.memory.role = "to_be_recycled";
             return;
         }

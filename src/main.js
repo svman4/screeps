@@ -9,7 +9,6 @@ main.js
  TODO αλλαγή από builder/upgrader σε taskManager.
  -Δημιουργία role worker
  
- TODO ΘΑ πρέπει πρώτα να χτίζονται το link του controller και της πιο απομακρυσμένης πηγής, έπειτα του storage και μετέπειτα τα υπόλοιπα Link.
 
 TODO όταν ο hauler δεν έχει δουλειά να πηγαίνει κάπου εκτός δρόμου. Ειδικά σε μεγάλα επίπεδα
 

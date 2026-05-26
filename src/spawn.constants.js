@@ -37,8 +37,8 @@ const BODY_ENERGY_LIMITS = {
 const PRIORITY = {
     [ROLES.SIMPLE_HARVESTER]: 10,
     [ROLES.STATIC_HARVESTER]: 15,
-    [ROLES.HAULER]: 14,
-    [ROLES.MINER]: 25,
+    [ROLES.HAULER]: 20,
+    [ROLES.MINER]: 35,
     [ROLES.LD_HARVESTER]: 35,
     [ROLES.LD_HAULER]: 40,
     [ROLES.CLAIMER]: 45,
@@ -81,7 +81,7 @@ const POPULATION_MODULE_CONFIG = {
     SURPLUS_SCALER: 50,          // Πόσο επιθετικά αυξάνουμε τα parts στο πλεόνασμα
     MAX_UPGRADER_WORK_RCL8: 15,  // Το όριο του controller στο RCL 8 (15 energy/tick cap)
     STATIC_HARVESTERS_PER_SOURCE: 1,
-    SIMPLE_HARVESTERS_PER_SOURCE: 3,
+    SIMPLE_HARVESTERS_PER_SOURCE: 4,
     // Logistics
     EXTENSION_CARRY_BONUS: 9,   // Σταθερό quota για τον ανεφοδιασμό extensions
     DISTANCE_PADDING: 1.1,       // 10% έξτρα carry για κάλυψη απωλειών/κίνησης

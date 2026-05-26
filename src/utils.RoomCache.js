@@ -318,7 +318,9 @@ class RoomCacheInstance {
         }
         return this._tickCache.groupedStructures || [];
     }
-
+	get spawns() {
+		return this.groupedStructures[STRUCTURE_SPAWN] || [];
+	}
     get containers() {
         return this.groupedStructures[STRUCTURE_CONTAINER] || [];
     }

@@ -118,17 +118,17 @@ function runAndCatch(action, message, ...args) {
 } // end of runAndCatch
 function respawnDetection() {
     // Στην αρχή του main.js
-if (!Memory.lastRoomReset || Game.time < Memory.lastRoomReset) {
-    console.log("Respawn detected or Memory reset! Cleaning...");
-    
-    // Μηδενισμός όλων των απαραίτητων δομών
-    Memory.creeps = {};
-    Memory.spawnQueue = [];
-    Memory.rooms = {}; // Προσοχή: αυτό διαγράφει και τα populationLimits!
-    
-    // Αποθήκευση του τρέχοντος χρόνου για να μην ξανατρέξει
-    Memory.lastRoomReset = Game.time;
-}
+    if (!Memory.lastRoomReset || (Memory.lastRoomReset + 20 < Game.Time)) {
+        console.log("Respawn detected or Memory reset! Cleaning...");
+        roomCache.forceRefreshAll();
+        // Μηδενισμός όλων των απαραίτητων δομών
+        Memory.creeps = {};
+        Memory.spawnQueue = [];
+        Memory.rooms = {}; // Προσοχή: αυτό διαγράφει και τα populationLimits!
+
+        // Αποθήκευση του τρέχοντος χρόνου για να μην ξανατρέξει
+        Memory.lastRoomReset = Game.time;
+    }
 }
 function showRoomInfo(room) {
     const visual = new RoomVisual(room.name);
@@ -207,7 +207,7 @@ global.exportRoom = function (roomName) {
     // Ομαδοποίηση ανά τύπο κτιρίου
     const structures = room.find(FIND_STRUCTURES);
     structures.forEach(s => {
-        if (s.structureType === STRUCTURE_CONTROLLER) return; // Το έχουμε ήδη σε ξεχωριστό field
+        // if (s.structureType === STRUCTURE_CONTROLLER) return; // Το έχουμε ήδη σε ξεχωριστό field
 
         if (!output.buildings[s.structureType]) {
             output.buildings[s.structureType] = [];

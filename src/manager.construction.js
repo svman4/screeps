@@ -18,6 +18,7 @@ const ConstructionVisualizer = require('construction.visualizer');
 const BaseLayout = require('construction.layout.BaseLayout');
 const FileLayout = require('construction.layout.FileLayout');
 const RoadPlanner = require('construction.roadPlanner');
+const debugConsole = require("utils.debugConsole");
 const roomCache = require('utils.RoomCache');
 const { MEMORY_KEYS, MAX_CONSTRUCTION_SITE } = require('construction.constants');
 

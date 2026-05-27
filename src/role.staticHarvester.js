@@ -12,7 +12,7 @@
 const BaseRole = require('role.base');
 const movementManager = require('manager.movement');
 const { NEED_REPLACEMENT_FLAG } = require('spawn.constants');
-
+const roomCache = require('utils.RoomCache');
 class StaticHarvester extends BaseRole {
     /**
      * Κύρια ροή εργασιών του creep.
@@ -20,11 +20,10 @@ class StaticHarvester extends BaseRole {
     run() {
         const source = this.resolveSource();
         if (!source) return;
-        
-        const container = this.resolveContainer(source);
 
-        // Έλεγχος αν ο αντικαταστάτης είναι εδώ για να αποχωρήσει (suicide)
-        if (this.handleRetirement(source)) return;
+        const container = roomCache.in(this.creep.room.name).getSourceContainer(source.id);
+
+
 
         // Διαχείριση κίνησης προς το σημείο εργασίας
         if (this.handlePositioning(source, container)) return;
@@ -40,6 +39,9 @@ class StaticHarvester extends BaseRole {
 
         // Εκτέλεση εξόρυξης
         this.performHarvest(source);
+        // Έλεγχος αν ο αντικαταστάτης είναι εδώ για να αποχωρήσει (suicide)
+        if (this.handleRetirement(source)) return;
+
     }
 
     /**
@@ -53,22 +55,6 @@ class StaticHarvester extends BaseRole {
         return Game.getObjectById(this.creep.memory.sourceId);
     }
 
-    /**
-     * Εντοπίζει το container αποθήκευσης κοντά στην πηγή.
-     */
-    resolveContainer(source) {
-        let container = Game.getObjectById(this.creep.memory.containerId);
-        if (!container && this.creep.ticksToLive % 10 === 0) {
-            const containers = source.pos.findInRange(FIND_STRUCTURES, 2, { 
-                filter: s => s.structureType === STRUCTURE_CONTAINER 
-            });
-            if (containers.length > 0) {
-                container = containers[0];
-                this.creep.memory.containerId = container.id;
-            }
-        }
-        return container;
-    }
 
     /**
      * Διαχειρίζεται την "αποστρατεία" του creep.
@@ -77,17 +63,19 @@ class StaticHarvester extends BaseRole {
     handleRetirement(source) {
         const flag = NEED_REPLACEMENT_FLAG || 'needReplacementFlag';
         const ARRIVAL_RANGE = 1; // Απόσταση στην οποία θεωρούμε ότι ο αντικαταστάτης έφτασε
-        
+
         // Τροποποιημένη συνθήκη: Αν υπάρχει το flag και είναι false, προχωράμε σε suicide αν έφτασε ο αντικαταστάτης
         if (this.creep.memory[flag] !== false) return false;
 
         // Αναζήτηση για τον αντικαταστάτη που πλησιάζει
-        const replacement = this.creep.pos.findInRange(FIND_MY_CREEPS, ARRIVAL_RANGE, {
-            filter: c => c.memory.role === this.creep.memory.role && 
-                         c.memory.sourceId === source.id && 
-                         c.id !== this.creep.id
-        });
-        
+        const replacement = roomCache.in(this.creep.room.name).myCreeps.filter(
+            c => c.memory.role === this.creep.memory.role &&
+                c.memory.sourceId === source.id &&
+                c.id !== this.creep.id &&
+                c.pos.inRangeTo(this.creep.pos, ARRIVAL_RANGE)
+        );
+
+
         if (replacement.length > 0) {
             //console.log(`[${this.creep.room.name}] ${this.creep.name}: Ο αντικαταστάτης ${replacement[0].name} έφτασε και το flag είναι false. Αυτοκτονία.`);
             this.creep.suicide();
@@ -105,7 +93,7 @@ class StaticHarvester extends BaseRole {
 
         if (!this.creep.pos.inRangeTo(targetPos, range)) {
             movementManager.smartMove(this.creep, targetPos, range);
-            return true; 
+            return true;
         }
         return false;
     }
@@ -117,8 +105,8 @@ class StaticHarvester extends BaseRole {
         if (this.creep.memory.init === true) {
             const travelTime = CREEP_LIFE_TIME - this.creep.ticksToLive;
             const spawnTime = this.creep.body.length * 3;
-            const buffer = 15; 
-            
+            const buffer = 15;
+
             this.creep.memory.leadTime = travelTime + spawnTime + buffer;
             delete this.creep.memory.init;
         }
@@ -129,10 +117,10 @@ class StaticHarvester extends BaseRole {
      */
     checkReplacementNeeds() {
         const flag = NEED_REPLACEMENT_FLAG || 'needReplacementFlag';
-        
+
         if (this.creep.memory.leadTime && (this.creep.ticksToLive < this.creep.memory.leadTime)) {
             console.log(`[${this.creep.room.name}] ${this.creep.name}: Χαμηλό TTL. Αίτημα αντικατάστασης (Lead: ${this.creep.memory.leadTime})`);
-            this.creep.memory[flag] = true; 
+            this.creep.memory[flag] = true;
             delete this.creep.memory.leadTime;
         }
     }
@@ -141,21 +129,14 @@ class StaticHarvester extends BaseRole {
      * Μεταφέρει ενέργεια σε Link αν υπάρχει.
      */
     manageLogistics(container) {
-        if (this.creep.memory.linkId === undefined) {
-            const searchPos = container ? container.pos : this.creep.pos;
-            const links = searchPos.findInRange(FIND_STRUCTURES, 1, { 
-                filter: s => s.structureType === STRUCTURE_LINK 
-            });
-            this.creep.memory.linkId = links.length > 0 ? links[0].id : null;
+
+        const link = roomCache.in(this.creep.room.name).getSourceLink(this.creep.memory.sourceId);
+        if (link && this.creep.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
+            this.creep.transfer(link, RESOURCE_ENERGY);
         }
 
-        if (this.creep.memory.linkId) {
-            const link = Game.getObjectById(this.creep.memory.linkId);
-            if (link && this.creep.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
-                this.creep.transfer(link, RESOURCE_ENERGY);
-            }
-        }
     }
+
 
     /**
      * Εκτελεί το harvest στην πηγή.
@@ -165,12 +146,12 @@ class StaticHarvester extends BaseRole {
             this.creep.harvest(source);
         }
     } // end of performHarvest
-	/**
-		Ο staticHarvester θέλουμε να εργάζεται μέχρι το τελευταίο tick.
-	*/
-	getRetirementThreshold() { 
-		return 0;
-	}
+    /**
+        Ο staticHarvester θέλουμε να εργάζεται μέχρι το τελευταίο tick.
+    */
+    getRetirementThreshold() {
+        return 0;
+    }
 }
 
 module.exports = StaticHarvester;

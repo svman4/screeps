@@ -41,6 +41,8 @@ const TARGET_FULL_PERCENT = {
 const MIN_LIFE_TO_LIVE = 50;
 const UPDATE_TASKS_INTERVAL = 2;
 
+const DROPPED_SOURCE_ENERGY_LIMIT=200;
+const RUINS_SOURCE_ENERGY_LIMIT=50;
 const logisticsManager = {
 
     init: function (roomName) {
@@ -131,7 +133,7 @@ const logisticsManager = {
     findDeliveryTargets: function (room) {
         const targets = [];
         const allStructures = roomCache.in(room.name).structures;
-        // const allStructures = room.find(FIND_MY_STRUCTURES);
+        
 
         allStructures.forEach(s => {
             const freeCapacity = s.store ? s.store.getFreeCapacity(RESOURCE_ENERGY) : 0;
@@ -176,7 +178,14 @@ const logisticsManager = {
             }
 
             if (condition) {
-                targets.push({ id: s.id, type: s.structureType, priority: priority, obj: s });
+                targets.push(
+					{ 
+						id: s.id, 
+						type: s.structureType, 
+						priority: priority, 
+						obj: s 
+					}
+				);
             }
         });
         const controllerContainer = roomCache.in(room.name).controllerContainer;
@@ -186,7 +195,10 @@ const logisticsManager = {
             controllerContainer.store[RESOURCE_ENERGY] <
             controllerContainer.store.getCapacity(RESOURCE_ENERGY) * TARGET_FULL_PERCENT.CONTROLLER_CONTAINER) {
             targets.push({
-                id: controllerContainer.id, type: 'controllerContainer', priority: PRIORITIES.CONTROLLER_CONTAINER, obj: controllerContainer
+                id: controllerContainer.id, 
+				type: 'controllerContainer', 
+				priority: PRIORITIES.CONTROLLER_CONTAINER, 
+				obj: controllerContainer
             });
         }
 
@@ -201,7 +213,7 @@ const logisticsManager = {
         const sources = [];
         const cache = roomCache.in(room.name);
         cache.droppedEnergy
-            .filter(r => r.amount > 200)
+            .filter(r => r.amount > DROPPED_SOURCE_ENERGY_LIMIT)
             .forEach(energy =>
                 sources.push(
                     {
@@ -210,7 +222,7 @@ const logisticsManager = {
                         priority: PRIORITIES.DROP_ENERGY,
                         obj: energy
                     }));
-        const ruins = cache.ruins.filter(r => r.store[RESOURCE_ENERGY] > 50);
+        const ruins = cache.ruins.filter(r => r.store[RESOURCE_ENERGY] > RUINS_SOURCE_ENERGY_LIMIT);
         ruins.forEach(ruin =>
             sources.push(
                 {
@@ -300,11 +312,6 @@ const logisticsManager = {
         };
     },
 
-    isContainerNearSource: function (container) {
-        return roomCache.in(container.room.name).sourceContainers.some(c => c.id === container.id);
-
-
-    },
 
     manageHaulers: function (room, roomMemory) {
         const roomName = room.name;
@@ -328,11 +335,17 @@ const logisticsManager = {
         }
 
         haulers.forEach(hauler => {
-            this.assignTaskToHauler(hauler, tasks, assignments, reservations);
+            this.assignTaskToHauler(
+				hauler, 
+				tasks, 
+				assignments, 
+				reservations);
         });
 
         haulers.forEach(hauler => {
-            this.runHaulerWithTask(hauler, assignments[hauler.name]);
+            this.runHaulerWithTask(
+				hauler, 
+				assignments[hauler.name]);
         });
     },
 
@@ -491,9 +504,9 @@ const logisticsManager = {
 
     checkSourceHasEnergy: function (source, sourceType) {
         switch (sourceType) {
-            case 'dropped': return source.amount > 20;
-            case 'ruin': return source.store[RESOURCE_ENERGY] > 20;
-            case 'link': // Προσθήκη για το Link
+            case 'dropped': return source.amount > DROPPED_SOURCE_ENERGY_LIMIT;
+            case 'ruin': return source.store[RESOURCE_ENERGY] > RUINS_SOURCE_ENERGY_LIMIT;
+            case 'link': 
             case 'container':
             case 'recoveryContainer':
             case 'terminal':
@@ -507,7 +520,7 @@ const logisticsManager = {
         switch (sourceType) {
             case 'dropped': return creep.pickup(source);
             case 'ruin':
-            case 'link': // Προσθήκη για το Link
+            case 'link': 
             case 'container':
             case 'recoveryContainer':
             case 'terminal':

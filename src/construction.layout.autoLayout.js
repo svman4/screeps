@@ -9,7 +9,7 @@
 
 const BaseLayout = require('construction.layout.BaseLayout');
 const { MEMORY_KEYS } = require('construction.constants');
-
+const RoomAnalyzer = require("construction.RoomAnalyzer");
 /**
  * AUTO LAYOUT CLASS
  * Δημιουργεί αυτόματα ένα optimized layout χωρίς εξάρτηση από αρχεία blueprint.
@@ -40,9 +40,24 @@ class AutoLayout extends BaseLayout {
             console.log(`[AutoLayout] No controller in room ${this.roomName}.`);
             return null;
         }
+        
+        const distanceMatrix=RoomAnalyzer.getDistanceTransform(this.rommName);
+        
+        const center = this.findOptimalCenter(sources, controller,distanceMatrix);
+        const storage = center; // Το storage θα χτιστεί στο center.
 
-        const center = this.findOptimalCenter(sources, controller);
-        const storage = this.findStoragePosition(center, controller);
+        //σχεδιάζει τους κεντρικούς δρόμους.
+
+        // Βάζει τα container στη θέση τους. Σε κάθε source 1 με απόσταση 1tile(όσο πιο κοντά γίνεται στο center),
+        //και δίπλα στο controller 1 σε απόσταση 3tile(όσο πιο κοντά γίνεται στο center)
+
+        //Δίπλα από κάθε source, υποχρεώτικά σε απόσταση 1, μπαίνουν τα Link σε κάθε πηγή.
+         //   Δίπλα στο controller σε απόσταση 1 μπαίνει το link.
+         // Σε απόσταση 2 από το storage θα μπει το link του storage.
+
+
+        tile.const criticalRoads = this.planRoads(center, sources, controller, null);
+
         const spawns = this.planSpawns(center, controller);
         const extensions = this.planExtensions(center, spawns);
         const towers = this.planTowers(center);

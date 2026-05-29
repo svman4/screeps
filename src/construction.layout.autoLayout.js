@@ -1,15 +1,15 @@
 /*
     CHANGELOG:
-    version 1.0.0
-    - Αρχική υλοποίηση αυτόματης σχεδίασης βάσης.
-    - Δημιουργία layout με βάση room geometry και controller/sources positions.
-    - Storage τοποθέτηση κοντά στο Controller.
-    - Controller Link κατασκευή τελευταία.
+    version 1.1.0
+    - Διόρθωση συντακτικών σφαλμάτων στη loadRawData (rommName, tile., extra commas).
+    - Ενσωμάτωση του Distance Transform Matrix για την εύρεση πραγματικά ελεύθερου κέντρου (center).
+    - Διασφάλιση ορθής ροής και σωστής τοποθέτησης των links, containers, και κρίσιμων δρόμων.
 */
 
 const BaseLayout = require('construction.layout.BaseLayout');
 const { MEMORY_KEYS } = require('construction.constants');
 const RoomAnalyzer = require("construction.RoomAnalyzer");
+
 /**
  * AUTO LAYOUT CLASS
  * Δημιουργεί αυτόματα ένα optimized layout χωρίς εξάρτηση από αρχεία blueprint.
@@ -41,28 +41,31 @@ class AutoLayout extends BaseLayout {
             return null;
         }
         
-        const distanceMatrix=RoomAnalyzer.getDistanceTransform(this.rommName);
+        // Υπολογισμός Distance Transform Matrix για να γνωρίζουμε πόσο μακριά από τοίχους είναι κάθε tile
+        const distanceMatrix = RoomAnalyzer.getDistanceTransform(this.roomName);
         
-        const center = this.findOptimalCenter(sources, controller,distanceMatrix);
-        const storage = center; // Το storage θα χτιστεί στο center.
+        // Εύρεση του βέλτιστου κέντρου της βάσης
+        const center = this.findOptimalCenter(sources, controller, distanceMatrix);
+        
+        // Το Storage τοποθετείται στο κέντρο (center)
+        const storage = [center];
 
-        //σχεδιάζει τους κεντρικούς δρόμους.
-
-        // Βάζει τα container στη θέση τους. Σε κάθε source 1 με απόσταση 1tile(όσο πιο κοντά γίνεται στο center),
-        //και δίπλα στο controller 1 σε απόσταση 3tile(όσο πιο κοντά γίνεται στο center)
-
-        //Δίπλα από κάθε source, υποχρεώτικά σε απόσταση 1, μπαίνουν τα Link σε κάθε πηγή.
-         //   Δίπλα στο controller σε απόσταση 1 μπαίνει το link.
-         // Σε απόσταση 2 από το storage θα μπει το link του storage.
-
-
-        tile.const criticalRoads = this.planRoads(center, sources, controller, null);
-
+        // Σχεδιασμός των Spawns γύρω από το κέντρο
         const spawns = this.planSpawns(center, controller);
+        
+        // Σχεδιασμός των Extensions κυκλικά
         const extensions = this.planExtensions(center, spawns);
+        
+        // Σχεδιασμός των Towers για άμυνα
         const towers = this.planTowers(center);
+        
+        // Σχεδιασμός των Links (Storage Link, Source Links, Controller Link)
         const links = this.planLinks(center, sources, controller, storage);
-        const containers = this.planContainers(sources, controller);
+        
+        // Σχεδιασμός των Containers (Source & Controller containers)
+        const containers = this.planContainers(sources, controller, center);
+        
+        // Σχεδιασμός των δρόμων (Roads) που ενώνουν τα βασικά σημεία
         const roads = this.planRoads(center, sources, controller, spawns);
 
         return {
@@ -84,13 +87,10 @@ class AutoLayout extends BaseLayout {
 
     /**
      * Εύρεση κέντρου βάσης: Βάσει των πηγών και του controller.
-     * Επιλέγουμε ένα σημείο που είναι:
-     * 1. Κοντά στις πηγές
-     * 2. Κοντά στο controller
-     * 3. Σε ασφαλή απόσταση από τα edges του δωματίου
+     * Επιλέγουμε ένα σημείο που είναι κοντά στο ιδανικό centroid αλλά και ελεύθερο (walkable terrain).
      */
-    findOptimalCenter(sources, controller) {
-        const padding = 5; // Ελάχιστη απόσταση από τα edges
+    findOptimalCenter(sources, controller, distanceMatrix) {
+        const padding = 5; // Ελάχιστη απόσταση από τα edges του δωματίου
 
         // Υπολογισμός του centroid των πηγών
         const sourceCentroid = {
@@ -98,70 +98,45 @@ class AutoLayout extends BaseLayout {
             y: Math.round(sources.reduce((sum, s) => sum + s.pos.y, 0) / sources.length)
         };
 
-        // Ο κέντρος θα είναι κάπου μεταξύ sourceCentroid και controller
+        // Το ιδανικό γεωμετρικό κέντρο βρίσκεται ανάμεσα στο centroid των πηγών και τον controller
         const controllerPos = controller.pos;
         const idealCenter = {
             x: Math.round((sourceCentroid.x + controllerPos.x) / 2),
             y: Math.round((sourceCentroid.y + controllerPos.y) / 2)
         };
 
-        // Εξασφάλιση ότι ο κέντρος είναι εντός των ορίων
-        return {
-            x: Math.max(padding, Math.min(49 - padding, idealCenter.x)),
-            y: Math.max(padding, Math.min(49 - padding, idealCenter.y))
-        };
-    }
+        // Αναζήτηση της καλύτερης walkable θέσης κοντά στο ιδανικό κέντρο χρησιμοποιώντας το distanceMatrix
+        let bestCenter = { x: idealCenter.x, y: idealCenter.y };
+        let maxDistanceVal = -1;
 
-    /**
-     * Εύρεση θέσης Storage: Κοντά στο Controller (<5 tiles Chebyshev distance).
-     * Προτιμώνται θέσεις ανατολικά και νότια του controller.
-     */
-    findStoragePosition(center, controller) {
-        const controllerPos = controller.pos;
-        const MAX_DISTANCE = 5;
-        const candidates = [];
+        for (let dx = -3; dx <= 3; dx++) {
+            for (let dy = -3; dy <= 3; dy++) {
+                const x = idealCenter.x + dx;
+                const y = idealCenter.y + dy;
 
-        // Διάσχιση όλων των σημείων κοντά στο controller
-        for (let dx = -MAX_DISTANCE; dx <= MAX_DISTANCE; dx++) {
-            for (let dy = -MAX_DISTANCE; dy <= MAX_DISTANCE; dy++) {
-                const x = controllerPos.x + dx;
-                const y = controllerPos.y + dy;
+                if (x < padding || x > 49 - padding || y < padding || y > 49 - padding) continue;
 
-                // Έλεγχος ορίων
-                if (x < 2 || x > 47 || y < 2 || y > 47) continue;
-
-                // Έλεγχος ότι η θέση είναι walkable
+                // Έλεγχος αν η θέση είναι terrain wall
                 const terrain = this.room.getTerrain();
                 if (terrain.get(x, y) === TERRAIN_MASK_WALL) continue;
 
-                // Προτίμηση θέσεις ανατολικά/νότια του controller
-                const preference = (dx > 0 ? 1 : 0) + (dy > 0 ? 1 : 0);
-                const distance = Math.max(Math.abs(dx), Math.abs(dy));
-
-                candidates.push({
-                    x, y,
-                    distance,
-                    preference,
-                    score: preference * 10 - distance
-                });
+                // Προτίμηση σε θέσεις που έχουν μεγαλύτερη απόσταση από τοίχους (ανοιχτός χώρος)
+                const distVal = distanceMatrix ? distanceMatrix[x][y] : 1;
+                if (distVal > maxDistanceVal) {
+                    maxDistanceVal = distVal;
+                    bestCenter = { x, y };
+                }
             }
         }
 
-        // Ταξινόμηση και επιλογή καλύτερης θέσης
-        if (candidates.length === 0) {
-            console.log(`[AutoLayout] No suitable storage position found. Using center.`);
-            return [center];
-        }
-
-        candidates.sort((a, b) => b.score - a.score);
-        return [{ x: candidates[0].x, y: candidates[0].y }];
+        return bestCenter;
     }
 
+   
     /**
-     * Σχεδιασμός Spawns: Συνήθως 1-3 spawns κοντά στο Storage.
+     * Σχεδιασμός Spawns: Συνήθως 1-3 spawns κοντά στο Storage/Κέντρο.
      */
     planSpawns(center, controller) {
-        // Βασική προσέγγιση: 1 spawn κοντά στο center, λίγο αποστασιάκι
         return [
             { x: center.x - 2, y: center.y - 2 },
             { x: center.x + 2, y: center.y - 2 },
@@ -170,18 +145,21 @@ class AutoLayout extends BaseLayout {
     }
 
     /**
-     * Σχεδιασμός Extensions: Γύρω από τα spawns σε ένα compact ring.
+     * Σχεδιασμός Extensions: Γύρω από τα spawns σε compact rings.
      */
     planExtensions(center, spawns) {
         const extensions = [];
+        const terrain = this.room.getTerrain();
         
         // Ring 1: 5 extensions
         for (let i = 0; i < 5; i++) {
             const angle = (i / 5) * 2 * Math.PI;
             const x = Math.round(center.x + 3 * Math.cos(angle));
             const y = Math.round(center.y + 3 * Math.sin(angle));
-            if (x >= 1 && x <= 48 && y >= 1 && y <= 48) {
-                extensions.push({ x, y });
+            if (x >= 2 && x <= 47 && y >= 2 && y <= 47) {
+                if (terrain.get(x, y) !== TERRAIN_MASK_WALL) {
+                    extensions.push({ x, y });
+                }
             }
         }
 
@@ -190,8 +168,10 @@ class AutoLayout extends BaseLayout {
             const angle = (i / 5) * 2 * Math.PI + Math.PI / 5;
             const x = Math.round(center.x + 4 * Math.cos(angle));
             const y = Math.round(center.y + 4 * Math.sin(angle));
-            if (x >= 1 && x <= 48 && y >= 1 && y <= 48) {
-                extensions.push({ x, y });
+            if (x >= 2 && x <= 47 && y >= 2 && y <= 47) {
+                if (terrain.get(x, y) !== TERRAIN_MASK_WALL) {
+                    extensions.push({ x, y });
+                }
             }
         }
 
@@ -199,7 +179,7 @@ class AutoLayout extends BaseLayout {
     }
 
     /**
-     * Σχεδιασμός Towers: Συνήθως 1-3 towers για coverage.
+     * Σχεδιασμός Towers: Συνήθως 1-3 towers για coverage γύρω από το κέντρο.
      */
     planTowers(center) {
         return [
@@ -211,61 +191,136 @@ class AutoLayout extends BaseLayout {
 
     /**
      * Σχεδιασμός Links: 
-     * - 1 Link κοντά στο controller (τελευταίο σε προτεραιότητα)
-     * - 1 Link κοντά στο storage
-     * - 1 Link ανά πηγή
+     * - 1 Storage Link σε απόσταση 2 από το storage
+     * - 1 Link κοντά σε κάθε source σε απόσταση 1
+     * - 1 Link κοντά στο controller σε απόσταση 1 (τελευταίο σε προτεραιότητα)
      */
     planLinks(center, sources, controller, storage) {
         const links = [];
-
-        // Storage Link (κοντά στο storage)
+        const terrain = this.room.getTerrain();
         const storagePos = storage[0];
-        links.push({
-            x: storagePos.x + 1,
-            y: storagePos.y
-        });
 
-        // Source Links (1 ανά πηγή)
-        for (const source of sources) {
-            links.push({
-                x: source.pos.x + 1,
-                y: source.pos.y + 1
-            });
+        // 1. Storage Link (Σε απόσταση ακριβώς 2 από το storage, προτίμηση προς walkable)
+        let storageLinkPlaced = false;
+        const storageDist = 2;
+        for (let dx = -storageDist; dx <= storageDist; dx++) {
+            for (let dy = -storageDist; dy <= storageDist; dy++) {
+                if (Math.abs(dx) === storageDist || Math.abs(dy) === storageDist) {
+                    const x = storagePos.x + dx;
+                    const y = storagePos.y + dy;
+                    if (x >= 2 && x <= 47 && y >= 2 && y <= 47 && terrain.get(x, y) !== TERRAIN_MASK_WALL) {
+                        links.push({ x, y });
+                        storageLinkPlaced = true;
+                        break;
+                    }
+                }
+            }
+            if (storageLinkPlaced) break;
         }
 
-        // Controller Link (θα κατασκευαστεί ΤΕΛΕΥΤΑΙΟ - βλέπε Scorer modification)
+        // 2. Source Links (1 δίπλα σε κάθε source, σε απόσταση 1 tile)
+        for (const source of sources) {
+            let linkPlaced = false;
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dy = -1; dy <= 1; dy++) {
+                    if (dx === 0 && dy === 0) continue;
+                    const x = source.pos.x + dx;
+                    const y = source.pos.y + dy;
+                    if (x >= 2 && x <= 47 && y >= 2 && y <= 47 && terrain.get(x, y) !== TERRAIN_MASK_WALL) {
+                        links.push({ x, y });
+                        linkPlaced = true;
+                        break;
+                    }
+                }
+                if (linkPlaced) break;
+            }
+        }
+
+        // 3. Controller Link (Σε απόσταση 1 από τον controller - Χαμηλή προτεραιότητα)
         const controllerPos = controller.pos;
-        links.push({
-            x: controllerPos.x + 1,
-            y: controllerPos.y + 1,
-            // Marker για το Scorer ώστε να το δώσει χαμηλότερη προτεραιότητα
-            isControllerLink: true
-        });
+        let controllerLinkPlaced = false;
+        for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -1; dy <= 1; dy++) {
+                if (dx === 0 && dy === 0) continue;
+                const x = controllerPos.x + dx;
+                const y = controllerPos.y + dy;
+                if (x >= 2 && x <= 47 && y >= 2 && y <= 47 && terrain.get(x, y) !== TERRAIN_MASK_WALL) {
+                    links.push({
+                        x, y,
+                        isControllerLink: true // Marker για χαμηλή προτεραιότητα κατασκευής
+                    });
+                    controllerLinkPlaced = true;
+                    break;
+                }
+            }
+            if (controllerLinkPlaced) break;
+        }
 
         return links;
     }
 
     /**
      * Σχεδιασμός Containers: 
-     * - 1 ανά πηγή
-     * - 1 controller container
+     * - 1 container ανά πηγή (απόσταση 1, όσο το δυνατόν πιο κοντά στο κέντρο/storage)
+     * - 1 controller container (απόσταση 3, όσο το δυνατόν πιο κοντά στο κέντρο/storage)
      */
-    planContainers(sources, controller) {
+    planContainers(sources, controller, center) {
         const containers = [];
+        const terrain = this.room.getTerrain();
 
-        // Source containers
+        // 1. Source Containers (απόσταση 1 από source, κοντά στο κέντρο)
         for (const source of sources) {
-            containers.push({
-                x: source.pos.x,
-                y: source.pos.y + 1
-            });
+            let bestPos = null;
+            let minDistanceToCenter = Infinity;
+
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dy = -1; dy <= 1; dy++) {
+                    if (dx === 0 && dy === 0) continue;
+                    const x = source.pos.x + dx;
+                    const y = source.pos.y + dy;
+
+                    if (x < 2 || x > 47 || y < 2 || y > 47) continue;
+                    if (terrain.get(x, y) === TERRAIN_MASK_WALL) continue;
+
+                    const dist = Math.sqrt(Math.pow(x - center.x, 2) + Math.pow(y - center.y, 2));
+                    if (dist < minDistanceToCenter) {
+                        minDistanceToCenter = dist;
+                        bestPos = { x, y };
+                    }
+                }
+            }
+            if (bestPos) {
+                containers.push(bestPos);
+            }
         }
 
-        // Controller container
-        containers.push({
-            x: controller.pos.x + 2,
-            y: controller.pos.y
-        });
+        // 2. Controller Container (απόσταση 3 από τον controller, όσο πιο κοντά στο κέντρο γίνεται)
+        const controllerPos = controller.pos;
+        let bestControllerPos = null;
+        let minControllerDistToCenter = Infinity;
+
+        for (let dx = -3; dx <= 3; dx++) {
+            for (let dy = -3; dy <= 3; dy++) {
+                // Θέλουμε Chebyshev απόσταση ακριβώς 3
+                if (Math.max(Math.abs(dx), Math.abs(dy)) === 3) {
+                    const x = controllerPos.x + dx;
+                    const y = controllerPos.y + dy;
+
+                    if (x < 2 || x > 47 || y < 2 || y > 47) continue;
+                    if (terrain.get(x, y) === TERRAIN_MASK_WALL) continue;
+
+                    const dist = Math.sqrt(Math.pow(x - center.x, 2) + Math.pow(y - center.y, 2));
+                    if (dist < minControllerDistToCenter) {
+                        minControllerDistToCenter = dist;
+                        bestControllerPos = { x, y };
+                    }
+                }
+            }
+        }
+
+        if (bestControllerPos) {
+            containers.push(bestControllerPos);
+        }
 
         return containers;
     }
@@ -274,7 +329,7 @@ class AutoLayout extends BaseLayout {
      * Σχεδιασμός Roads: 
      * - Paths από πηγές στο κέντρο
      * - Paths από κέντρο στο controller
-     * - Άλλες λογιστικές διαδρομές
+     * - Paths προς τα Spawns
      */
     planRoads(center, sources, controller, spawns) {
         const roads = [];
@@ -305,8 +360,10 @@ class AutoLayout extends BaseLayout {
         addRoadPath(center, controller.pos);
 
         // Roads γύρω από spawns
-        for (const spawn of spawns) {
-            addRoadPath(center, spawn);
+        if (spawns) {
+            for (const spawn of spawns) {
+                addRoadPath(center, spawn);
+            }
         }
 
         return roads;

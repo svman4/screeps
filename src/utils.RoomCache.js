@@ -148,7 +148,7 @@ class RoomCacheInstance {
             if (!this.room) {
                 return null;
             }
-            const target = this.room.storage || new RoomPosition(27, 15, "W1N3");
+            const target = this.room.storage || this.spawns[0]||   new RoomPosition(25, 25);
             if (!target) return null;
             this.cache.center = target.pos;
         }
@@ -207,13 +207,13 @@ class RoomCacheInstance {
         if (!this.cache.sourceDistanceIds) this.cache.sourceDistanceIds = {};
         if (this.cache.sourceDistanceIds[sourceId] === undefined) {
             const source = Game.getObjectById(sourceId);
-            if (!source) return null;
-            const center = this.center || null; // Μπορείς να ορίσεις το κέντρο του δωματίου στη cache αν θέλεις, π.χ. κοντά στον controller ή στο storage
-            if (!center) return null;
+            if (!source) return Infinity;
+            const center = this.center || Infinity; // Μπορείς να ορίσεις το κέντρο του δωματίου στη cache αν θέλεις, π.χ. κοντά στον controller ή στο storage
+            if (!center) return Infinity;
 
             this.cache.sourceDistanceIds[sourceId] = source.pos.getRangeTo(center);
         }
-        return this.cache.sourceDistanceIds[sourceId] || null;
+        return this.cache.sourceDistanceIds[sourceId] || Infinity;
 
 
     }
@@ -318,7 +318,9 @@ class RoomCacheInstance {
         }
         return this._tickCache.groupedStructures || [];
     }
-
+	get spawns() {
+		return this.groupedStructures[STRUCTURE_SPAWN] || [];
+	}
     get containers() {
         return this.groupedStructures[STRUCTURE_CONTAINER] || [];
     }

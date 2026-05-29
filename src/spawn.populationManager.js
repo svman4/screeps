@@ -136,21 +136,22 @@ class PopulationManager {
 
         //debugConsole.debugObject("PopulationManager", "sources is ", cache.sources);
         for (const source of cache.sources) {
-            const sourceLink=cache.getSourceLink(source.id);
-            
-            if (sourceLink )
+            const sourceLink = cache.getSourceLink(source.id);
+
+            if (sourceLink)
                 continue; // αν η πηγή έχει link δε χρειάζεται να υπολογίσουμε carry για αυτή την πηγή
-            
-            
+
+
 
             const range = cache.getSourceDistance(source.id);
+//			debugConsole.debugText("PopulationManager","Source "+source.id+" distance is "+range);
             const distance = (range !== Infinity) ? range : FALLBACK_DISTANCE;
-            
+
             totalCarryRequired += (ENERGY_INCOME_TICK * distance * 2) / CARRY_CAPACITY;
 
         }
-        
-            // ΥΠολογίζει τα carry Που χρειάζονται από το target στο controller
+
+        // ΥΠολογίζει τα carry Που χρειάζονται από το target στο controller
         if (!cache.controllerLink) {
             const controllerRange = cache.controllerDistance;
             const controllerDistance = (controllerRange !== Infinity) ? controllerRange : FALLBACK_DISTANCE;
@@ -159,7 +160,7 @@ class PopulationManager {
         }
         // ---------
         totalCarryRequired = (totalCarryRequired + POPULATION_MODULE_CONFIG.EXTENSION_CARRY_BONUS) * POPULATION_MODULE_CONFIG.DISTANCE_PADDING;
-        
+
         return Math.ceil(totalCarryRequired);
     }
 
@@ -168,28 +169,31 @@ class PopulationManager {
      */
     _createContext(room) {
         const cache = roomCache.in(room.name);
-		const controller=room.controller;
-		const creeps=cache.myCreeps;
-		
-		// Early exit or safety check if controller is missing
-		const level = controller ? controller.level : 0;
-		// Use filtering logic to derive states
-		const hasWork = creeps.some(c => c.getActiveBodyparts(WORK) > 0 );
-		const hasCarry = creeps.some(c => 
-			c.getActiveBodyparts(CARRY) > 0 && 
-			(c.memory.role === ROLES.HAULER || c.memory.role === ROLES.SIMPLE_HARVESTER)
-		);
-		
-		const answer = {
+        const controller = room.controller;
+        const creeps = cache.myCreeps;
+
+        // Early exit or safety check if controller is missing
+        const level = controller ? controller.level : 0;
+        // Use filtering logic to derive states
+        const hasWork = creeps.some(c => c.getActiveBodyparts(WORK) > 0);
+        const hasCarry = creeps.some(c =>
+            c.getActiveBodyparts(CARRY) > 0 &&
+            (c.memory.role === ROLES.HAULER || c.memory.role === ROLES.SIMPLE_HARVESTER)
+        );
+
+        const answer = {
             room: room,
             level: room.controller ? room.controller.level : 0,
             sources: cache.sources,
             spawns: room.find(FIND_MY_SPAWNS),
             storage: room.storage,
             hasContainers: cache.containers.length > 2,
-            
+
             hasConstruction: cache.constructionSites.length > 0,
-            isRecovery: (!hasWork || !hasCarry) && room.controller && room.controller.level > 1
+            isRecovery: (!hasWork ||
+                (!hasCarry && room.energyAvailable < 400)) &&
+                room.controller &&
+                room.controller.level > 1
         };
 
         return answer;
@@ -237,7 +241,7 @@ class PopulationManager {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
                 [ROLES.HAULER]: 0,
                 [ROLES.UPGRADER]: 2,
-                [ROLES.BUILDER]: 2
+                [ROLES.BUILDER]: 0
                 // this._calculateCarryQuota(context)
             },
             isRecovery: false
@@ -268,7 +272,7 @@ class PopulationManager {
     updateRoomLimits(roomName) {
         const room = Game.rooms[roomName];
         if (!room) return;
-		
+
         const limits = this.calculateLimits(room);
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY] = limits;
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.RECOVERY_KEY] = limits.isRecovery;

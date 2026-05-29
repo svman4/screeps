@@ -1,0 +1,145 @@
+// JavaScript source code
+/**
+ * Κλάση ανάλυσης δωματίου για το Screeps.
+ * Παρέχει static μεθόδους για τον υπολογισμό γεωμετρικών και στρατηγικών δεδομένων.
+ * @class
+ */
+class RoomAnalyzer {
+
+    /**
+     * Υπολογίζει τον Μετασχηματισμό Απόστασης (Distance Transform) για ένα δωμάτιο.
+     * Χρησιμοποιεί την απόσταση Chebyshev (επιτρέπει διαγώνιες κινήσεις).
+     * * @static
+     * @param {string} roomName - Το όνομα του δωματίου που θέλουμε να αναλύσουμε (π.χ. "E1S1").
+     * @returns {number[]} Ένας μονοδιάστατος πίνακας 2500 στοιχείων (50x50), όπου η τιμή σε κάθε 
+     * θέση (y * 50 + x) αντιπροσωπεύει την απόσταση από τον κοντινότερο τοίχο.
+     * * @example
+     * const dt = RoomAnalyzer.getDistanceTransform("E1S1");
+     * const distance = dt[25 * 50 + 25]; // Απόσταση του tile (25, 25) από τοίχο
+     */
+    static getDistanceTransform(roomName) {
+        const roomTerrain = Game.map.getRoomTerrain(roomName);
+        const dt = new Array(2500);
+
+        // 1. Αρχικοποίηση
+        for (let y = 0; y < 50; y++) {
+            for (let x = 0; x < 50; x++) {
+                const index = y * 50 + x;
+                if (roomTerrain.get(x, y) === TERRAIN_MASK_WALL) {
+                    dt[index] = 0;
+                } else {
+                    dt[index] = Infinity;
+                }
+            }
+        }
+
+        // 2. Forward Pass (Πάνω-Αριστερά προς Κάτω-Δεξιά)
+        for (let y = 0; y < 50; y++) {
+            for (let x = 0; x < 50; x++) {
+                const idx = y * 50 + x;
+                if (dt[idx] === 0) continue;
+
+                let minNeighbors = Infinity;
+                if (y > 0) {
+                    minNeighbors = Math.min(minNeighbors, dt[(y - 1) * 50 + x]);
+                    if (x > 0) minNeighbors = Math.min(minNeighbors, dt[(y - 1) * 50 + (x - 1)]);
+                    if (x < 49) minNeighbors = Math.min(minNeighbors, dt[(y - 1) * 50 + (x + 1)]);
+                }
+                if (x > 0) minNeighbors = Math.min(minNeighbors, dt[y * 50 + (x - 1)]);
+
+                dt[idx] = Math.min(dt[idx], minNeighbors + 1);
+            }
+        }
+
+        // 3. Backward Pass (Κάτω-Δεξιά προς Πάνω-Αριστερά)
+        for (let y = 49; y >= 0; y--) {
+            for (let x = 49; x >= 0; x--) {
+                const idx = y * 50 + x;
+                if (dt[idx] === 0) continue;
+
+                let minNeighbors = Infinity;
+                if (y < 49) {
+                    minNeighbors = Math.min(minNeighbors, dt[(y + 1) * 50 + x]);
+                    if (x > 0) minNeighbors = Math.min(minNeighbors, dt[(y + 1) * 50 + (x - 1)]);
+                    if (x < 49) minNeighbors = Math.min(minNeighbors, dt[(y + 1) * 50 + (x + 1)]);
+                }
+                if (x < 49) minNeighbors = Math.min(minNeighbors, dt[y * 50 + (x + 1)]);
+
+                dt[idx] = Math.min(dt[idx], minNeighbors + 1);
+            }
+        }
+
+        return dt;
+    }
+
+    /**
+     * Βρίσκει το καλύτερο δυνατό σημείο (Anchor) για το χτίσιμο της βάσης.
+     * Ψάχνει το tile που απέχει τη μέγιστη απόσταση από οποιονδήποτε τοίχο.
+     * * @static
+     * @param {string} roomName - Το όνομα του δωματίου.
+     * @returns {{x: number, y: number, distance: number}} Αντικείμενο με τις συντεταγμένες και την απόσταση.
+     * * @example
+     * const anchor = RoomAnalyzer.getBestAnchor("E1S1");
+     * console.log(`Το καλύτερο κέντρο είναι στο X:${anchor.x}, Y:${anchor.y} με απόσταση ${anchor.distance} από τοίχους.`);
+     */
+    static getBestAnchor(roomName) {
+        const dt = this.getDistanceTransform(roomName);
+        let maxDistance = -1;
+        let bestX = 25;
+        let bestY = 25;
+
+        for (let y = 0; y < 50; y++) {
+            for (let x = 0; x < 50; x++) {
+                const distance = dt[y * 50 + x];
+
+                // Αγνοούμε τα borders του χάρτη (0-4 και 45-49) γιατί δεν επιτρέπεται να χτίσουμε εκεί
+                if (x < 5 || x > 44 || y < 5 || y > 44) continue;
+
+                if (distance > maxDistance) {
+                    maxDistance = distance;
+                    bestX = x;
+                    bestY = y;
+                }
+            }
+        }
+
+        return { x: bestX, y: bestY, distance: maxDistance };
+    }
+    /**
+     * Εντοπίζει πιθανά στενά περάσματα (Choke Points) στο δωμάτιο.
+     * Ιδανικό για να βρεις πού να στείλεις αμυντικά creeps ή πού να ξεκινήσεις το χτίσιμο τειχών.
+     * * @static
+     * @param {string} roomName - Το όνομα του δωματίου.
+     * @returns {{x: number, y: number}[]} Ένας πίνακας με τις συντεταγμένες των στενών περασμάτων.
+     */
+    static findChokePoints(roomName) {
+        const dt = this.getDistanceTransform(roomName);
+        const chokePoints = [];
+
+        // Σαρώνουμε το εσωτερικό του δωματίου
+        for (let y = 2; y < 48; y++) {
+            for (let x = 2; x < 48; x++) {
+                const distance = dt[y * 50 + x];
+
+                // Ένα "στενό" πλακίδιο είναι βατό (απόσταση > 0) αλλά πολύ κοντά σε τοίχους (απόσταση <= 2)
+                if (distance > 0 && distance <= 2) {
+                    
+                    // Μετράμε πόσοι από τους άμεσους γείτονες είναι φυσικοί τοίχοι
+                    let wallNeighbors = 0;
+                    if (dt[(y - 1) * 50 + x] === 0) wallNeighbors++; // Πάνω
+                    if (dt[(y + 1) * 50 + x] === 0) wallNeighbors++; // Κάτω
+                    if (dt[y * 50 + (x - 1)] === 0) wallNeighbors++; // Αριστερά
+                    if (dt[y * 50 + (x + 1)] === 0) wallNeighbors++; // Δεξιά
+
+                    // Αν το tile είναι ανάμεσα σε τουλάχιστον 2 τοίχους (π.χ. διάδρομος/τούνελ), 
+                    // τότε θεωρείται Choke Point.
+                    if (wallNeighbors >= 2) {
+                        chokePoints.push({ x: x, y: y });
+                    }
+                }
+            }
+        }
+
+        return chokePoints;
+    }
+}

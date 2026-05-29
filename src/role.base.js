@@ -40,7 +40,7 @@ class BaseRole {
      * @param {string} [recycleContainerId] - Προαιρετικό ID του container δίπλα στο Spawn.
      * @returns {boolean} True αν το creep έχει μπει σε φάση ανακύκλωσης.
      */
-    manageLifecycle(recycleContainerId) {
+    manageLifecycle() {
         // Αν το creep είναι ήδη σε κατάσταση ανακύκλωσης, δεν συνεχίζουμε το υπόλοιπο logic
         if (this.creep.memory.role === "to_be_recycled") {
             return true;
@@ -49,15 +49,14 @@ class BaseRole {
         // Έλεγχος αν πλησιάζει το τέλος της ζωής του
         if (this.creep.ticksToLive < this.getRetirementThreshold()) {
             // Αν έχουμε ορίσει container ανακύκλωσης, ξεκινάμε τη διαδικασία
-            if (roomCache.in(this.creep.room.name).recoveryContainer && Game.getObjectById(roomCache.in(this.creep.room.name).recoveryContainer)) {
-                this.creep.memory.role = "to_be_recycled";
-                this.creep.say('♻️ Retirement');
-                return true;
-            }
+
+            this.creep.memory.role = "to_be_recycled";
+            this.creep.say('♻️ Retirement');
+            return true;
         }
 
         return false;
-    }
+    } // end of manageLifeCycle
 
     /**
      * Μεταφέρει το creep στο δωμάτιο "βάσης" (homeRoom).
@@ -141,9 +140,9 @@ class BaseRole {
     getEnergyFromContainersorStorage(resource = RESOURCE_ENERGY) {
         const containers = roomCache.in(this.creep.room.name).containers;
         const storage = this.creep.room.storage || null;
-		let stores=[...containers];
-		if(storage) stores.push(storage);
-		
+        let stores = [...containers];
+        if (storage) stores.push(storage);
+
         stores = stores.filter(
             s => s.store[resource] > (this.creep.store.getCapacity() * 0.3)
         );
@@ -241,20 +240,20 @@ class BaseRole {
      */
     gotoHarvesting() {
         const sources = roomCache.in(this.creep.room.name).sources;
-        const source=this.creep.pos.findClosestByRange(sources);
-        
+        const source = this.creep.pos.findClosestByRange(sources);
+
         if (source) {
             if (this.creep.pos.inRangeTo(source, 1)) {
-                
+
                 this.creep.harvest(source);
             } else {
-                
+
                 movementManager.smartMove(this.creep, source, 1);
             }
             return true;
         }
-        
-        
+
+
         return false;
     }
 
@@ -263,26 +262,26 @@ class BaseRole {
      * @returns {boolean}
      */
     fillSpawnExtension() {
-        let structures=[];
-		let spawns = roomCache.in(this.creep.room.name).groupedStructures[STRUCTURE_SPAWN];
-		if(spawns) structures.push(...spawns);
-		
-		let extensions=roomCache.in(this.creep.room.name).groupedStructures[STRUCTURE_EXTENSION];
-		if(extensions) structures.push(...extensions);
-		
-		structures=structures.filter(
-            s=>s.store.getFreeCapacity(RESOURCE_ENERGY) > 0);
-		       
-        
+        let structures = [];
+        let spawns = roomCache.in(this.creep.room.name).groupedStructures[STRUCTURE_SPAWN];
+        if (spawns) structures.push(...spawns);
+
+        let extensions = roomCache.in(this.creep.room.name).groupedStructures[STRUCTURE_EXTENSION];
+        if (extensions) structures.push(...extensions);
+
+        structures = structures.filter(
+            s => s.store.getFreeCapacity(RESOURCE_ENERGY) > 0);
+
+
         const target = this.creep.pos.findClosestByRange(structures);
-        
+
         if (target) {
-            
+
             if (this.creep.pos.inRangeTo(target, 1)) {
                 this.creep.transfer(target, RESOURCE_ENERGY);
             } else {
                 movementManager.smartMove(this.creep, target, 1);
-                
+
             }
             return true;
         }

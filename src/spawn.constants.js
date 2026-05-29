@@ -37,8 +37,8 @@ const BODY_ENERGY_LIMITS = {
 const PRIORITY = {
     [ROLES.SIMPLE_HARVESTER]: 10,
     [ROLES.STATIC_HARVESTER]: 15,
-    [ROLES.HAULER]: 14,
-    [ROLES.MINER]: 25,
+    [ROLES.HAULER]: 20,
+    [ROLES.MINER]: 35,
     [ROLES.LD_HARVESTER]: 35,
     [ROLES.LD_HAULER]: 40,
     [ROLES.CLAIMER]: 45,
@@ -76,12 +76,12 @@ const POPULATION_MODULE_CONFIG = {
     // Economic Balancing
     MAINTENANCE_BUFFER: 5,       // Ενέργεια που κρατάμε για Towers/Spawning
     BUILDER_INCOME_SHARE: 0.5,   // Ποσοστό του εισοδήματος που πάει σε χτίσιμο
-    MAX_BUILDER_WORK_BASELINE: 10, // Μέγιστο WORK για builders από το τρέχον εισόδημα
+    MAX_BUILDER_WORK_BASELINE: 13, // Μέγιστο WORK για builders από το τρέχον εισόδημα
     SURPLUS_THRESHOLD: 0.5,      // Πάνω από ποιο ποσοστό Storage θεωρούμε ότι έχουμε πλεόνασμα
     SURPLUS_SCALER: 50,          // Πόσο επιθετικά αυξάνουμε τα parts στο πλεόνασμα
     MAX_UPGRADER_WORK_RCL8: 15,  // Το όριο του controller στο RCL 8 (15 energy/tick cap)
     STATIC_HARVESTERS_PER_SOURCE: 1,
-    SIMPLE_HARVESTERS_PER_SOURCE: 2,
+    SIMPLE_HARVESTERS_PER_SOURCE: 4,
     // Logistics
     EXTENSION_CARRY_BONUS: 9,   // Σταθερό quota για τον ανεφοδιασμό extensions
     DISTANCE_PADDING: 1.1,       // 10% έξτρα carry για κάλυψη απωλειών/κίνησης

@@ -230,7 +230,7 @@ class SpawnManager {
         const diffParts = targetParts - currentParts;
         if (diffParts <= 0) return; // Δεν χρειάζεται να κάνουμε τίποτα αν έχουμε ήδη αρκετά parts
         
-        const isRecovery = Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.RECOVERY_KEY];
+        const isRecovery = Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY][POPULATION_GLOBAL_CONFIG.RECOVERY_KEY];
         let body = [];
 		if(role===ROLES.UPGRADER) {
 			
@@ -361,7 +361,7 @@ class SpawnManager {
         const hasRoads = cache.hasRoads;
         const hasLinks = cache.hasLinks;
         const roomLevel = Memory.rooms[roomName] ? Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.ROOM_LEVEL_KEY] : 1;
-
+    
         let parts = 0;
         let costPerUnit = 0;
         switch (role) {
@@ -407,11 +407,11 @@ class SpawnManager {
                 parts = 0;
 
                 costPerUnit = hasRoads ? 200 : 250; // [C,C,M] vs [C,M]
-                costPerUnit = (roomLevel >= 3) ? 350 : 250;
+                costPerUnit = (maxEnergy > 400) ? 350 : 250;
 
                 while (this.getBodyCost(body) + costPerUnit <= maxEnergy && parts < diffParts) {
 
-                    if (roomLevel >= 3) {
+                    if (maxEnergy > 400) {
                         if ((diffParts - parts) === 1) {
                             body.push(WORK, CARRY, MOVE);
                             parts += 1;

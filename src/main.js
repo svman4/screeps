@@ -12,7 +12,7 @@ main.js
 
 TODO όταν ο hauler δεν έχει δουλειά να πηγαίνει κάπου εκτός δρόμου. Ειδικά σε μεγάλα επίπεδα
 
- */
+ */ 
 var spawnManager = require('manager.spawn');
 var defenceManager = require('manager.defense');
 var constructionManager = require('manager.construction');
@@ -121,7 +121,7 @@ function respawnDetection() {
         console.log("Respawn detected or Memory reset! Cleaning...");
         roomCache.forceRefreshAll();
         // Μηδενισμός όλων των απαραίτητων δομών
-        //Memory.creeps = {};
+        Memory.creeps = {};
         Memory.spawnQueue = [];
         Memory.rooms = {}; // Προσοχή: αυτό διαγράφει και τα populationLimits!
 

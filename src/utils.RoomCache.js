@@ -7,7 +7,8 @@
 var debugConsole = require("utils.debugConsole");
 const CONFIG = {
     ROADS_THRESHOLD: 30,
-    LINKS_THRESHOLD: 2
+    LINKS_THRESHOLD: 2,
+    
 }
 class RoomCache {
     constructor() {
@@ -323,6 +324,15 @@ class RoomCacheInstance {
 	}
     get containers() {
         return this.groupedStructures[STRUCTURE_CONTAINER] || [];
+    }
+    get hasContainers() {
+        const sourceLength=this.sources.length;
+        const containersCount=this.groupedStructures[STRUCTURE_CONTAINER].length;
+        
+        const answer = containersCount >= (sourceLength+1);
+        //console.log("source is "+sourceLength+" containers is "+containersCount+"   "+answer);
+        
+        return answer;
     }
     get hasRoads() {
 

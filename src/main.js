@@ -122,7 +122,7 @@ if (!Memory.lastRoomReset || Game.time < Memory.lastRoomReset) {
     console.log("Respawn detected or Memory reset! Cleaning...");
     
     // Μηδενισμός όλων των απαραίτητων δομών
-    Memory.creeps = {};
+    //Memory.creeps = {};
     Memory.spawnQueue = [];
     Memory.rooms = {}; // Προσοχή: αυτό διαγράφει και τα populationLimits!
     

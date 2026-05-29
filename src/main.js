@@ -117,6 +117,7 @@ function runAndCatch(action, message, ...args) {
 } // end of runAndCatch
 function respawnDetection() {
     // Στην αρχή του main.js
+
     if (!Memory.lastRoomReset || (Memory.lastRoomReset + 20 < Game.Time)) {
         console.log("Respawn detected or Memory reset! Cleaning...");
         roomCache.forceRefreshAll();
@@ -128,6 +129,7 @@ function respawnDetection() {
         // Αποθήκευση του τρέχοντος χρόνου για να μην ξανατρέξει
         Memory.lastRoomReset = Game.time;
     }
+
 }
 function showRoomInfo(room) {
     const visual = new RoomVisual(room.name);

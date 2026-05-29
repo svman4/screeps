@@ -8,6 +8,7 @@
 
 const BaseLayout = require('construction.layout.BaseLayout');
 const { MEMORY_KEYS } = require('construction.constants');
+
 const RoomAnalyzer = require("construction.RoomAnalyzer");
 
 /**
@@ -44,11 +45,21 @@ class AutoLayout extends BaseLayout {
         // Υπολογισμός Distance Transform Matrix για να γνωρίζουμε πόσο μακριά από τοίχους είναι κάθε tile
         const distanceMatrix = RoomAnalyzer.getDistanceTransform(this.roomName);
         
-        // Εύρεση του βέλτιστου κέντρου της βάσης
-        const center = this.findOptimalCenter(sources, controller, distanceMatrix);
-        
-        // Το Storage τοποθετείται στο κέντρο (center)
-        const storage = [center];
+        const center = this.findOptimalCenter(sources, controller,distanceMatrix);
+        const storage = center; // Το storage θα χτιστεί στο center.
+
+        //σχεδιάζει τους κεντρικούς δρόμους.
+
+        // Βάζει τα container στη θέση τους. Σε κάθε source 1 με απόσταση 1tile(όσο πιο κοντά γίνεται στο center),
+        //και δίπλα στο controller 1 σε απόσταση 3tile(όσο πιο κοντά γίνεται στο center)
+
+        //Δίπλα από κάθε source, υποχρεώτικά σε απόσταση 1, μπαίνουν τα Link σε κάθε πηγή.
+         //   Δίπλα στο controller σε απόσταση 1 μπαίνει το link.
+         // Σε απόσταση 2 από το storage θα μπει το link του storage.
+
+
+        const criticalRoads = this.planRoads(center, sources, controller, null);
+
 
         // Σχεδιασμός των Spawns γύρω από το κέντρο
         const spawns = this.planSpawns(center, controller);

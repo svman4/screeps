@@ -39,6 +39,7 @@ class SpawnManager {
         this.cleanup();
         if (Game.time % SPAWN_MANAGER_CONFIG.POPULATION_LIMIT_REFRESH_RATE === 0) {
             //this.queue.flush(); // Καθαρισμός ουράς για το δωμάτιο σε περίπτωση αλλαγής ορίων
+            this.queue.cleanStaleRequests();
         }
         // Εκτύπωση της ουράς για debugging
         //  if (this.queue.length > 0) {
@@ -186,11 +187,11 @@ class SpawnManager {
         const isRecovery = Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY][POPULATION_GLOBAL_CONFIG.RECOVERY_KEY];
         let body = [];
         // Για να καλεσθεί η συνάρτηση σημαίνει ότι λείπει ένα creep του συγκεκριμμένου role.
-
+        //console.log(isRecovery);
         for (let i = currentCount; i < targetCount; i++) {
             // Στο recovery, βγάζουμε άμεσα ό,τι αντέχει η τρέχουσα ενέργεια
             if (isRecovery) {
-                body = this.calculateBody(roomName, role, room.energyAvailable, 0);
+                body = this.calculateBody(roomName, role,300, 0);
             } else {
                 body = this.calculateBody(roomName, role, maxEnergyAvailable, 0);
             }
@@ -243,7 +244,7 @@ class SpawnManager {
         // 1. Περίπτωση Ελλείμματος (Deficit)
         if (currentParts < targetParts) {
             if (isRecovery) {
-                body = this.calculateBody(roomName, role, room.energyAvailable, diffParts);
+                body = this.calculateBody(roomName, role, 300, diffParts);
                 this.addRoleToQueue(roomName, role, room.energyAvailable, body);
                 return;
             }
@@ -257,6 +258,9 @@ class SpawnManager {
     * Προσθήκη αιτήματος στην ουρά με κλειδωμένο προ-υπολογισμένο body.
     */
     addRoleToQueue(roomName, role, budget, body, memory = {}, targetRoom = "") {
+        if(!body || body.length===0) {
+            debugConsole.debugText("Spawn","empty body for "+role+" at "+roomName);
+        }
         const request = {
             role: role,
             homeRoom: roomName,
@@ -407,7 +411,7 @@ class SpawnManager {
             case ROLES.UPGRADER:
                 parts = 0;
 
-                costPerUnit = hasRoads ? 200 : 250; // [C,C,M] vs [C,M]
+                //console.log(maxEnergy);
                 costPerUnit = (maxEnergy > 400) ? 350 : 250;
 
                 while (this.getBodyCost(body) + costPerUnit <= maxEnergy && parts < diffParts) {

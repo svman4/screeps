@@ -63,9 +63,9 @@ class Scorer {
             const isSourceLink = sources && sources.some(s => Math.max(Math.abs(s.x - pos.x), Math.abs(s.y - pos.y)) <= 2);
 
             if (isControllerLink) {
-                bonus = 10;
+                bonus = 70;
             } else if (isStorageLink) {
-                bonus = 40;
+                bonus = 100;
             } else if (isSourceLink) {
                 // Προτεραιότητα στις απομακρυσμένες πηγές
                 bonus = 80 + (distToCenter * 0.5);

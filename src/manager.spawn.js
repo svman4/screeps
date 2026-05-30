@@ -183,7 +183,7 @@ class SpawnManager {
         if (!room) return;
         // Η ενέργεια του δωματίου(και ας μην υπάρχει στα extension τώρα).
         const maxEnergyAvailable = room.energyCapacityAvailable;
-        const isRecovery = Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.RECOVERY_KEY];
+        const isRecovery = Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY][POPULATION_GLOBAL_CONFIG.RECOVERY_KEY];
         let body = [];
         // Για να καλεσθεί η συνάρτηση σημαίνει ότι λείπει ένα creep του συγκεκριμμένου role.
 
@@ -225,7 +225,7 @@ class SpawnManager {
     handlePartsBasedNeed(roomName, role, currentParts, targetParts) {
         const room = Game.rooms[roomName];
         if (!room) return;
-
+        
         const maxEnergyAvailable = room.energyCapacityAvailable;
         const diffParts = targetParts - currentParts;
         if (diffParts <= 0) return; // Δεν χρειάζεται να κάνουμε τίποτα αν έχουμε ήδη αρκετά parts
@@ -364,6 +364,7 @@ class SpawnManager {
     
         let parts = 0;
         let costPerUnit = 0;
+        console.log(role+" "+maxEnergy);
         switch (role) {
 
             case ROLES.STATIC_HARVESTER:
@@ -383,7 +384,7 @@ class SpawnManager {
             case ROLES.SIMPLE_HARVESTER:
                 diffParts = 5;
                 parts = 0;
-                while (this.getBodyCost(body) + 250 <= maxEnergy && parts <= diffParts) {
+                while ((this.getBodyCost(body) + 250) <= maxEnergy && parts <= diffParts) {
                     body.push(WORK, CARRY, MOVE, MOVE);
                     parts++;
                 }

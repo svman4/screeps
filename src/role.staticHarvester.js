@@ -8,7 +8,7 @@
  * 2.5.0: Πλήρες Refactoring σε αυτόνομες μεθόδους. Βελτίωση λογικής αυτοκτονίας.
  * 2.4.1: Διόρθωση logs και debugging για το NEED_REPLACEMENT_FLAG.
  */
-
+const debugConsole=require('utils.debugConsole');
 const BaseRole = require('role.base');
 const movementManager = require('manager.movement');
 const { NEED_REPLACEMENT_FLAG } = require('spawn.constants');
@@ -23,7 +23,7 @@ class StaticHarvester extends BaseRole {
 
         const container = roomCache.in(this.creep.room.name).getSourceContainer(source.id);
 
-
+        //debugConsole.debugObject("staticHarvester","source container",container);
 
         // Διαχείριση κίνησης προς το σημείο εργασίας
         if (this.handlePositioning(source, container)) return;

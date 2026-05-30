@@ -144,19 +144,21 @@ class RoomCacheInstance {
     // =========================================================================
     // ΠΡΟΣΒΑΣΗ ΣΕ ΣΤΑΤΙΚΑ ΔΕΔΟΜΕΝΑ (Persistent Cache)
     // =========================================================================
+    
     get center() {
-        if (this.cache.center === undefined || this.cache.center === null) {
-            if (!this.room) {
-                return null;
-            }
-            const target = this.room.storage || this.spawns[0]||   new RoomPosition(25, 25);
-            if (!target) return null;
-            this.cache.center = target.pos;
-        }
-        if (this.cache.center) {
-            return new RoomPosition(this.cache.center.x, this.cache.center.y, this.cache.center.roomName);
+    if (this.cache.center === undefined || this.cache.center === null) {
+        if (!this.room) return null;
+        
+        // Προσοχή: Χρησιμοποιούμε || επειδή η this.spawns μπορεί να είναι άδειος πίνακας []
+        const target = this.room.storage || (this.spawns.length > 0 ? this.spawns[0] : null) || new RoomPosition(25, 25, this.roomName);
+        if (!target) return null;
+        
+        // Αποθηκεύουμε μόνο απλό object στη μνήμη, όχι ολόκληρο το RoomPosition class
+        this.cache.center = { x: target.pos.x, y: target.pos.y, roomName: this.roomName };
+    }
+    return new RoomPosition(this.cache.center.x, this.cache.center.y, this.cache.center.roomName);
 
-        }
+        
 
     }
     get sourceIds() {
@@ -218,16 +220,41 @@ class RoomCacheInstance {
 
 
     }
-    getSourceContainer(sourceId) {
-        if (!this.cache.sourceContainerIds)
-            this.cache.sourceContainerIds = {};
-        if (this.cache.sourceContainerIds[sourceId] === undefined || this.cache.sourceContainerIds[sourceId] === null) {
-            const source = Game.getObjectById(sourceId);
-            const container = this.containers.filter(c => c.pos.isNearTo(source))[0];
-            this.cache.sourceContainerIds[sourceId] = container ? container.id : null;
-        }
-        return Game.getObjectById(this.cache.sourceContainerIds[sourceId]) || null;
+	getSourceContainer(sourceId) {
+    // 1. Σιγουρευόμαστε ότι η δομή στη μνήμη είναι σωστά αρχικοποιημένη
+    if (!this.cache.sourceContainerIds) {
+        this.cache.sourceContainerIds = {};
     }
+    
+    // 2. Αν έχουμε ήδη αποθηκευμένο ID, προσπαθούμε να επιστρέψουμε το αντικείμενο απευθείας
+    if (this.cache.sourceContainerIds[sourceId]) {
+        const cachedObj = Game.getObjectById(this.cache.sourceContainerIds[sourceId]);
+        if (cachedObj) return cachedObj;
+        
+        // Αν το ID υπάρχει αλλά το Game.getObjectById επέστρεψε null ΕΝΩ έχουμε vision, 
+        // σημαίνει ότι το container καταστράφηκε, οπότε καθαρίζουμε το ID για να ξαναψάξει.
+        if (this.room) {
+            this.cache.sourceContainerIds[sourceId] = null;
+        }
+    }
+    
+    // 3. Αν δεν υπάρχει αποθηκευμένο ID (ή μηδενίστηκε παραπάνω) και ΕΧΟΥΜΕ vision στο δωμάτιο
+    if (this.room && (!this.cache.sourceContainerIds[sourceId])) {
+        const source = Game.getObjectById(sourceId);
+        if (source) {
+            // Σιγουρευόμαστε ότι υπάρχουν containers διαθέσιμα στην tick cache
+            const allContainers = this.containers || [];
+            const container = allContainers.find(c => c.pos.isNearTo(source));
+            
+            if (container) {
+                this.cache.sourceContainerIds[sourceId] = container.id;
+                return container;
+            }
+        }
+    }
+    
+    return null;
+}
     getSourceLink(sourceId) {
         if (!this.cache.sourceLinkIds) this.cache.sourceLinkIds = {};
 

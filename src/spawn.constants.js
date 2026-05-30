@@ -48,6 +48,7 @@ const PRIORITY = {
     [ROLES.SCOUT]: 100
 };
 const NEED_REPLACEMENT_FLAG = "needReplacementFlag";
+const LEAD_TIME_KEY = "leadTime";
 
 // --- GLOBAL CONFIGURATION ---
 
@@ -95,5 +96,6 @@ module.exports = {
     PRIORITY,
     POPULATION_GLOBAL_CONFIG,
     POPULATION_MODULE_CONFIG,
-    SPAWN_MANAGER_CONFIG
+    SPAWN_MANAGER_CONFIG,
+    LEAD_TIME_KEY
 };

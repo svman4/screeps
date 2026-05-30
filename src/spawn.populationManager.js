@@ -192,7 +192,7 @@ class PopulationManager {
 
             hasConstruction: cache.constructionSites.length > 0,
             isRecovery: (!hasWork ||
-                (!hasCarry && room.energyAvailable < 400)) &&
+                (!hasCarry )) &&
                 room.controller &&
                 room.controller.level > 1
         };

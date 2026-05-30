@@ -121,7 +121,7 @@ function respawnDetection() {
         console.log("Respawn detected or Memory reset! Cleaning...");
         roomCache.forceRefreshAll();
         // Μηδενισμός όλων των απαραίτητων δομών
-        Memory.creeps = {};
+       //Memory.creeps = {};
         Memory.spawnQueue = [];
         Memory.rooms = {}; // Προσοχή: αυτό διαγράφει και τα populationLimits!
 

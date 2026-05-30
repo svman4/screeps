@@ -327,7 +327,7 @@ class RoomCacheInstance {
     }
     get hasContainers() {
         const sourceLength=this.sources.length;
-        const containersCount=this.groupedStructures[STRUCTURE_CONTAINER].length;
+        const containersCount=this.containers.length||0;
         
         const answer = containersCount >= (sourceLength+1);
         //console.log("source is "+sourceLength+" containers is "+containersCount+"   "+answer);

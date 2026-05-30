@@ -38,7 +38,7 @@ class SpawnManager {
     run() {
         this.cleanup();
         if (Game.time % SPAWN_MANAGER_CONFIG.POPULATION_LIMIT_REFRESH_RATE === 0) {
-            this.queue.flush(); // Καθαρισμός ουράς για το δωμάτιο σε περίπτωση αλλαγής ορίων
+            //this.queue.flush(); // Καθαρισμός ουράς για το δωμάτιο σε περίπτωση αλλαγής ορίων
         }
         // Εκτύπωση της ουράς για debugging
         //  if (this.queue.length > 0) {
@@ -364,7 +364,7 @@ class SpawnManager {
     
         let parts = 0;
         let costPerUnit = 0;
-        console.log(role+" "+maxEnergy);
+        //console.log(role+" "+maxEnergy);
         switch (role) {
 
             case ROLES.STATIC_HARVESTER:

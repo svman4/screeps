@@ -65,7 +65,7 @@ class Scorer {
             if (isControllerLink) {
                 bonus = 70;
             } else if (isStorageLink) {
-                bonus = 100;
+                bonus =500;
             } else if (isSourceLink) {
                 // Προτεραιότητα στις απομακρυσμένες πηγές
                 bonus = 80 + (distToCenter * 0.5);

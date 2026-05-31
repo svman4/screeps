@@ -12,7 +12,7 @@ main.js
 
 TODO όταν ο hauler δεν έχει δουλειά να πηγαίνει κάπου εκτός δρόμου. Ειδικά σε μεγάλα επίπεδα
 
- */
+ */ 
 var spawnManager = require('manager.spawn');
 var defenceManager = require('manager.defense');
 var constructionManager = require('manager.construction');

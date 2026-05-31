@@ -1,8 +1,9 @@
 // manager.logistics.js
 const movementManager = require('manager.movement');
 const { STORAGE_LINK_ID } = require('manager.link');
-
+const { LEAD_TIME_KEY } = require("spawn.constants");
 const roomCache = require('utils.RoomCache');
+const utilsRoomCache = require('./utils.RoomCache');
 /*
 version 1.1.0
 - Added high priority for Storage Link emptying using room.memory.storageLinkId
@@ -41,8 +42,8 @@ const TARGET_FULL_PERCENT = {
 const MIN_LIFE_TO_LIVE = 50;
 const UPDATE_TASKS_INTERVAL = 2;
 
-const DROPPED_SOURCE_ENERGY_LIMIT=200;
-const RUINS_SOURCE_ENERGY_LIMIT=50;
+const DROPPED_SOURCE_ENERGY_LIMIT = 200;
+const RUINS_SOURCE_ENERGY_LIMIT = 50;
 const logisticsManager = {
 
     init: function (roomName) {
@@ -133,7 +134,7 @@ const logisticsManager = {
     findDeliveryTargets: function (room) {
         const targets = [];
         const allStructures = roomCache.in(room.name).structures;
-        
+
 
         allStructures.forEach(s => {
             const freeCapacity = s.store ? s.store.getFreeCapacity(RESOURCE_ENERGY) : 0;
@@ -179,13 +180,13 @@ const logisticsManager = {
 
             if (condition) {
                 targets.push(
-					{ 
-						id: s.id, 
-						type: s.structureType, 
-						priority: priority, 
-						obj: s 
-					}
-				);
+                    {
+                        id: s.id,
+                        type: s.structureType,
+                        priority: priority,
+                        obj: s
+                    }
+                );
             }
         });
         const controllerContainer = roomCache.in(room.name).controllerContainer;
@@ -195,10 +196,10 @@ const logisticsManager = {
             controllerContainer.store[RESOURCE_ENERGY] <
             controllerContainer.store.getCapacity(RESOURCE_ENERGY) * TARGET_FULL_PERCENT.CONTROLLER_CONTAINER) {
             targets.push({
-                id: controllerContainer.id, 
-				type: 'controllerContainer', 
-				priority: PRIORITIES.CONTROLLER_CONTAINER, 
-				obj: controllerContainer
+                id: controllerContainer.id,
+                type: 'controllerContainer',
+                priority: PRIORITIES.CONTROLLER_CONTAINER,
+                obj: controllerContainer
             });
         }
 
@@ -336,16 +337,16 @@ const logisticsManager = {
 
         haulers.forEach(hauler => {
             this.assignTaskToHauler(
-				hauler, 
-				tasks, 
-				assignments, 
-				reservations);
+                hauler,
+                tasks,
+                assignments,
+                reservations);
         });
 
         haulers.forEach(hauler => {
             this.runHaulerWithTask(
-				hauler, 
-				assignments[hauler.name]);
+                hauler,
+                assignments[hauler.name]);
         });
     },
 
@@ -426,13 +427,24 @@ const logisticsManager = {
 
         return hasEnergy && canAcceptEnergy;
     },
-
+    /**
+             * Εκτελείται μία φορά όταν το creep φτάσει στη θέση του.
+             */
+    initialiseLifecycle: function (creep) {
+        if (creep.memory.init === true) {
+            const spawnTimeConstant = (typeof CREEP_SPAWN_TIME !== 'undefined') ? CREEP_SPAWN_TIME : 3;
+            const spawnDuration = creep.body.length * spawnTimeConstant;
+            creep.memory[LEAD_TIME_KEY] = spawnDuration + 15;
+            delete creep.memory.init;
+        }
+    },
     runHaulerWithTask: function (creep, assignment) {
         if (creep.ticksToLive < MIN_LIFE_TO_LIVE) {
             // Αν ο hauler έχει λίγη ζωή, του αναθέτουμε να πάει για ανακύκλωση αντί να ξεκινήσει νέο task
             creep.memory.role = "to_be_recycled";
             return;
         }
+        this.initialiseLifecycle(creep);
 
         if (!assignment) return;
 
@@ -461,7 +473,27 @@ const logisticsManager = {
 
         if (creep.pos.isNearTo(source)) {
             const result = this.withdrawFromSource(creep, source, assignment.sourceType);
+            // Αν δεν έχει γεμίσει το store και έχει δίπλα(απόσταση 1) άλλη πηγή να παίρνει απο εκεί.
             if (result !== OK) {
+
+                // FEATURE: Scavenge adjacent structures/piles if hauler has free space left
+                if (creep.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+                    console.log("I am hungry");
+                    const adjacentStructures = creep.pos.findInRange(FIND_STRUCTURES, 1, {
+                        filter: (s) => s.store && s.store[RESOURCE_ENERGY] > 0 && s.id !== source.id
+                    });
+                    if (adjacentStructures.length > 0) {
+                        creep.withdraw(adjacentStructures[0], RESOURCE_ENERGY);
+                    } else {
+                        const adjacentDrops = creep.pos.findInRange(FIND_DROPPED_RESOURCES, 1, {
+                            filter: (d) => d.resourceType === RESOURCE_ENERGY
+                        });
+                        if (adjacentDrops.length > 0) creep.pickup(adjacentDrops[0]);
+                    }
+                }
+
+
+
                 this.completeTask(creep);
             }
         } else {
@@ -506,7 +538,7 @@ const logisticsManager = {
         switch (sourceType) {
             case 'dropped': return source.amount > DROPPED_SOURCE_ENERGY_LIMIT;
             case 'ruin': return source.store[RESOURCE_ENERGY] > RUINS_SOURCE_ENERGY_LIMIT;
-            case 'link': 
+            case 'link':
             case 'container':
             case 'recoveryContainer':
             case 'terminal':
@@ -520,7 +552,7 @@ const logisticsManager = {
         switch (sourceType) {
             case 'dropped': return creep.pickup(source);
             case 'ruin':
-            case 'link': 
+            case 'link':
             case 'container':
             case 'recoveryContainer':
             case 'terminal':

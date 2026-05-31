@@ -13,6 +13,7 @@
  */
 
 const movementManager = require('manager.movement');
+const { LEAD_TIME_KEY } = require("spawn.constants")
 const roomCache = require('./utils.RoomCache');
 
 class BaseRole {
@@ -37,7 +38,7 @@ class BaseRole {
     /**
      * Διαχειρίζεται τον κύκλο ζωής του creep (Recycling logic).
      * Αν το TTL είναι χαμηλό, το στέλνει για ανακύκλωση για να ανακτηθούν resources.
-     * @param {string} [recycleContainerId] - Προαιρετικό ID του container δίπλα στο Spawn.
+
      * @returns {boolean} True αν το creep έχει μπει σε φάση ανακύκλωσης.
      */
     manageLifecycle() {
@@ -45,7 +46,7 @@ class BaseRole {
         if (this.creep.memory.role === "to_be_recycled") {
             return true;
         }
-
+        this.initialiseLifecycle();
         // Έλεγχος αν πλησιάζει το τέλος της ζωής του
         if (this.creep.ticksToLive < this.getRetirementThreshold()) {
             // Αν έχουμε ορίσει container ανακύκλωσης, ξεκινάμε τη διαδικασία
@@ -57,7 +58,15 @@ class BaseRole {
 
         return false;
     } // end of manageLifeCycle
-
+    /**
+         * Εκτελείται μία φορά όταν το creep φτάσει στη θέση του.
+         */
+    initialiseLifecycle() {
+        if (this.creep.memory.init === true) {
+            this.creep.memory[LEAD_TIME_KEY] = this.getSpawningDuration() + 15;
+            delete this.creep.memory.init;
+        }
+    }
     /**
      * Μεταφέρει το creep στο δωμάτιο "βάσης" (homeRoom).
      * Χρήσιμο για creeps που δραστηριοποιούνται σε remote rooms.
@@ -152,10 +161,7 @@ class BaseRole {
             return false;
         const target = this.creep.pos.findClosestByRange(stores);
 
-        // const target = this.creep.pos.findClosestByPath(FIND_STRUCTURES, {
-        // filter: s => (s.structureType === STRUCTURE_CONTAINER || s.structureType === STRUCTURE_STORAGE) &&
-        // s.store[resource] > (this.creep.store.getCapacity() / 3)
-        // });
+
 
         if (target) {
             if (this.creep.pos.inRangeTo(target, 1)) {

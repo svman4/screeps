@@ -48,6 +48,7 @@ const PRIORITY = {
     [ROLES.SCOUT]: 100
 };
 const NEED_REPLACEMENT_FLAG = "needReplacementFlag";
+const LEAD_TIME_KEY = "leadTime";
 
 // --- GLOBAL CONFIGURATION ---
 
@@ -62,7 +63,7 @@ const POPULATION_GLOBAL_CONFIG = {
 
 };
 const SPAWN_MANAGER_CONFIG = {
-    POPULATION_LIMIT_REFRESH_RATE: 50, //κάθε 50 TT
+    POPULATION_LIMIT_REFRESH_RATE: 100, //κάθε 50 TT
     CREEP_PARTS_THRESHOLD: 0.3 // Αν η διαφορά στα parts είναι μικρότερη από 30%, περιμένουμε να πεθάνουν τα παλιά creeps για να κάνουμε πιο αποδοτική αντικατάσταση.
 }
 // --- MODULE SPECIFIC CONFIGURATION ---
@@ -74,14 +75,14 @@ const POPULATION_MODULE_CONFIG = {
     UPGRADE_EFFICIENCY: 1,       // 1 WORK part = 1 energy per tick upgrade
 
     // Economic Balancing
-    MAINTENANCE_BUFFER: 5,       // Ενέργεια που κρατάμε για Towers/Spawning
+    MAINTENANCE_BUFFER: 6,       // Ενέργεια που κρατάμε για Towers/Spawning
     BUILDER_INCOME_SHARE: 0.5,   // Ποσοστό του εισοδήματος που πάει σε χτίσιμο
     MAX_BUILDER_WORK_BASELINE: 13, // Μέγιστο WORK για builders από το τρέχον εισόδημα
     SURPLUS_THRESHOLD: 0.5,      // Πάνω από ποιο ποσοστό Storage θεωρούμε ότι έχουμε πλεόνασμα
     SURPLUS_SCALER: 50,          // Πόσο επιθετικά αυξάνουμε τα parts στο πλεόνασμα
     MAX_UPGRADER_WORK_RCL8: 15,  // Το όριο του controller στο RCL 8 (15 energy/tick cap)
     STATIC_HARVESTERS_PER_SOURCE: 1,
-    SIMPLE_HARVESTERS_PER_SOURCE: 4,
+    SIMPLE_HARVESTERS_PER_SOURCE: 2,
     // Logistics
     EXTENSION_CARRY_BONUS: 9,   // Σταθερό quota για τον ανεφοδιασμό extensions
     DISTANCE_PADDING: 1.1,       // 10% έξτρα carry για κάλυψη απωλειών/κίνησης
@@ -95,5 +96,6 @@ module.exports = {
     PRIORITY,
     POPULATION_GLOBAL_CONFIG,
     POPULATION_MODULE_CONFIG,
-    SPAWN_MANAGER_CONFIG
+    SPAWN_MANAGER_CONFIG,
+    LEAD_TIME_KEY
 };

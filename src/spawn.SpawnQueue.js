@@ -27,7 +27,7 @@ class SpawnQueue {
         this._needsSort = true;
 
         // Καθαρισμός αν η ουρά μείνει "κολλημένη" για πάνω από 500 ticks
-        this._cleanStaleRequests();
+        this.cleanStaleRequests();
     }
 
     /**
@@ -131,10 +131,10 @@ class SpawnQueue {
     /**
      * Εσωτερική μέθοδος για την αφαίρεση αιτημάτων που έχουν μείνει στην ουρά πάνω από 500 ticks.
      * Προλαμβάνει το "μπούκωμα" της παραγωγής από αιτήματα που δεν μπορούν να ικανοποιηθούν.
-     * @private
+     * 
      */
-    _cleanStaleRequests() {
-        if (Game.time % 100 === 0) {
+    cleanStaleRequests() {
+        
             const TIMEOUT = 500;
             const initialLength = this.data.length;
 
@@ -143,7 +143,7 @@ class SpawnQueue {
             if (this.data.length < initialLength) {
                 console.log(`[SpawnQueue] Cleaned ${initialLength - this.data.length} stale requests.`);
             }
-        }
+     
         Memory.spawnQueue = this.data; // Ενημέρωση στη Memory μετά την ταξινόμηση
     }
 } // end of class

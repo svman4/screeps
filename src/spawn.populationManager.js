@@ -60,13 +60,14 @@ class PopulationManager {
         if (context.storage) {
             return this._getStorageLimits(context);
         }
-
+        //console.log(context.hasContainers);
         // Αν έχουμε Containers (Early-Mid Game)
         if (context.hasContainers) {
             return this._getContainerLimits(context);
         }
 
         // Αρχή του παιχνιδιού (No infra)
+        
         return this._getEarlyGameLimits(context);
     }
 
@@ -187,11 +188,11 @@ class PopulationManager {
             sources: cache.sources,
             spawns: room.find(FIND_MY_SPAWNS),
             storage: room.storage,
-            hasContainers: cache.containers.length > 2,
+            hasContainers: cache.hasContainers,
 
             hasConstruction: cache.constructionSites.length > 0,
             isRecovery: (!hasWork ||
-                (!hasCarry && room.energyAvailable < 400)) &&
+                (!hasCarry )) &&
                 room.controller &&
                 room.controller.level > 1
         };
@@ -218,13 +219,13 @@ class PopulationManager {
     _getContainerLimits(context) {
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
-                [ROLES.SIMPLE_HARVESTER]: 0,
+                [ROLES.SIMPLE_HARVESTER]: Math.ceil(context.sources.length * POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE/2),
                 [ROLES.STATIC_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
             },
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
-                [ROLES.HAULER]: this._calculateCarryQuota(context),
-                [ROLES.UPGRADER]: 5,
-                [ROLES.BUILDER]: 8
+                [ROLES.HAULER]: Math.ceil(this._calculateCarryQuota(context)/2),
+                [ROLES.UPGRADER]: 2,
+                [ROLES.BUILDER]: 2
             },
             isRecovery: false
         };
@@ -257,7 +258,7 @@ class PopulationManager {
                 [ROLES.STATIC_HARVESTER]: 0
             },
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
-                [ROLES.HAULER]: 0,
+                [ROLES.HAULER]: 5,
                 [ROLES.UPGRADER]: 1,
                 [ROLES.BUILDER]: 0
             },
@@ -275,22 +276,13 @@ class PopulationManager {
 
         const limits = this.calculateLimits(room);
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY] = limits;
-        Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.RECOVERY_KEY] = limits.isRecovery;
+
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.HAVE_ROAD_KEY] = roomCache.in(roomName).hasRoads;
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.HAVE_LINK_KEY] = roomCache.in(roomName).hasLinks;
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.ROOM_LEVEL_KEY] = room.controller.level;
     } // end of updateRoomLimits
 
-    /**
-     * Ελέγχει αν υπάρχουν επαρκείς δρόμοι στο δωμάτιο.
-     * @param {Room} room 
-     * @returns {boolean}
-     */
-    checkIfRoomHaveRoads(room) {
-        var cache = roomCache.in(room.name);
-        const roads = cache.roads;
-        return roads.length >= POPULATION_MODULE_CONFIG.ROAD_THRESHOLD;
-    }
+    
 } // end of class PopulationManager
 
 module.exports = PopulationManager;

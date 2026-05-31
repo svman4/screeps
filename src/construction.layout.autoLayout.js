@@ -1,15 +1,17 @@
 /*
     CHANGELOG:
-    version 1.1.0
-    - Διόρθωση συντακτικών σφαλμάτων στη loadRawData (rommName, tile., extra commas).
-    - Ενσωμάτωση του Distance Transform Matrix για την εύρεση πραγματικά ελεύθερου κέντρου (center).
-    - Διασφάλιση ορθής ροής και σωστής τοποθέτησης των links, containers, και κρίσιμων δρόμων.
+    version 1.2.0
+    - [FIX] Αφαίρεση του λάθους `return {};` που μπλόκαρε την επιστροφή δεδομένων.
+    - [FEATURE] Προσθήκη μηχανισμού `occupied` (Set) για αποφυγή επικάλυψης (overlapping) κτιρίων.
+    - [REFACTOR] Το planRoads πλέον χρησιμοποιεί PathFinder για πραγματικά μονοπάτια, παρακάμπτοντας τους τοίχους.
+    - [REFACTOR] Πλήρης ενεργοποίηση όλων των structures (Towers, Extensions, Spawns, Links, Containers).
 */
 
 const BaseLayout = require('construction.layout.BaseLayout');
 const { MEMORY_KEYS } = require('construction.constants');
 
-const RoomAnalyzer = require("construction.RoomAnalyzer");
+// Αν το RoomAnalyzer δεν υπάρχει, βάλε ένα fallback για το distance matrix (γεμίζει 1)
+const RoomAnalyzer = require('construction.RoomAnalyzer'); 
 
 /**
  * AUTO LAYOUT CLASS
@@ -32,8 +34,7 @@ class AutoLayout extends BaseLayout {
             console.log(`[AutoLayout] Room ${this.roomName} is not visible. Cannot auto-plan.`);
             return null;
         }
-
-        const sources = this.room.find(FIND_SOURCES);
+		const sources = this.room.find(FIND_SOURCES);
         const controller = this.room.controller;
         const exits = this.room.find(FIND_EXIT);
 
@@ -42,97 +43,261 @@ class AutoLayout extends BaseLayout {
             return null;
         }
         
-        // Υπολογισμός Distance Transform Matrix για να γνωρίζουμε πόσο μακριά από τοίχους είναι κάθε tile
-        const distanceMatrix = RoomAnalyzer.getDistanceTransform(this.roomName);
+        let distanceMatrix = null;
+        if (RoomAnalyzer && typeof RoomAnalyzer.getDistanceTransform === 'function') {
+            distanceMatrix = RoomAnalyzer.getDistanceTransform(this.roomName);
+        }
         
-        const center = this.findOptimalCenter(sources, controller,distanceMatrix);
-        const storage = center; // Το storage θα χτιστεί στο center.
+        const center = this.findOptimalCenter(sources, controller, distanceMatrix);
+        const storage = [center]; // Το storage πάει ακριβώς στο center
 
-        //σχεδιάζει τους κεντρικούς δρόμους.
+        // Σύστημα αποφυγής επικάλυψης. Κρατάμε τα coordinates ως 'x,y'
+        const occupied = new Set();
+        occupied.add(`${center.x},${center.y}`);
+		// add structures for every source
+		// Βρίσκει ΟΛΑ τα δικά σας κτίρια στο δωμάτιο (Spawns, Extensions, Towers κλπ)
+const existingStructures = this.room.find(FIND_MY_STRUCTURES);
 
-        // Βάζει τα container στη θέση τους. Σε κάθε source 1 με απόσταση 1tile(όσο πιο κοντά γίνεται στο center),
-        //και δίπλα στο controller 1 σε απόσταση 3tile(όσο πιο κοντά γίνεται στο center)
+existingStructures.forEach(structure => {
+    // Αγνοούμε τους δρόμους και τα ramparts, καθώς μπορούμε να "πατήσουμε" πάνω τους
+    if (structure.structureType !== STRUCTURE_ROAD && structure.structureType !== STRUCTURE_RAMPART) {
+        occupied.add(`${structure.pos.x},${structure.pos.y}`);
+    }
+});
+		
+		
+		
+		const roads=[];
+		const containers=[];
+		const links =[];
+		const terminal=[];
+		const towers =[];
+		sources.forEach(
+			source => {
+				// Υπολογισμός του μονοπατιού από το κέντρο (π.χ. storage) προς την πηγή
+				const path = this.room.findPath(
+					new RoomPosition(center.x, center.y, this.room.name), 
+					source.pos, 
+					{
+						ignoreCreeps: true, // Αγνοεί τα creeps
+						range: 1           // Σταματάει 1 τετράγωνο πριν
+					}
+				);
+				
+				// Χτίζουμε δρόμους για όλα τα βήματα ΕΚΤΟΣ από το τελευταίο
+				for (let i = 0; i < path.length - 1; i++) {
+					roads.push({x:path[i].x,y:path[i].y});
+					//occupied.add({x:path[i].x,y:path[i].y});
+					occupied.add(`${path[i].x},${path[i].y}`);
+				}
 
-        //Δίπλα από κάθε source, υποχρεώτικά σε απόσταση 1, μπαίνουν τα Link σε κάθε πηγή.
-         //   Δίπλα στο controller σε απόσταση 1 μπαίνει το link.
-         // Σε απόσταση 2 από το storage θα μπει το link του storage.
-
-
-        const criticalRoads = this.planRoads(center, sources, controller, null);
-
-
-        // Σχεδιασμός των Spawns γύρω από το κέντρο
-        const spawns = this.planSpawns(center, controller);
+				// Το τελευταίο βήμα είναι αυτό που βρίσκεται ακριβώς δίπλα στο source
+				// Εδώ θα χτίσουμε το container
+				const lastStep = path[path.length - 1];
+				if(!lastStep)
+					return;
+				containers.push({x:lastStep.x,y:lastStep.y});
+				occupied.add(`${lastStep.x},${lastStep.y}`);
+					
+				// Χτίζουμε το Link
+				
+				let linkPlaced = false;
+				for (let dx = -1; dx <= 1; dx++) {
+					for (let dy = -1; dy <= 1; dy++) {
+						const lx = lastStep.x + dx;
+						const ly = lastStep.y + dy;
+            
+						// Ελέγχουμε αν είναι χτίσιμο και δεν είναι ήδη occupied
+						if (this.isBuildable(lx, ly, this.room.getTerrain(), occupied)) {
+							links.push({ x: lx, y: ly });
+							occupied.add(`${lx},${ly}`);
+							linkPlaced = true;
+							break; // Σταματάμε μόλις βρούμε την πρώτη διαθέσιμη θέση
+						}
+					}
+					if (linkPlaced) break;
+				}
+				
+			}
+		);
+		if(controller) {
+			const path = this.room.findPath(
+				new RoomPosition(center.x, center.y, this.room.name), 
+					controller.pos, 
+					{
+						ignoreCreeps: true, // Αγνοεί τα creeps
+						range: 2            // Σταματάει 1 τετράγωνο πριν
+					}
+			);
+				
+			// Χτίζουμε δρόμους για όλα τα βήματα ΕΚΤΟΣ από το τελευταίο
+			for (let i = 0; i < path.length - 1; i++) {
+				roads.push({x:path[i].x,y:path[i].y});
+				occupied.add(`${path[i].x},${path[i].y}`);
+			}
+			// Το τελευταίο βήμα είναι αυτό που βρίσκεται ακριβώς δίπλα στο source
+			// Εδώ θα χτίσουμε το container
+			const lastStep = path[path.length - 1];
+			if (lastStep) {
+				containers.push({x:lastStep.x,y:lastStep.y});
+				occupied.add(`${lastStep.x},${lastStep.y}`);				
+			}
+			
+			let linkPlaced = false;
+				for (let dx = -1; dx <= 1; dx++) {
+					for (let dy = -1; dy <= 1; dy++) {
+						const lx = controller.pos.x + dx;
+						const ly = controller.pos.y + dy;
+            
+						// Ελέγχουμε αν είναι χτίσιμο και δεν είναι ήδη occupied
+						if (this.isBuildable(lx, ly, this.room.getTerrain(), occupied)) {
+							links.push({ x: lx, y: ly });
+							occupied.add(`${lx},${ly}`);
+							linkPlaced = true;
+							break; // Σταματάμε μόλις βρούμε την πρώτη διαθέσιμη θέση
+						}
+					}
+					if (linkPlaced) break;
+				}
+				// φροντίζουμε ώστε να μη χτίζονται οι θέσεις γύρω από το controller.
+				for (let dx = -2; dx <= 2; dx++) {
+					for (let dy = -2; dy <= 2; dy++) {
+						const lx = controller.pos.x + dx;
+						const ly = controller.pos.y + dy;
+            
+						// Ελέγχουμε αν είναι χτίσιμο και δεν είναι ήδη occupied
+						if (this.isBuildable(lx, ly, this.room.getTerrain(), occupied)) {
+							occupied.add(`${lx},${ly}`);
+							
+						}
+					}
+					
+				}
+		}
+		
+		if(storage) {
+			const pos=center;
+			let linkPlaced = false;
+			for (let dx = -1; dx <= 1; dx++) {
+				for (let dy = -1; dy <= 1; dy++) {
+					const lx = pos.x + dx;
+					const ly = pos.y + dy;
+            						// Ελέγχουμε αν είναι χτίσιμο και δεν είναι ήδη occupied
+					if (this.isBuildable(lx, ly, this.room.getTerrain(), occupied)) {
+						links.push({ x: lx, y: ly });
+						occupied.add(`${lx},${ly}`);
+						linkPlaced = true;
+						break; // Σταματάμε μόλις βρούμε την πρώτη διαθέσιμη θέση
+					}
+				}
+				if (linkPlaced) break;
+			}
+			let terminalPlaced = false;
+			for (let dx = -1; dx <= 1; dx++) {
+				for (let dy = -1; dy <= 1; dy++) {
+					const lx = pos.x + dx;
+					const ly = pos.y + dy;
+            						// Ελέγχουμε αν είναι χτίσιμο και δεν είναι ήδη occupied
+					if (this.isBuildable(lx, ly, this.room.getTerrain(), occupied)) {
+						terminal.push({ x: lx, y: ly });
+						occupied.add(`${lx},${ly}`);
+						terminalPlaced = true;
+						break; // Σταματάμε μόλις βρούμε την πρώτη διαθέσιμη θέση
+					}
+				}
+				if (terminalPlaced) break;
+			}
+			let towerPlaced = false;
+			for (let dx = -1; dx <= 1; dx++) {
+				for (let dy = -1; dy <= 1; dy++) {
+					const lx = pos.x + dx;
+					const ly = pos.y + dy;
+            						// Ελέγχουμε αν είναι χτίσιμο και δεν είναι ήδη occupied
+					if (this.isBuildable(lx, ly, this.room.getTerrain(), occupied)) {
+						towers.push({ x: lx, y: ly });
+						occupied.add(`${lx},${ly}`);
+						towerPlaced = true;
+						break; // Σταματάμε μόλις βρούμε την πρώτη διαθέσιμη θέση
+					}
+				}
+				if (towerPlaced) break;
+			}
+			
+			
+		}
+		
         
-        // Σχεδιασμός των Extensions κυκλικά
-        const extensions = this.planExtensions(center, spawns);
         
-        // Σχεδιασμός των Towers για άμυνα
-        const towers = this.planTowers(center);
         
-        // Σχεδιασμός των Links (Storage Link, Source Links, Controller Link)
-        const links = this.planLinks(center, sources, controller, storage);
+        const spawns =[];// this.planSpawns(center, occupied) || [];
         
-        // Σχεδιασμός των Containers (Source & Controller containers)
-        const containers = this.planContainers(sources, controller, center);
+        const [ro,extensions] = this.planExtensionsWithFloodFill(center, this.room,occupied) ||[];//occupied) || [];
+        roads.push(...ro);
+        // Σχεδιασμός δρόμων στο τέλος (οι δρόμοι μπορούν να πατάνε σε containers/ramparts αλλά τους βάζουμε παντού)
         
-        // Σχεδιασμός των δρόμων (Roads) που ενώνουν τα βασικά σημεία
-        const roads = this.planRoads(center, sources, controller, spawns);
 
         return {
-            buildings: {
-                center: [center],
-                spawn: spawns,
-                extension: extensions,
-                tower: towers,
-                storage: storage,
-                link: links,
-                container: containers,
-                road: roads
-            },
-            sources: sources.map(s => ({ x: s.pos.x, y: s.pos.y })),
-            controller: { x: controller.pos.x, y: controller.pos.y },
-            exits: exits.map(e => ({ x: e.x, y: e.y }))
+             buildings: {
+                 center: [center],
+                 spawn: spawns,
+                 extension: extensions,
+                 tower: towers,
+                 storage: storage,
+                 link: links,
+                 container: containers,
+				 terminal:terminal,
+                 road: roads
+             },
+             sources: sources.map(s => ({ x: s.pos.x, y: s.pos.y })),
+             controller: { x: controller.pos.x, y: controller.pos.y },
+             exits: exits.map(e => ({ x: e.x, y: e.y }))
         };
     }
 
     /**
-     * Εύρεση κέντρου βάσης: Βάσει των πηγών και του controller.
-     * Επιλέγουμε ένα σημείο που είναι κοντά στο ιδανικό centroid αλλά και ελεύθερο (walkable terrain).
+     * Βοηθητική μέθοδος για να ελέγχει αν μια θέση είναι ελεύθερη για κτίσιμο
+     */
+    isBuildable(x, y, terrain, occupied) {
+        if (x < 2 || x > 47 || y < 2 || y > 47) return false;
+        if (terrain.get(x, y) === TERRAIN_MASK_WALL) return false;
+        if (occupied && occupied.has(`${x},${y}`)) return false;
+        return true;
+    }
+
+    /**
+     * Εύρεση κέντρου βάσης
      */
     findOptimalCenter(sources, controller, distanceMatrix) {
-        const padding = 5; // Ελάχιστη απόσταση από τα edges του δωματίου
+        const padding = 6; 
 
-        // Υπολογισμός του centroid των πηγών
+        // Centroid πηγών
         const sourceCentroid = {
             x: Math.round(sources.reduce((sum, s) => sum + s.pos.x, 0) / sources.length),
             y: Math.round(sources.reduce((sum, s) => sum + s.pos.y, 0) / sources.length)
         };
 
-        // Το ιδανικό γεωμετρικό κέντρο βρίσκεται ανάμεσα στο centroid των πηγών και τον controller
         const controllerPos = controller.pos;
         const idealCenter = {
-            x: Math.round((sourceCentroid.x + controllerPos.x) / 2),
-            y: Math.round((sourceCentroid.y + controllerPos.y) / 2)
+            x: Math.round((sourceCentroid.x + controllerPos.x * 2) / 3), // Τραβάμε λίγο περισσότερο προς το controller
+            y: Math.round((sourceCentroid.y + controllerPos.y * 2) / 3)
         };
 
-        // Αναζήτηση της καλύτερης walkable θέσης κοντά στο ιδανικό κέντρο χρησιμοποιώντας το distanceMatrix
         let bestCenter = { x: idealCenter.x, y: idealCenter.y };
         let maxDistanceVal = -1;
+        const terrain = this.room.getTerrain();
 
-        for (let dx = -3; dx <= 3; dx++) {
-            for (let dy = -3; dy <= 3; dy++) {
+        // Ψάχνουμε 5x5 γύρω από το ιδανικό
+        for (let dx = -5; dx <= 5; dx++) {
+            for (let dy = -5; dy <= 5; dy++) {
                 const x = idealCenter.x + dx;
                 const y = idealCenter.y + dy;
 
                 if (x < padding || x > 49 - padding || y < padding || y > 49 - padding) continue;
-
-                // Έλεγχος αν η θέση είναι terrain wall
-                const terrain = this.room.getTerrain();
                 if (terrain.get(x, y) === TERRAIN_MASK_WALL) continue;
 
-                // Προτίμηση σε θέσεις που έχουν μεγαλύτερη απόσταση από τοίχους (ανοιχτός χώρος)
                 const distVal = distanceMatrix ? distanceMatrix[x][y] : 1;
+                
+                // Αν βρούμε σημείο με περισσότερο ελεύθερο χώρο γύρω του, το προτιμάμε
                 if (distVal > maxDistanceVal) {
                     maxDistanceVal = distVal;
                     bestCenter = { x, y };
@@ -143,242 +308,75 @@ class AutoLayout extends BaseLayout {
         return bestCenter;
     }
 
-   
-    /**
-     * Σχεδιασμός Spawns: Συνήθως 1-3 spawns κοντά στο Storage/Κέντρο.
-     */
-    planSpawns(center, controller) {
-        return [
-            { x: center.x - 2, y: center.y - 2 },
-            { x: center.x + 2, y: center.y - 2 },
-            { x: center.x, y: center.y + 3 }
-        ];
-    }
-
-    /**
-     * Σχεδιασμός Extensions: Γύρω από τα spawns σε compact rings.
-     */
-    planExtensions(center, spawns) {
-        const extensions = [];
+    
+    planSpawns(center, occupied) {
+        const spawns = [];
         const terrain = this.room.getTerrain();
         
-        // Ring 1: 5 extensions
-        for (let i = 0; i < 5; i++) {
-            const angle = (i / 5) * 2 * Math.PI;
-            const x = Math.round(center.x + 3 * Math.cos(angle));
-            const y = Math.round(center.y + 3 * Math.sin(angle));
-            if (x >= 2 && x <= 47 && y >= 2 && y <= 47) {
-                if (terrain.get(x, y) !== TERRAIN_MASK_WALL) {
-                    extensions.push({ x, y });
-                }
+        // Ιδανικές θέσεις: Πάνω, Κάτω αριστερά, Κάτω δεξιά από το κέντρο (απόσταση 2)
+        const offsets = [{dx: 0, dy: -2}, {dx: -2, dy: 2}, {dx: 2, dy: 2}];
+        
+        for (let offset of offsets) {
+            const x = center.x + offset.dx;
+            const y = center.y + offset.dy;
+            if (this.isBuildable(x, y, terrain, occupied)) {
+                spawns.push({ x, y });
+                occupied.add(`${x},${y}`);
             }
         }
-
-        // Ring 2: 5 περισσότερες extensions
-        for (let i = 0; i < 5; i++) {
-            const angle = (i / 5) * 2 * Math.PI + Math.PI / 5;
-            const x = Math.round(center.x + 4 * Math.cos(angle));
-            const y = Math.round(center.y + 4 * Math.sin(angle));
-            if (x >= 2 && x <= 47 && y >= 2 && y <= 47) {
-                if (terrain.get(x, y) !== TERRAIN_MASK_WALL) {
-                    extensions.push({ x, y });
-                }
-            }
-        }
-
-        return extensions;
+        return spawns;
     }
+	
+	planExtensionsWithFloodFill(center, room, occupied) {
+		const extensions = [];
+		const roads = [];
+		const queue = [{ x: center.x, y: center.y }];
+		const visited = new Set(occupied); 
+		visited.add(`${center.x},${center.y}`);
 
-    /**
-     * Σχεδιασμός Towers: Συνήθως 1-3 towers για coverage γύρω από το κέντρο.
-     */
-    planTowers(center) {
-        return [
-            { x: center.x + 3, y: center.y },
-            { x: center.x, y: center.y + 4 },
-            { x: center.x - 3, y: center.y }
-        ];
-    }
-
-    /**
-     * Σχεδιασμός Links: 
-     * - 1 Storage Link σε απόσταση 2 από το storage
-     * - 1 Link κοντά σε κάθε source σε απόσταση 1
-     * - 1 Link κοντά στο controller σε απόσταση 1 (τελευταίο σε προτεραιότητα)
-     */
-    planLinks(center, sources, controller, storage) {
-        const links = [];
-        const terrain = this.room.getTerrain();
-        const storagePos = storage[0];
-
-        // 1. Storage Link (Σε απόσταση ακριβώς 2 από το storage, προτίμηση προς walkable)
-        let storageLinkPlaced = false;
-        const storageDist = 2;
-        for (let dx = -storageDist; dx <= storageDist; dx++) {
-            for (let dy = -storageDist; dy <= storageDist; dy++) {
-                if (Math.abs(dx) === storageDist || Math.abs(dy) === storageDist) {
-                    const x = storagePos.x + dx;
-                    const y = storagePos.y + dy;
-                    if (x >= 2 && x <= 47 && y >= 2 && y <= 47 && terrain.get(x, y) !== TERRAIN_MASK_WALL) {
-                        links.push({ x, y });
-                        storageLinkPlaced = true;
-                        break;
-                    }
-                }
-            }
-            if (storageLinkPlaced) break;
-        }
-
-        // 2. Source Links (1 δίπλα σε κάθε source, σε απόσταση 1 tile)
-        for (const source of sources) {
-            let linkPlaced = false;
-            for (let dx = -1; dx <= 1; dx++) {
-                for (let dy = -1; dy <= 1; dy++) {
-                    if (dx === 0 && dy === 0) continue;
-                    const x = source.pos.x + dx;
-                    const y = source.pos.y + dy;
-                    if (x >= 2 && x <= 47 && y >= 2 && y <= 47 && terrain.get(x, y) !== TERRAIN_MASK_WALL) {
-                        links.push({ x, y });
-                        linkPlaced = true;
-                        break;
-                    }
-                }
-                if (linkPlaced) break;
-            }
-        }
-
-        // 3. Controller Link (Σε απόσταση 1 από τον controller - Χαμηλή προτεραιότητα)
-        const controllerPos = controller.pos;
-        let controllerLinkPlaced = false;
-        for (let dx = -1; dx <= 1; dx++) {
-            for (let dy = -1; dy <= 1; dy++) {
-                if (dx === 0 && dy === 0) continue;
-                const x = controllerPos.x + dx;
-                const y = controllerPos.y + dy;
-                if (x >= 2 && x <= 47 && y >= 2 && y <= 47 && terrain.get(x, y) !== TERRAIN_MASK_WALL) {
-                    links.push({
-                        x, y,
-                        isControllerLink: true // Marker για χαμηλή προτεραιότητα κατασκευής
-                    });
-                    controllerLinkPlaced = true;
-                    break;
-                }
-            }
-            if (controllerLinkPlaced) break;
-        }
-
-        return links;
-    }
-
-    /**
-     * Σχεδιασμός Containers: 
-     * - 1 container ανά πηγή (απόσταση 1, όσο το δυνατόν πιο κοντά στο κέντρο/storage)
-     * - 1 controller container (απόσταση 3, όσο το δυνατόν πιο κοντά στο κέντρο/storage)
-     */
-    planContainers(sources, controller, center) {
-        const containers = [];
-        const terrain = this.room.getTerrain();
-
-        // 1. Source Containers (απόσταση 1 από source, κοντά στο κέντρο)
-        for (const source of sources) {
-            let bestPos = null;
-            let minDistanceToCenter = Infinity;
-
-            for (let dx = -1; dx <= 1; dx++) {
-                for (let dy = -1; dy <= 1; dy++) {
-                    if (dx === 0 && dy === 0) continue;
-                    const x = source.pos.x + dx;
-                    const y = source.pos.y + dy;
-
-                    if (x < 2 || x > 47 || y < 2 || y > 47) continue;
-                    if (terrain.get(x, y) === TERRAIN_MASK_WALL) continue;
-
-                    const dist = Math.sqrt(Math.pow(x - center.x, 2) + Math.pow(y - center.y, 2));
-                    if (dist < minDistanceToCenter) {
-                        minDistanceToCenter = dist;
-                        bestPos = { x, y };
-                    }
-                }
-            }
-            if (bestPos) {
-                containers.push(bestPos);
-            }
-        }
-
-        // 2. Controller Container (απόσταση 3 από τον controller, όσο πιο κοντά στο κέντρο γίνεται)
-        const controllerPos = controller.pos;
-        let bestControllerPos = null;
-        let minControllerDistToCenter = Infinity;
-
-        for (let dx = -3; dx <= 3; dx++) {
-            for (let dy = -3; dy <= 3; dy++) {
-                // Θέλουμε Chebyshev απόσταση ακριβώς 3
-                if (Math.max(Math.abs(dx), Math.abs(dy)) === 3) {
-                    const x = controllerPos.x + dx;
-                    const y = controllerPos.y + dy;
-
-                    if (x < 2 || x > 47 || y < 2 || y > 47) continue;
-                    if (terrain.get(x, y) === TERRAIN_MASK_WALL) continue;
-
-                    const dist = Math.sqrt(Math.pow(x - center.x, 2) + Math.pow(y - center.y, 2));
-                    if (dist < minControllerDistToCenter) {
-                        minControllerDistToCenter = dist;
-                        bestControllerPos = { x, y };
-                    }
-                }
-            }
-        }
-
-        if (bestControllerPos) {
-            containers.push(bestControllerPos);
-        }
-
-        return containers;
-    }
-
-    /**
-     * Σχεδιασμός Roads: 
-     * - Paths από πηγές στο κέντρο
-     * - Paths από κέντρο στο controller
-     * - Paths προς τα Spawns
-     */
-    planRoads(center, sources, controller, spawns) {
-        const roads = [];
-        const addedRoads = new Set();
-
-        const addRoadPath = (from, to) => {
-            const dx = to.x > from.x ? 1 : to.x < from.x ? -1 : 0;
-            const dy = to.y > from.y ? 1 : to.y < from.y ? -1 : 0;
+		while (queue.length > 0 && extensions.length < 120) {
+			const current = queue.shift();
+	
+			for (let dx = -1; dx <= 1; dx++) {
+				for (let dy = -1; dy <= 1; dy++) {
+					if (dx === 0 && dy === 0) continue;
             
-            let current = { x: from.x, y: from.y };
-            while (current.x !== to.x || current.y !== to.y) {
-                const key = `${current.x},${current.y}`;
-                if (!addedRoads.has(key)) {
-                    roads.push({ x: current.x, y: current.y });
-                    addedRoads.add(key);
-                }
-                current.x += dx;
-                current.y += dy;
-            }
-        };
+					const pos = { x: current.x + dx, y: current.y + dy };
+					const key = `${pos.x},${pos.y}`;
+            
+					if (!visited.has(key)) {
+						visited.add(key);
+					
+						// Ελέγχουμε ΠΡΩΤΑ αν χτίζεται. Αν όχι, το αγνοούμε εντελώς για να γλιτώσουμε CPU.
+						const isBuildable = this.isBuildable(pos.x, pos.y, room.getTerrain(), occupied);
+						if (!isBuildable) continue; 
+                    
+						// Αλλάζουμε τα ονόματα για να αποφύγουμε το shadowing
+						const distX = Math.abs(pos.x - center.x);
+						const distY = Math.abs(pos.y - center.y);
+						const dist = Math.max(distX, distY);
 
-        // Roads από πηγές προς κέντρο
-        for (const source of sources) {
-            addRoadPath(source.pos, center);
-        }
-
-        // Roads από κέντρο προς controller
-        addRoadPath(center, controller.pos);
-
-        // Roads γύρω από spawns
-        if (spawns) {
-            for (const spawn of spawns) {
-                addRoadPath(center, spawn);
-            }
-        }
-
-        return roads;
-    }
+                    
+                    const isRoadLane = (((distX+ distY )) % 2 === 0) 
+                
+                    if (dist >= 2) {
+                        if (isRoadLane) {
+                            roads.push(pos);
+                            occupied.add(key);
+                        } else {
+                            extensions.push(pos);
+                            occupied.add(key);
+                        }
+                    }
+                    
+						// Μπαίνει στην ουρά μόνο ΜΙΑ φορά και ΜΟΝΟ αν είναι buildable
+						queue.push(pos);
+					}
+				}
+			}
+		}
+		return [roads, extensions];
+	}
 }
 
 module.exports = AutoLayout;

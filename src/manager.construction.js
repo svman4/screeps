@@ -17,6 +17,7 @@
 const ConstructionVisualizer = require('construction.visualizer');
 const BaseLayout = require('construction.layout.BaseLayout');
 const FileLayout = require('construction.layout.FileLayout');
+const AutoLayout=require('construction.layout.autoLayout');
 const RoadPlanner = require('construction.roadPlanner');
 const debugConsole = require("utils.debugConsole");
 const roomCache = require('utils.RoomCache');
@@ -38,7 +39,10 @@ class ConstructionManager {
         this.roomName = roomName;
         this.room = Game.rooms[roomName];
         this.initMemory();
-        this.layout = new FileLayout(roomName);
+        //this.layout = new FileLayout(roomName);
+		this.layout = new AutoLayout(roomName);
+		
+		
         this.visualizer = new ConstructionVisualizer(roomName);
     }
 
@@ -56,12 +60,13 @@ class ConstructionManager {
     }
 
     run() {
+        
         if (!this.room || !this.room.controller || !this.room.controller.my) return;
-
+        
         if (Game.time % SCAN_INTERVALS.UPDATE_BUILT_CACHE === 0) {
             this.updateBuiltCache();
         }
-
+		
         if (Game.time % SCAN_INTERVALS.CHECK_CONSTRUCTION_SITES === 0) {
             this.processConstruction();
         }
@@ -89,7 +94,7 @@ class ConstructionManager {
     processConstruction() {
         const cache = roomCache.in(this.room.name);
         let sites = cache.constructionSites;
-        //this.room.find(FIND_MY_CONSTRUCTION_SITES);
+        
         const maxSites = MAX_CONSTRUCTION_SITE || 2;
         if (sites.length >= maxSites) return;
 

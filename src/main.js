@@ -91,6 +91,7 @@ module.exports.loop = function () {
             }
         }
     }
+	delete Memory.rooms["sim"]["construction"];
     runAndCatch(() => roleManager.run(), "Error on roleManager");
 
     runAndCatch(() => spawnManager.run(), "error on spawnManager");

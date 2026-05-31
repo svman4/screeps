@@ -251,6 +251,7 @@ class Scorer {
     static getContext(roomName, rawData) {
         const room = Game.rooms[roomName];
         let center = (rawData.buildings && rawData.buildings.center) || { x: 25, y: 25 };
+		if (Array.isArray(center)) center = center[0];
         let sources = [];
         let controller = null;
 

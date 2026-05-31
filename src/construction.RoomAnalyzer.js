@@ -143,3 +143,4 @@ class RoomAnalyzer {
         return chokePoints;
     }
 }
+module.exports = RoomAnalyzer;

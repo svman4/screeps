@@ -333,31 +333,54 @@ existingStructures.forEach(structure => {
 		const queue = [{ x: center.x, y: center.y }];
 		const visited = new Set(occupied); 
 		visited.add(`${center.x},${center.y}`);
-
-		while (queue.length > 0 && extensions.length < 120) {
+		const neighborDiff=[
+             {dx:0,dy:-1},
+             {dx:0,dy:1},
+             {dx:1,dy:-1},
+             {dx:1,dy:0},
+             {dx:1,dy:1},
+            
+             {dx:-1,dy:-1},
+             {dx:-1,dy:0},
+             {dx:-1,dy:1},
+        //     {dx:-1,dy:-2},
+        //     {dx:-1,dy:0},
+        //     {dx:-1,dy:2},
+        //     {dx:0,dy:-2},
+        //     {dx:-1,dy:-2},
+        //     {dx:1,dy:-2},
+            
+         ];
+// 		for (let i =-1;i<1;i++) {
+// 		    for (let j=-1;j<1;j++) {
+// 		        if(i==0 && j==0) continue;
+// 		        neighborDiff.push({dx:i,dy:j});
+// 		    }
+// 		}
+        
+		while (queue.length > 0 && extensions.length < 60) {
 			const current = queue.shift();
-	
-			for (let dx = -1; dx <= 1; dx++) {
-				for (let dy = -1; dy <= 1; dy++) {
-					if (dx === 0 && dy === 0) continue;
+	        for(const neic of neighborDiff) {
+	            const dx=neic.dx;
+	            const dy=neic.dy;
+	           	//if (dx === 0 && dy === 0) continue;
+            	const pos = { x: current.x + dx, y: current.y + dy };
+			    const key = `${pos.x},${pos.y}`;
             
-					const pos = { x: current.x + dx, y: current.y + dy };
-					const key = `${pos.x},${pos.y}`;
-            
-					if (!visited.has(key)) {
-						visited.add(key);
-					
-						// Ελέγχουμε ΠΡΩΤΑ αν χτίζεται. Αν όχι, το αγνοούμε εντελώς για να γλιτώσουμε CPU.
-						const isBuildable = this.isBuildable(pos.x, pos.y, room.getTerrain(), occupied);
-						if (!isBuildable) continue; 
-                    
-						// Αλλάζουμε τα ονόματα για να αποφύγουμε το shadowing
-						const distX = Math.abs(pos.x - center.x);
-						const distY = Math.abs(pos.y - center.y);
-						const dist = Math.max(distX, distY);
+				if (!visited.has(key)) {
+					visited.add(key);
+				
+					// Ελέγχουμε ΠΡΩΤΑ αν χτίζεται. Αν όχι, το αγνοούμε εντελώς για να γλιτώσουμε CPU.
+					const isBuildable = this.isBuildable(pos.x, pos.y, room.getTerrain(), occupied);
+					if (!isBuildable) continue; 
+                
+					// Αλλάζουμε τα ονόματα για να αποφύγουμε το shadowing
+					const distX = Math.abs(pos.x - center.x);
+					const distY = Math.abs(pos.y - center.y);
+					const dist = Math.max(distX, distY);
 
-                    
-                    const isRoadLane = (((distX+ distY )) % 2 === 0) 
+                    // Ο κανόνας σας (Checkerboard pattern)
+                    const isRoadLane = (((distX+ distY )) % 3 === 0) 
                 
                     if (dist >= 2) {
                         if (isRoadLane) {
@@ -369,11 +392,11 @@ existingStructures.forEach(structure => {
                         }
                     }
                     
-						// Μπαίνει στην ουρά μόνο ΜΙΑ φορά και ΜΟΝΟ αν είναι buildable
-						queue.push(pos);
-					}
+					// Μπαίνει στην ουρά μόνο ΜΙΑ φορά και ΜΟΝΟ αν είναι buildable
+					queue.push(pos);
 				}
 			}
+			
 		}
 		return [roads, extensions];
 	}

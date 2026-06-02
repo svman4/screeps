@@ -79,7 +79,8 @@ class PopulationManager {
 
         const totalIncome = context.sources.length * INCOME_PER_SOURCE;
         let availableWork = totalIncome - POPULATION_MODULE_CONFIG.MAINTENANCE_BUFFER;
-
+        // Να υπολογίζει την ανάγκη για συντήρηση του δωματίου. ROADS, RAMPART Κτλ.
+        // ΝΑ υπολογίζει την ανάγκη για αναβάθμιση των τοιχών (CONSTRUCTED WALL)
         if (context.storage) {
             const energy = context.storage.store[RESOURCE_ENERGY];
             const storageCapacity = context.storage.store.getCapacity();

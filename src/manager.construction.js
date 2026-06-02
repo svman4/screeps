@@ -135,9 +135,9 @@ class ConstructionManager {
         let placed = 0;
         for (const s of roads) {
             if (placed >= quota) break;
-            if (RoadPlanner.shouldBuildRoad(s, {}, builtMap, rcl)) {
-                if (this.createSite(s.x, s.y, 'road')) placed++;
-            }
+            //if (RoadPlanner.shouldBuildRoad(s, {}, builtMap, rcl)) {
+            if (this.createSite(s.x, s.y, 'road')) placed++;
+            //}
         }
         return quota - placed;
     }

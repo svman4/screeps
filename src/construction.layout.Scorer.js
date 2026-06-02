@@ -1,5 +1,10 @@
 /*
     CHANGELOG:
+    version 1.5.2
+    - [FEATURE] Ολοκλήρωση της processRoads:
+        - Σύνδεση με RoadPlanner για την κατηγοριοποίηση των δρόμων (critical, logistics, infrastructure).
+        - Ανίχνευση terrain (swamp) για τους critical/logistics δρόμους (χτίσιμο σε RCL 2 αν είναι swamp, αλλιώς RCL 3).
+        - Υπολογισμός των υπολοίπων δρόμων (Infrastructure) με βάση την εγγύτητα σε άλλα κτίρια (RCL >= 4).
     version 1.5.1
     - [BUGFIX] Διόρθωση της calculateRCL. Πλέον διαβάζει σωστά τα arrays (RCL unlock levels) και όχι ως μέγιστα όρια.
     - [BUGFIX] Ενσωμάτωση του DEFAULTS_RCL για κτίρια που δεν είναι σε steps (π.χ. Storage, Terminal).
@@ -10,12 +15,6 @@
         1. Source to Center paths (RCL 2, High Bonus).
         2. Center to Controller paths (RCL 2/3, Medium Bonus).
         3. Remaining roads (Infrastructure) based on surrounding structures.
-    version 1.4.1
-    - Refactored processStructures to be the final step.
-    - Added coordinate-based check in processStructures to skip already processed buildings.
-    - Ensured all structures from rawData are handled if not caught by specialized processors.
-    version 1.4.0
-    - Implemented processLinks logic: Controller, Storage, and distance-based Source links.
 */
 
 // Προστέθηκε το DEFAULTS_RCL στο destructuring
@@ -40,7 +39,7 @@ class Scorer {
         this.processStructures(rawData, buildingEntries, context);
 
         return buildingEntries;
-    }
+    } // end of process
 
     /**
      * Επεξεργασία Links: Controller > Storage > Remote Sources
@@ -65,7 +64,7 @@ class Scorer {
             if (isControllerLink) {
                 bonus = 70;
             } else if (isStorageLink) {
-                bonus =500;
+                bonus = 500;
             } else if (isSourceLink) {
                 // Προτεραιότητα στις απομακρυσμένες πηγές
                 bonus = 80 + (distToCenter * 0.5);
@@ -87,7 +86,7 @@ class Scorer {
                 score: PRIORITIES.LINK + link.bonus
             });
         });
-    }
+    } // end of processLinks
 
     /**
      * Επεξεργασία Containers: Controller(R2) > Sources(R2) > Recovery(R6)
@@ -134,7 +133,7 @@ class Scorer {
                 score: PRIORITIES.CONTAINER + c.bonus - (c.dist * 0.1)
             });
         }
-    }
+    } // end of processContainers
 
     /**
      * Επεξεργασία Roads: Source Paths > Controller Paths > Infrastructure
@@ -143,40 +142,48 @@ class Scorer {
         if (!rawData.buildings || !rawData.buildings.road) return;
 
         const roads = rawData.buildings.road;
-        const { center, controller, sources } = context;
         const tempRoads = [];
 
+        // Ανάκτηση του terrain του δωματίου (αν υπάρχει visibility) για έλεγχο swamp
+        let terrain = null;
+        if (Game.rooms[roomName]) {
+            terrain = Game.rooms[roomName].getTerrain();
+        }
+
         for (const pos of roads) {
-            // Χρήση του RoadPlanner για να βρούμε αν ο δρόμος ανήκει σε κρίσιμο μονοπάτι
+            // Λήψη metadata από τον RoadPlanner
             const meta = RoadPlanner.getRoadMetadata(pos.x, pos.y, rawData, buildingEntries, roomName);
+            let finalRcl = meta.rcl;
+            let finalBonus = meta.bonus;
 
-            let bonus = meta.bonus || 0;
-            let rcl = meta.rcl || 8;
+            // Έλεγχος αν ο δρόμος είναι σε Critical ή Logistics μονοπάτι
+            const isCriticalOrLogistics = meta.category === 'critical' || meta.category === 'logistics';
 
-            // Εξειδίκευση προτεραιότητας βάσει της επιθυμητής ιεραρχίας
-            if (meta.category === 'critical') {
-                // Έλεγχος αν είναι Source path ή Controller path
-                const isSourcePath = sources.some(s => RoadPlanner.isOnActualPath(pos.x, pos.y, center, s, roomName));
+            if (isCriticalOrLogistics) {
+                // Έλεγχος αν η συγκεκριμένη συντεταγμένη είναι Swamp
+                const isSwamp = terrain && (terrain.get(pos.x, pos.y) === TERRAIN_MASK_SWAMP);
 
-                if (isSourcePath) {
-                    bonus += 50; // Οι δρόμοι των πηγών προηγούνται
+                if (isSwamp) {
+                    finalRcl = 2; // Χτίσιμο άμεσα στο RCL 2 αν είναι swamp
+                    finalBonus += 10; // Επιπλέον bonus προτεραιότητας
                 } else {
-                    bonus += 30; // Οι δρόμοι του controller ακολουθούν
+                    finalRcl = 3; // Αλλιώς χτίσιμο στο RCL 3
                 }
-            } else if (meta.category === 'logistics') {
-                bonus += 10;
+            } else if (meta.category === 'infrastructure') {
+                // Οι υπόλοιποι δρόμοι χτίζονται από RCL 4 και μετά
+                finalRcl = Math.max(4, meta.rcl);
             }
 
             tempRoads.push({
                 x: pos.x,
                 y: pos.y,
-                rcl: rcl,
-                bonus: bonus,
+                rcl: finalRcl,
+                bonus: finalBonus,
                 category: meta.category
             });
         }
 
-        // Ταξινόμηση: Πρώτα το RCL και μετά το Bonus
+        // Ταξινόμηση: Πρώτα το RCL (μικρότερο προς μεγαλύτερο) και μετά το Bonus (μεγαλύτερο προς μικρότερο)
         tempRoads.sort((a, b) => {
             if (a.rcl !== b.rcl) return a.rcl - b.rcl;
             return b.bonus - a.bonus;
@@ -192,7 +199,7 @@ class Scorer {
                 category: r.category
             });
         }
-    }
+    } // end of processRoads
 
     /**
      * Επεξεργασία Structures: Catch-all για όσα κτίρια δεν έχουν score.
@@ -223,7 +230,7 @@ class Scorer {
                 });
             });
         }
-    }
+    } // end of processStructures
 
     /**
      * Επεξεργασία Extensions

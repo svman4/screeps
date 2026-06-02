@@ -12,6 +12,8 @@ main.js
 
 TODO όταν ο hauler δεν έχει δουλειά να πηγαίνει κάπου εκτός δρόμου. Ειδικά σε μεγάλα επίπεδα
 
+//TODO ο scorer του consturction να χτίζει πρώτα το controller container και μετά αυτά των πηγών.
+// Sto ρψλ=3 να χτίζνται οι δρόμοι center-->sources και center-->controller
  */ 
 var spawnManager = require('manager.spawn');
 var defenceManager = require('manager.defense');

@@ -5,8 +5,8 @@
  */
 
 module.exports = {
-	
-	MAX_CONSTRUCTION_SITE:5,
+
+    MAX_CONSTRUCTION_SITE: 1,
     // Προτεραιότητες κατασκευής (Υψηλότερο = Πιο σημαντικό)
     PRIORITIES: {
         SPAWN: 130,
@@ -31,33 +31,33 @@ module.exports = {
         'spawn': [1, 7, 8],
         'tower': [3, 5, 7, 8, 8, 8],
         'extension': { 1: 0, 2: 5, 3: 10, 4: 20, 5: 30, 6: 40, 7: 50, 8: 60 },
-        'link': {5:2,6:3,7:4, 8:6},
+        'link': { 5: 2, 6: 3, 7: 4, 8: 6 },
         'lab': [6, 6, 6, 7, 7, 8, 8, 8, 8, 8],
         'container': { 1: 5 },
     },
-	
+
     // Προεπιλεγμένα RCL ξεκλειδώματος αν δεν ορίζεται στα steps
-    DEFAULTS_RCL: { 
-        road: 3, 
-        container: 1, 
-        spawn: 1, 
-        extension: 2, 
-        rampart: 4, 
-        constructedWall: 4, 
-        tower: 3, 
-        storage: 4, 
-        link: 5 ,
-        terminal:6,
-        extractor:6,
-        factory:7
+    DEFAULTS_RCL: {
+        road: 3,
+        container: 1,
+        spawn: 1,
+        extension: 2,
+        rampart: 4,
+        constructedWall: 4,
+        tower: 3,
+        storage: 4,
+        link: 5,
+        terminal: 6,
+        extractor: 6,
+        factory: 7
     },
-	MEMORY_KEYS: {
-		ROOT: 'construction',
+    MEMORY_KEYS: {
+        ROOT: 'construction',
         STRUCTURES: 'builtStructures',
         RECOVERY: 'recoveryContainerId',
         CONTROLLER: 'controllerContainerId',
         ROAD_PLAN: 'roadPlannerData',
-		BLUE_PRINT: 'blueprint'
+        BLUE_PRINT: 'blueprint'
     } // end of MEMORY_KEYS
-	
+
 };

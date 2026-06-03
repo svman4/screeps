@@ -1,0 +1,10 @@
+
+module.exports = {
+	EXPANSION_CONSTANTS:{
+		USERNAME:"Svman4",
+		OBSERVER_RANGE:10,
+		MAX_REACH_DEPTH:2,
+		INTEL_STALE_TIME:5000
+	},
+    
+};

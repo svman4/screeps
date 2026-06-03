@@ -3,33 +3,39 @@
  * Υποστηρίζει Observers και Scouts ως fallback.
  */
  const {EXPANSION_CONSTANTS}=require("expansion.constants");
- 
+ const roomCache=require("utils.RoomCache");
  
  
 class ExpansionManager {
     constructor() {
-        
-        
-        
-        
-    }
+    } // end of constructor
 
     run() {
         if (Game.cpu.bucket < 500) return;
         return;
-        const myRoomNames = _.filter(Game.rooms, r => r.controller && r.controller.my).map(r => r.name);
+        const myRoomNames = _.filter(Game.rooms, r => 
+			r.controller && r.controller.my).map(r => r.name);
         const hasGCL = Game.gcl.level > myRoomNames.length;
+		// TODO κάθε 30 tick
+		// έλεγχος για κάθε γειτονικό δωμάτιο. remote mining ή αν υπάρχει Observer και όλα τα υπόλοιπα.
+		
+		
+		// Κάθε refresh_intel_graph_interval 
+		//	Αν δεν υπάρχει observer αποστολή scout για έλεγχο του γειτονικού δωματίου.
+			
+		//
 
+		
         // 1. Επεξεργασία αποτελεσμάτων από το προηγούμενο tick (Observer ή Scout που μπήκε στο δωμάτιο)
         this.readVisionData(hasGCL);
-
+		
         // 2. Βαριές εργασίες συντήρησης (Κάθε 1000 ticks)
-        if (Game.time % 1000 === 0) {
+        if (Game.time % EXPANSION_CONSTANTS.REFRESH_INTEL_GRAPH_INTERVAL=== 0) {
             this.refreshIntelGraph(myRoomNames);
         }
 
         // 3. Ανάθεση εργασιών (Κάθε 30 ticks)
-        if (Game.time % 30 === 0) {
+        if (Game.time % EXPANSION_CONSTANTS.DELEGATE_VISION_TASKS_INTERVAL === 0) {
             this.delegateVisionTasks();
         }
     }

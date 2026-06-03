@@ -42,7 +42,7 @@ module.exports = {
         container: 1,
         spawn: 1,
         extension: 2,
-        rampart: 4,
+        rampart: 5,
         constructedWall: 4,
         tower: 3,
         storage: 4,

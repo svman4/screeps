@@ -112,7 +112,7 @@ class Scorer {
             } else if (isSource) {
                 rcl = 2; bonus = 80;
             } else if (isRecovery) {
-                rcl = 6; bonus = -50;
+                rcl = 4; bonus = -50;
             }
 
             tempContainers.push({ x: pos.x, y: pos.y, rcl: rcl, dist: distToCenter, bonus: bonus });
@@ -149,6 +149,34 @@ class Scorer {
         if (Game.rooms[roomName]) {
             terrain = Game.rooms[roomName].getTerrain();
         }
+
+        const criticalRoads = this.findCriticalRoads(roomName, context, roads);
+        const infrastructureRoad = roads.filter(road => !criticalRoads.includes(road));
+        for (const road of criticalRoads) {
+            //TODO αν είναι σε swamp χτίσιμο σε rcl=3, αλλιώς RCL=4.
+            // Έλεγχος αν η συγκεκριμένη συντεταγμένη είναι Swamp
+            const isSwamp = terrain && (terrain.get(road.x, road.y) === TERRAIN_MASK_SWAMP);
+
+            if (isSwamp) {
+                finalRcl = 2; // Χτίσιμο άμεσα στο RCL 2 αν είναι swamp
+                finalBonus += 10; // Επιπλέον bonus προτεραιότητας
+            } else {
+                finalRcl = 3; // Αλλιώς χτίσιμο στο RCL 3
+            }
+            tempRoads.push({
+                x: road.x,
+                y: road.y,
+                rcl: finalRcl,
+                bonus: finalBonus,
+                category: "critical"
+            });
+        }
+        infrastructureRoad.forEach(road => {
+            const meta = RoadPlanner.getRoadMetadata(pos.x, pos.y, rawData, buildingEntries, roomName);
+            let finalRcl = meta.rcl;
+            let finalBonus = meta.bonus;
+        });
+
 
         for (const pos of roads) {
             // Λήψη metadata από τον RoadPlanner
@@ -200,6 +228,73 @@ class Scorer {
             });
         }
     } // end of processRoads
+
+    findCriticalRoads() {
+        const buildings = blueprint.buildings;
+        const center = new RoomPosition(buildings.center.x, buildings.center.y, blueprint.name);
+
+        // 1. Βρες τους εξωτερικούς σταθμούς (Sources / Controller)
+        // Κοιτάμε τα containers που απέχουν πολύ από το κέντρο
+        const criticalTargets = [];
+        for (let container of buildings.container) {
+            // Αν απέχει πάνω από 5-10 tiles από το κέντρο, είναι mining ή controller container
+            let distance = Math.max(Math.abs(container.x - center.x), Math.abs(container.y - center.y));
+            if (distance > 10) {
+                criticalTargets.push(new RoomPosition(container.x, container.y, blueprint.name));
+            }
+        }
+
+        // 2. Δημιουργία του custom CostMatrix
+        let matrix = new PathFinder.CostMatrix();
+
+        // Γεμίζουμε όλο το δωμάτιο με 255 (αδιάβατο)
+        for (let x = 0; x < 50; x++) {
+            for (let y = 0; y < 50; y++) {
+                matrix.set(x, y, 255);
+            }
+        }
+
+        // Ανοίγουμε ΜΟΝΟ τα tiles που το blueprint έχει ως roads (κόστος 1)
+        for (let road of buildings.road) {
+            matrix.set(road.x, road.y, 1);
+        }
+        // Ανοίγουμε και το κέντρο/targets για να μπορούν να φτάσουν
+        matrix.set(center.x, center.y, 1);
+        for (let target of criticalTargets) {
+            matrix.set(target.x, target.y, 1);
+        }
+
+        // 3. Εντοπισμός των κρίσιμων δρόμων
+        let criticalRoadsSet = new Set();
+
+        for (let target of criticalTargets) {
+            let search = PathFinder.search(center, { pos: target, range: 1 }, {
+                roomCallback: (roomName) => {
+                    if (roomName === blueprint.name) return matrix;
+                    return new PathFinder.CostMatrix();
+                },
+                plainCost: 255, // Απαγορεύουμε την κίνηση εκτός matrix
+                swampCost: 255,
+                maxRooms: 1
+            });
+
+            if (!search.incomplete) {
+                // Πρόσθεσε τα coordinates στο set των κρίσιμων δρόμων
+                for (let pos of search.path) {
+                    criticalRoadsSet.add(`${pos.x},${pos.y}`);
+                }
+            }
+        }
+
+        // 4. Φιλτράρισμα του αρχικού blueprint
+        const criticalRoadsArray = buildings.road.filter(road =>
+            criticalRoadsSet.has(`${road.x},${road.y}`)
+        );
+
+        return criticalRoadsArray;
+    }
+
+
 
     /**
      * Επεξεργασία Structures: Catch-all για όσα κτίρια δεν έχουν score.

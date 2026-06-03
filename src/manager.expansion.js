@@ -1,54 +1,52 @@
 /**
- * ExpansionManager - Advanced Path-based Intel & Expansion
- * Υποστηρίζει Observers και Scouts ως fallback.
+ * MODULE: Expansion Manager
+ * ΠΕΡΙΓΡΑΦΗ: Διαχειρίζεται την επέκταση και τη συλλογή πληροφοριών (Intel)
+ * μέσω Observers και Scouts.
  */
- const {EXPANSION_CONSTANTS}=require("expansion.constants");
- const roomCache=require("utils.RoomCache");
- 
- 
+const { EXPANSION_CONSTANTS } = require("expansion.constants");
+const roomCache = require("utils.RoomCache");
+
 class ExpansionManager {
     constructor() {
-    } // end of constructor
+        // Αρχικοποίηση αν χρειάζονται τοπικές μεταβλητές
+    }
 
+    /**
+     * Κύρια μέθοδος εκτέλεσης (καλείται από το main.js)
+     */
     run() {
+        // Εξοικονόμηση CPU: Σταματάμε αν το bucket είναι χαμηλό
         if (Game.cpu.bucket < 500) return;
-        return;
-        const myRoomNames = _.filter(Game.rooms, r => 
-			r.controller && r.controller.my).map(r => r.name);
-        const hasGCL = Game.gcl.level > myRoomNames.length;
-		// TODO κάθε 30 tick
-		// έλεγχος για κάθε γειτονικό δωμάτιο. remote mining ή αν υπάρχει Observer και όλα τα υπόλοιπα.
-		
-		
-		// Κάθε refresh_intel_graph_interval 
-		//	Αν δεν υπάρχει observer αποστολή scout για έλεγχο του γειτονικού δωματίου.
-			
-		//
 
-		
-        // 1. Επεξεργασία αποτελεσμάτων από το προηγούμενο tick (Observer ή Scout που μπήκε στο δωμάτιο)
+        // Βρίσκουμε τα δωμάτια που μας ανήκουν
+        const myRoomNames = _.filter(Game.rooms, r => r.controller && r.controller.my).map(r => r.name);
+        const hasGCL = Game.gcl.level > myRoomNames.length;
+
+        // 1. Επεξεργασία δεδομένων από το προηγούμενο tick (από Observer ή Scout)
         this.readVisionData(hasGCL);
-		
-        // 2. Βαριές εργασίες συντήρησης (Κάθε 1000 ticks)
-        if (Game.time % EXPANSION_CONSTANTS.REFRESH_INTEL_GRAPH_INTERVAL=== 0) {
+        
+        // 2. Ανανέωση του χάρτη (Graph) των γειτονικών δωματίων (Βαριά εργασία)
+        if (Game.time % EXPANSION_CONSTANTS.REFRESH_INTEL_GRAPH_INTERVAL === 0) {
             this.refreshIntelGraph(myRoomNames);
         }
 
-        // 3. Ανάθεση εργασιών (Κάθε 30 ticks)
+        // 3. Ανάθεση εργασιών στους Observers ή προετοιμασία για αποστολή Scouts
         if (Game.time % EXPANSION_CONSTANTS.DELEGATE_VISION_TASKS_INTERVAL === 0) {
             this.delegateVisionTasks();
         }
     }
 
     /**
-     * Ελέγχει όλα τα δωμάτια στα οποία έχουμε Vision αυτή τη στιγμή
+     * Ελέγχει και αποθηκεύει δεδομένα για τα δωμάτια στα οποία έχουμε ορατότητα.
      */
     readVisionData(hasGCL) {
+        // Έλεγχος του δωματίου που στόχευσε ο Observer στο προηγούμενο tick
         if (Memory.obsTarget && Game.rooms[Memory.obsTarget]) {
             this.updateRoomIntel(Game.rooms[Memory.obsTarget], hasGCL);
             delete Memory.obsTarget;
         }
 
+        // Έλεγχος όλων των δωματίων στην ουρά (π.χ. από Scouts που έφτασαν)
         if (Memory.observerQueue) {
             for (const roomName of Memory.observerQueue) {
                 if (Game.rooms[roomName]) {
@@ -58,6 +56,50 @@ class ExpansionManager {
         }
     }
 
+    /**
+     * Ενημερώνει τη μνήμη με τα δεδομένα του δωματίου (Sources, Controller, Enemies).
+     */
+    updateRoomIntel(room, hasGCL) {
+        const mem = Memory.rooms[room.name] || (Memory.rooms[room.name] = {});
+        const controller = room.controller;
+
+        mem.lastScouted = Game.time;
+        mem.scoutNeeded = false; // Καθαρίζει τη σημαία εφόσον έχουμε vision
+
+        if (!controller) {
+            mem.type = 'corridor';
+            return;
+        }
+
+        // Αν είναι δικό μας ή το κάνουμε reserve
+        if (controller.my || (controller.reservation?.username === EXPANSION_CONSTANTS.USERNAME)) {
+            this.clearIntelTags(mem);
+            return;
+        }
+
+        const isFree = !controller.owner && (!controller.reservation || controller.reservation.username === EXPANSION_CONSTANTS.USERNAME);
+
+        if (isFree) {
+            const sources = room.find(FIND_SOURCES);
+            if (sources.length > 0) {
+                mem.type = 'remote_mining'; 
+                mem.sources = sources.map(s => ({ id: s.id, x: s.pos.x, y: s.pos.y }));
+                mem.controllerPos = { x: controller.pos.x, y: controller.pos.y };
+                delete mem.enemyInfo;
+            }
+        } else {
+            mem.type = 'enemy';
+            mem.enemyInfo = {
+                owner: controller.owner?.username || 'Invader',
+                level: controller.level,
+                towers: room.find(FIND_HOSTILE_STRUCTURES, { filter: s => s.structureType === STRUCTURE_TOWER }).length
+            };
+        }
+    }
+
+    /**
+     * Σαρώνει τον χάρτη (BFS) γύρω από τα δωμάτιά μας μέχρι ένα συγκεκριμένο βάθος (MAX_REACH_DEPTH).
+     */
     refreshIntelGraph(myRoomNames) {
         let reachableRooms = new Set();
         let queue = myRoomNames.map(name => ({ name: name, depth: 0 }));
@@ -76,6 +118,7 @@ class ExpansionManager {
                 visited.add(neighborName);
                 reachableRooms.add(neighborName);
 
+                // Συνεχίζουμε το ψάξιμο εκτός αν είναι εχθρικό δωμάτιο
                 if (this.shouldExpandSearchThrough(neighborName)) {
                     queue.push({ name: neighborName, depth: current.depth + 1 });
                 }
@@ -92,43 +135,10 @@ class ExpansionManager {
         return true;
     }
 
-    updateRoomIntel(room, hasGCL) {
-        const mem = Memory.rooms[room.name] || (Memory.rooms[room.name] = {});
-        const controller = room.controller;
-
-        mem.lastScouted = Game.time;
-        mem.scoutNeeded = false; // Καθαρίζει αυτόματα τη σημαία όταν αποκτήσουμε vision
-
-        if (!controller) {
-            mem.type = 'corridor';
-            return;
-        }
-
-        if (controller.my || (controller.reservation?.username === EXPANSION_CONSTANTS.USERNAME)) {
-            this.clearIntelTags(mem);
-            return;
-        }
-
-        const isFree = !controller.owner && (!controller.reservation || controller.reservation.username === EXPANSION_CONSTANTS.USERNAME);
-
-        if (isFree) {
-            const sources = room.find(FIND_SOURCES);
-            if (sources.length > 0) {
-                mem.type = (sources.length >= 2 && hasGCL) ? 'remote_mining' : 'remote_mining';
-                mem.sources = sources.map(s => ({ id: s.id, x: s.pos.x, y: s.pos.y }));
-                mem.controllerPos = { x: controller.pos.x, y: controller.pos.y };
-                delete mem.enemyInfo;
-            }
-        } else {
-            mem.type = 'enemy';
-            mem.enemyInfo = {
-                owner: controller.owner?.username || 'Invader',
-                level: controller.level,
-                towers: room.find(FIND_HOSTILE_STRUCTURES, { filter: s => s.structureType === STRUCTURE_TOWER }).length
-            };
-        }
-    }
-
+    /**
+     * Αναθέτει στα Observers να κοιτάξουν δωμάτια που έχουμε καιρό να δούμε.
+     * Αν δεν υπάρχει Observer, τα μαρκάρει για Scout.
+     */
     delegateVisionTasks() {
         if (!Memory.observerQueue || Memory.observerQueue.length === 0) return;
 
@@ -151,29 +161,25 @@ class ExpansionManager {
                 }
             });
         } else {
+            // Δεν υπάρχουν observers, άρα χρειαζόμαστε scouts
             targets.forEach(t => this.markForScout(t));
         }
     }
 
     markForScout(roomName) {
         if (!Memory.rooms[roomName]) Memory.rooms[roomName] = {};
-        // Θέτουμε τη σημαία μόνο αν δεν υπάρχει ήδη vision ή αν το intel είναι παλιό
         if (!Game.rooms[roomName]) {
             Memory.rooms[roomName].scoutNeeded = true;
         }
     }
 
     /**
-     * PUBLIC API: Καλέστε το από το Spawn Logic σας.
-     * Επιστρέφει το όνομα του δωματίου που χρειάζεται Scout.
+     * Επιστρέφει ένα δωμάτιο που χρειάζεται Scout (χρήσιμο για το spawnManager).
      */
     getScoutTarget() {
         return _.find(Memory.observerQueue, name => Memory.rooms[name]?.scoutNeeded);
     }
 
-    /**
-     * Καθαρίζει τη σημαία. Καλό είναι να καλείται αμέσως μετά το επιτυχημένο Spawn.
-     */
     clearScoutFlag(roomName) {
         if (Memory.rooms[roomName]) {
             delete Memory.rooms[roomName].scoutNeeded;
@@ -193,11 +199,12 @@ class ExpansionManager {
         delete mem.enemyInfo;
         delete mem.scoutNeeded;
     }
-	canIExpand() {
-		const myRoomNames = _.filter(Game.rooms, r => r.controller && r.controller.my).length;
-		//return Game.gcl.level > myRoomNames;
-		return false;
-	}
+
+    canIExpand() {
+        // Επιστρέφει true αν το GCL μας επιτρέπει να πάρουμε νέο δωμάτιο.
+        const myRoomNames = _.filter(Game.rooms, r => r.controller && r.controller.my).length;
+        return Game.gcl.level > myRoomNames;
+    }
 }
 
 module.exports = new ExpansionManager();

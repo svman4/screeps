@@ -35,9 +35,9 @@ const movementManager = {
                 costs.set(site.pos.x, site.pos.y, 0xff);
             }
         });
-		roomCache.in(roomName).constructionSites.forEach(
-			site=>costs.set(site.pos.x,site.pos.y,0xff)
-			);
+		// roomCache.in(roomName).constructionSites.forEach(
+			// site=>costs.set(site.pos.x,site.pos.y,0xff)
+			// );
 
         matrixCache[roomName] = costs;
         lastMatrixUpdate[roomName] = Game.time;

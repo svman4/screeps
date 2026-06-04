@@ -146,7 +146,7 @@ class PopulationManager {
 
 
             const range = cache.getSourceDistance(source.id);
-//			debugConsole.debugText("PopulationManager","Source "+source.id+" distance is "+range);
+			//debugConsole.debugText("PopulationManager","Source "+source.id+" distance is "+range);
             const distance = (range !== Infinity) ? range : FALLBACK_DISTANCE;
 
             totalCarryRequired += (ENERGY_INCOME_TICK * distance * 2) / CARRY_CAPACITY;
@@ -220,7 +220,7 @@ class PopulationManager {
     _getContainerLimits(context) {
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
-                [ROLES.SIMPLE_HARVESTER]: Math.ceil(context.sources.length * POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE/2),
+                [ROLES.SIMPLE_HARVESTER]: Math.ceil(context.sources.length * POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE/3),
                 [ROLES.STATIC_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
             },
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {

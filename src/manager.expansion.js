@@ -2,30 +2,40 @@
  * ExpansionManager - Advanced Path-based Intel & Expansion
  * Υποστηρίζει Observers και Scouts ως fallback.
  */
+ const {EXPANSION_CONSTANTS}=require("expansion.constants");
+ const roomCache=require("utils.RoomCache");
+ 
+ 
 class ExpansionManager {
     constructor() {
-        this.USERNAME = 'Svman4';
-        this.OBSERVER_RANGE = 10;
-        this.MAX_REACH_DEPTH = 2;
-        this.INTEL_STALE_TIME = 5000; // Πότε θεωρούμε το intel παλιό
-    }
+    } // end of constructor
 
     run() {
         if (Game.cpu.bucket < 500) return;
-
-        const myRoomNames = _.filter(Game.rooms, r => r.controller && r.controller.my).map(r => r.name);
+        return;
+        const myRoomNames = _.filter(Game.rooms, r => 
+			r.controller && r.controller.my).map(r => r.name);
         const hasGCL = Game.gcl.level > myRoomNames.length;
+		// TODO κάθε 30 tick
+		// έλεγχος για κάθε γειτονικό δωμάτιο. remote mining ή αν υπάρχει Observer και όλα τα υπόλοιπα.
+		
+		
+		// Κάθε refresh_intel_graph_interval 
+		//	Αν δεν υπάρχει observer αποστολή scout για έλεγχο του γειτονικού δωματίου.
+			
+		//
 
+		
         // 1. Επεξεργασία αποτελεσμάτων από το προηγούμενο tick (Observer ή Scout που μπήκε στο δωμάτιο)
         this.readVisionData(hasGCL);
-
+		
         // 2. Βαριές εργασίες συντήρησης (Κάθε 1000 ticks)
-        if (Game.time % 1000 === 0) {
+        if (Game.time % EXPANSION_CONSTANTS.REFRESH_INTEL_GRAPH_INTERVAL=== 0) {
             this.refreshIntelGraph(myRoomNames);
         }
 
         // 3. Ανάθεση εργασιών (Κάθε 30 ticks)
-        if (Game.time % 30 === 0) {
+        if (Game.time % EXPANSION_CONSTANTS.DELEGATE_VISION_TASKS_INTERVAL === 0) {
             this.delegateVisionTasks();
         }
     }
@@ -55,7 +65,7 @@ class ExpansionManager {
 
         while (queue.length > 0) {
             let current = queue.shift();
-            if (current.depth >= this.MAX_REACH_DEPTH) continue;
+            if (current.depth >= EXPANSION_CONSTANTS.MAX_REACH_DEPTH) continue;
 
             const exits = Game.map.describeExits(current.name);
             if (!exits) continue;
@@ -94,12 +104,12 @@ class ExpansionManager {
             return;
         }
 
-        if (controller.my || (controller.reservation?.username === this.USERNAME)) {
+        if (controller.my || (controller.reservation?.username === EXPANSION_CONSTANTS.USERNAME)) {
             this.clearIntelTags(mem);
             return;
         }
 
-        const isFree = !controller.owner && (!controller.reservation || controller.reservation.username === this.USERNAME);
+        const isFree = !controller.owner && (!controller.reservation || controller.reservation.username === EXPANSION_CONSTANTS.USERNAME);
 
         if (isFree) {
             const sources = room.find(FIND_SOURCES);
@@ -126,13 +136,13 @@ class ExpansionManager {
 
         const targets = _.filter(Memory.observerQueue, name => {
             const mem = Memory.rooms[name];
-            return !mem || !mem.lastScouted || (Game.time - mem.lastScouted > this.INTEL_STALE_TIME);
+            return !mem || !mem.lastScouted || (Game.time - mem.lastScouted > EXPANSION_CONSTANTS.INTEL_STALE_TIME);
         }).slice(0, Math.max(observers.length, 5));
 
         if (observers.length > 0) {
             targets.forEach((targetName, index) => {
                 const obs = observers[index % observers.length];
-                if (Game.map.getRoomLinearDistance(obs.room.name, targetName) <= this.OBSERVER_RANGE) {
+                if (Game.map.getRoomLinearDistance(obs.room.name, targetName) <= EXPANSION_CONSTANTS.OBSERVER_RANGE) {
                     if (obs.observeRoom(targetName) === OK) {
                         Memory.obsTarget = targetName;
                     }

@@ -476,26 +476,28 @@ const logisticsManager = {
             // Αν δεν έχει γεμίσει το store και έχει δίπλα(απόσταση 1) άλλη πηγή να παίρνει απο εκεί.
             if (result !== OK) {
 
-                // FEATURE: Scavenge adjacent structures/piles if hauler has free space left
-                if (creep.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
-                    console.log("I am hungry");
-                    const adjacentStructures = creep.pos.findInRange(FIND_STRUCTURES, 1, {
-                        filter: (s) => s.store && s.store[RESOURCE_ENERGY] > 0 && s.id !== source.id
-                    });
-                    if (adjacentStructures.length > 0) {
-                        creep.withdraw(adjacentStructures[0], RESOURCE_ENERGY);
-                    } else {
-                        const adjacentDrops = creep.pos.findInRange(FIND_DROPPED_RESOURCES, 1, {
-                            filter: (d) => d.resourceType === RESOURCE_ENERGY
-                        });
-                        if (adjacentDrops.length > 0) creep.pickup(adjacentDrops[0]);
-                    }
-                }
+                
 
 
 
                 this.completeTask(creep);
             }
+            // FEATURE: Scavenge adjacent structures/piles if hauler has free space left
+                if (creep.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+                    creep.say("I am hungry");
+                    
+                    // const adjacentStructures = creep.pos.findInRange(FIND_STRUCTURES, 1, {
+                    //     filter: (s) => s.store && s.store[RESOURCE_ENERGY] > 0 && s.id !== source.id
+                    // });
+                    // if (adjacentStructures.length > 0) {
+                    //     creep.withdraw(adjacentStructures[0], RESOURCE_ENERGY);
+                    // } else {
+                    //     const adjacentDrops = creep.pos.findInRange(FIND_DROPPED_RESOURCES, 1, {
+                    //         filter: (d) => d.resourceType === RESOURCE_ENERGY
+                    //     });
+                    //     if (adjacentDrops.length > 0) creep.pickup(adjacentDrops[0]);
+                    // }
+                }
         } else {
             movementManager.smartMove(creep, source, 1);
         }

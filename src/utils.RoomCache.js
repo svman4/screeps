@@ -299,7 +299,7 @@ class RoomCacheInstance {
         if (!this.cache.controllerContainerId) {
             if (!this.room || !this.room.controller) return null;
 
-            const containers = this.room.controller.pos.findInRange(FIND_STRUCTURES, 3, {
+            const containers = this.room.controller.pos.findInRange(FIND_STRUCTURES, 4, {
                 filter: s => s.structureType === STRUCTURE_CONTAINER
             });
             this.cache.controllerContainerId = containers.length > 0 ? containers[0].id : null;
@@ -356,7 +356,13 @@ class RoomCacheInstance {
         const sourceLength=this.sources.length;
         const containersCount=this.containers.length||0;
         
-        const answer = containersCount >= (sourceLength+1);
+         if(this.controllerContainer && this.controllerContainer!=null) {
+            // console.log("controoler container found");
+             return true;
+         }
+        // console.log("controller container not found");
+        // Το πρώτο container που χτίζεται είναι αυτό του controller.
+        const answer = containersCount >= (1);
         //console.log("source is "+sourceLength+" containers is "+containersCount+"   "+answer);
         
         return answer;

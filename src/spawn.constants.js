@@ -84,7 +84,7 @@ const POPULATION_MODULE_CONFIG = {
     STATIC_HARVESTERS_PER_SOURCE: 1,
     SIMPLE_HARVESTERS_PER_SOURCE: 2,
     // Logistics
-    EXTENSION_CARRY_BONUS: 9,   // Σταθερό quota για τον ανεφοδιασμό extensions
+    EXTENSION_CARRY_BONUS: 7,   // Σταθερό quota για τον ανεφοδιασμό extensions
     DISTANCE_PADDING: 1.1,       // 10% έξτρα carry για κάλυψη απωλειών/κίνησης
     ROAD_THRESHOLD: 30,           // Ελάχιστος αριθμός δρόμων για να θεωρηθεί το δωμάτιο "στρωμένο"
     LINK_THRESHOLD: 2           // Ελάχιστος αριθμός link για να θεωρηθεί το δωμάτιο "εξοπλισμένο με links"

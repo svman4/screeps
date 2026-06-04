@@ -150,32 +150,32 @@ class Scorer {
             terrain = Game.rooms[roomName].getTerrain();
         }
 
-        const criticalRoads = this.findCriticalRoads(roomName, context, roads);
-        const infrastructureRoad = roads.filter(road => !criticalRoads.includes(road));
-        for (const road of criticalRoads) {
-            //TODO αν είναι σε swamp χτίσιμο σε rcl=3, αλλιώς RCL=4.
-            // Έλεγχος αν η συγκεκριμένη συντεταγμένη είναι Swamp
-            const isSwamp = terrain && (terrain.get(road.x, road.y) === TERRAIN_MASK_SWAMP);
+        //const criticalRoads = this.findCriticalRoads(roomName, context, roads);
+        //const infrastructureRoad = roads.filter(road => !criticalRoads.includes(road));
+        // for (const road of criticalRoads) {
+        //     //TODO αν είναι σε swamp χτίσιμο σε rcl=3, αλλιώς RCL=4.
+        //     // Έλεγχος αν η συγκεκριμένη συντεταγμένη είναι Swamp
+        //     const isSwamp = terrain && (terrain.get(road.x, road.y) === TERRAIN_MASK_SWAMP);
 
-            if (isSwamp) {
-                finalRcl = 2; // Χτίσιμο άμεσα στο RCL 2 αν είναι swamp
-                finalBonus += 10; // Επιπλέον bonus προτεραιότητας
-            } else {
-                finalRcl = 3; // Αλλιώς χτίσιμο στο RCL 3
-            }
-            tempRoads.push({
-                x: road.x,
-                y: road.y,
-                rcl: finalRcl,
-                bonus: finalBonus,
-                category: "critical"
-            });
-        }
-        infrastructureRoad.forEach(road => {
-            const meta = RoadPlanner.getRoadMetadata(pos.x, pos.y, rawData, buildingEntries, roomName);
-            let finalRcl = meta.rcl;
-            let finalBonus = meta.bonus;
-        });
+        //     if (isSwamp) {
+        //         finalRcl = 2; // Χτίσιμο άμεσα στο RCL 2 αν είναι swamp
+        //         finalBonus += 10; // Επιπλέον bonus προτεραιότητας
+        //     } else {
+        //         finalRcl = 3; // Αλλιώς χτίσιμο στο RCL 3
+        //     }
+        //     tempRoads.push({
+        //         x: road.x,
+        //         y: road.y,
+        //         rcl: finalRcl,
+        //         bonus: finalBonus,
+        //         category: "critical"
+        //     });
+        // }
+        // infrastructureRoad.forEach(road => {
+        //     const meta = RoadPlanner.getRoadMetadata(pos.x, pos.y, rawData, buildingEntries, roomName);
+        //     let finalRcl = meta.rcl;
+        //     let finalBonus = meta.bonus;
+        // });
 
 
         for (const pos of roads) {

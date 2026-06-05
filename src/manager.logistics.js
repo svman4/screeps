@@ -484,7 +484,7 @@ const logisticsManager = {
             }
             // FEATURE: Scavenge adjacent structures/piles if hauler has free space left
                 if (creep.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
-                    creep.say("I am hungry");
+                    //creep.say("I am hungry");
                     
                     // const adjacentStructures = creep.pos.findInRange(FIND_STRUCTURES, 1, {
                     //     filter: (s) => s.store && s.store[RESOURCE_ENERGY] > 0 && s.id !== source.id

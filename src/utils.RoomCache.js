@@ -178,10 +178,25 @@ class RoomCacheInstance {
             if (!this.room || !this.room.controller) return Infinity;
             const center = this.center || null; // Μπορείς να ορίσεις το κέντρο του δωματίου στη cache αν θέλεις, π.χ. κοντά στον controller ή στο storage
             if (!center) return Infinity;
-
-            this.cache.controllerDistance = this.room.controller.pos.getRangeTo(center);
+            
+            const distanceCenterToControllerContainer=this.controllerContainerDistance;
+            if(distanceCenterToControllerContainer!=0) {
+                this.cache.controllerDistance = distanceCenterToControllerContainer;
+            } else {
+                this.cache.controllerDistance = this.room.controller.pos.getRangeTo(center);
+            }
         }
+        
         return this.cache.controllerDistance || 0;
+    }
+    get controllerContainerDistance() {
+        const controllerContainer=this.controllerContainer;
+        const center = this.center || null; // Μπορείς να ορίσεις το κέντρο του δωματίου στη cache αν θέλεις, π.χ. κοντά στον controller ή στο storage
+        if (controllerContainer && center){
+            return controllerContainer.pos.getRangeTo(center);
+            
+        }
+        return 0;
     }
     get controllerLink() {
         if (this.cache.controllerLinkId === undefined || this.cache.controllerLinkId === null) {

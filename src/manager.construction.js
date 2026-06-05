@@ -99,14 +99,18 @@ class ConstructionManager {
 
         const fullPlan = this.layout.getPlanForRCL(rcl, builtMap);
         if (fullPlan.length === 0) return;
-
+		
         let remainingQuota = maxSites - sites.length;
         remainingQuota = this.buildStructures(fullPlan, remainingQuota);
-        if (remainingQuota > 0) {
-            remainingQuota = this.buildDefenses(fullPlan, remainingQuota);
+        if (sites.length === 0) {
+			const remainQuotaForDefence=100;
+			// Θέλουμε να χτίζει μονομιάς όλα τα αμυντικά κτίρια.
+            remainingQuota = this.buildDefenses(fullPlan, remainQuotaForDefence);
         }
-        if (remainingQuota > 0) {
-            this.buildRoads(fullPlan, remainingQuota, rcl, builtMap);
+        if (sites.length === 0) {
+			const remainQuotaForRoads=100;
+			// Θέλουμε να χτίζει μονομιάς όλους τους δρόμους στο τρέχον rcl.
+            this.buildRoads(fullPlan, remainQuotaForRoads, rcl, builtMap);
         }
     }
 

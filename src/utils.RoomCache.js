@@ -178,10 +178,25 @@ class RoomCacheInstance {
             if (!this.room || !this.room.controller) return Infinity;
             const center = this.center || null; // Μπορείς να ορίσεις το κέντρο του δωματίου στη cache αν θέλεις, π.χ. κοντά στον controller ή στο storage
             if (!center) return Infinity;
-
-            this.cache.controllerDistance = this.room.controller.pos.getRangeTo(center);
+            
+            const distanceCenterToControllerContainer=this.controllerContainerDistance;
+            if(distanceCenterToControllerContainer!=0) {
+                this.cache.controllerDistance = distanceCenterToControllerContainer;
+            } else {
+                this.cache.controllerDistance = this.room.controller.pos.getRangeTo(center);
+            }
         }
+        
         return this.cache.controllerDistance || 0;
+    }
+    get controllerContainerDistance() {
+        const controllerContainer=this.controllerContainer;
+        const center = this.center || null; // Μπορείς να ορίσεις το κέντρο του δωματίου στη cache αν θέλεις, π.χ. κοντά στον controller ή στο storage
+        if (controllerContainer && center){
+            return controllerContainer.pos.getRangeTo(center);
+            
+        }
+        return 0;
     }
     get controllerLink() {
         if (this.cache.controllerLinkId === undefined || this.cache.controllerLinkId === null) {
@@ -299,7 +314,7 @@ class RoomCacheInstance {
         if (!this.cache.controllerContainerId) {
             if (!this.room || !this.room.controller) return null;
 
-            const containers = this.room.controller.pos.findInRange(FIND_STRUCTURES, 3, {
+            const containers = this.room.controller.pos.findInRange(FIND_STRUCTURES, 4, {
                 filter: s => s.structureType === STRUCTURE_CONTAINER
             });
             this.cache.controllerContainerId = containers.length > 0 ? containers[0].id : null;
@@ -356,7 +371,13 @@ class RoomCacheInstance {
         const sourceLength=this.sources.length;
         const containersCount=this.containers.length||0;
         
-        const answer = containersCount >= (sourceLength+1);
+         if(this.controllerContainer && this.controllerContainer!=null) {
+            // console.log("controoler container found");
+             return true;
+         }
+        // console.log("controller container not found");
+        // Το πρώτο container που χτίζεται είναι αυτό του controller.
+        const answer = containersCount >= (1);
         //console.log("source is "+sourceLength+" containers is "+containersCount+"   "+answer);
         
         return answer;

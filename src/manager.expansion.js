@@ -3,13 +3,14 @@
  * ΠΕΡΙΓΡΑΦΗ: Διαχειρίζεται την επέκταση και τη συλλογή πληροφοριών (Intel)
  * μέσω Observers και Scouts.
  */
-const { EXPANSION_CONSTANTS } = require("expansion.constants");
-const roomCache = require("utils.RoomCache");
 
+ const {EXPANSION_CONSTANTS}=require("expansion.constants");
+ const roomCache=require("utils.RoomCache");
+ 
+ 
 class ExpansionManager {
     constructor() {
-        // Αρχικοποίηση αν χρειάζονται τοπικές μεταβλητές
-    }
+    } // end of constructor
 
     /**
      * Κύρια μέθοδος εκτέλεσης (καλείται από το main.js)
@@ -21,6 +22,15 @@ class ExpansionManager {
         // Βρίσκουμε τα δωμάτια που μας ανήκουν
         const myRoomNames = _.filter(Game.rooms, r => r.controller && r.controller.my).map(r => r.name);
         const hasGCL = Game.gcl.level > myRoomNames.length;
+		// TODO κάθε 30 tick
+		// έλεγχος για κάθε γειτονικό δωμάτιο. remote mining ή αν υπάρχει Observer και όλα τα υπόλοιπα.
+		
+		
+		// Κάθε refresh_intel_graph_interval 
+		//	Αν δεν υπάρχει observer αποστολή scout για έλεγχο του γειτονικού δωματίου.
+			
+		//
+
 
         // 1. Επεξεργασία δεδομένων από το προηγούμενο tick (από Observer ή Scout)
         this.readVisionData(hasGCL);
@@ -31,6 +41,7 @@ class ExpansionManager {
         }
 
         // 3. Ανάθεση εργασιών στους Observers ή προετοιμασία για αποστολή Scouts
+
         if (Game.time % EXPANSION_CONSTANTS.DELEGATE_VISION_TASKS_INTERVAL === 0) {
             this.delegateVisionTasks();
         }
@@ -135,10 +146,44 @@ class ExpansionManager {
         return true;
     }
 
-    /**
-     * Αναθέτει στα Observers να κοιτάξουν δωμάτια που έχουμε καιρό να δούμε.
-     * Αν δεν υπάρχει Observer, τα μαρκάρει για Scout.
-     */
+
+    updateRoomIntel(room, hasGCL) {
+        const mem = Memory.rooms[room.name] || (Memory.rooms[room.name] = {});
+        const controller = room.controller;
+
+        mem.lastScouted = Game.time;
+        mem.scoutNeeded = false; // Καθαρίζει αυτόματα τη σημαία όταν αποκτήσουμε vision
+
+        if (!controller) {
+            mem.type = 'corridor';
+            return;
+        }
+
+        if (controller.my || (controller.reservation?.username === EXPANSION_CONSTANTS.USERNAME)) {
+            this.clearIntelTags(mem);
+            return;
+        }
+
+        const isFree = !controller.owner && (!controller.reservation || controller.reservation.username === EXPANSION_CONSTANTS.USERNAME);
+
+        if (isFree) {
+            const sources = room.find(FIND_SOURCES);
+            if (sources.length > 0) {
+                mem.type = (sources.length >= 2 && hasGCL) ? 'remote_mining' : 'remote_mining';
+                mem.sources = sources.map(s => ({ id: s.id, x: s.pos.x, y: s.pos.y }));
+                mem.controllerPos = { x: controller.pos.x, y: controller.pos.y };
+                delete mem.enemyInfo;
+            }
+        } else {
+            mem.type = 'enemy';
+            mem.enemyInfo = {
+                owner: controller.owner?.username || 'Invader',
+                level: controller.level,
+                towers: room.find(FIND_HOSTILE_STRUCTURES, { filter: s => s.structureType === STRUCTURE_TOWER }).length
+            };
+        }
+    }
+
     delegateVisionTasks() {
         if (!Memory.observerQueue || Memory.observerQueue.length === 0) return;
 

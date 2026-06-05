@@ -6,10 +6,12 @@
 
  const {EXPANSION_CONSTANTS}=require("expansion.constants");
  const roomCache=require("utils.RoomCache");
- 
- 
+ const spawnManager=require("manager.spawn");
+ const {ROLES}=require("spawn.constants");
+ const debugConsole=require("utils.debugConsole");
 class ExpansionManager {
     constructor() {
+		
     } // end of constructor
 
     /**
@@ -19,9 +21,17 @@ class ExpansionManager {
         // Εξοικονόμηση CPU: Σταματάμε αν το bucket είναι χαμηλό
         if (Game.cpu.bucket < 500) return;
 
+
+		if(Game.time%EXPANSION_CONSTANTS.REFRESH_INTEL_GRAPH_INTERVAL===0) {
+			this.refreshViewInNeigbors();
+		}
+		
+
+		
+		
+		
         // Βρίσκουμε τα δωμάτια που μας ανήκουν
-        const myRoomNames = _.filter(Game.rooms, r => r.controller && r.controller.my).map(r => r.name);
-        const hasGCL = Game.gcl.level > myRoomNames.length;
+        //const hasGCL = Game.gcl.level > myRoomNames.length;
 		// TODO κάθε 30 tick
 		// έλεγχος για κάθε γειτονικό δωμάτιο. remote mining ή αν υπάρχει Observer και όλα τα υπόλοιπα.
 		
@@ -33,20 +43,57 @@ class ExpansionManager {
 
 
         // 1. Επεξεργασία δεδομένων από το προηγούμενο tick (από Observer ή Scout)
-        this.readVisionData(hasGCL);
+        //this.readVisionData(false);
         
         // 2. Ανανέωση του χάρτη (Graph) των γειτονικών δωματίων (Βαριά εργασία)
         if (Game.time % EXPANSION_CONSTANTS.REFRESH_INTEL_GRAPH_INTERVAL === 0) {
-            this.refreshIntelGraph(myRoomNames);
+          //  this.refreshIntelGraph(myRoomNames);
         }
 
         // 3. Ανάθεση εργασιών στους Observers ή προετοιμασία για αποστολή Scouts
 
         if (Game.time % EXPANSION_CONSTANTS.DELEGATE_VISION_TASKS_INTERVAL === 0) {
-            this.delegateVisionTasks();
+          //  this.delegateVisionTasks();
         }
     }
-
+	refreshViewInNeigbors() {
+		for (const roomName in Game.rooms) {
+            const room = Game.rooms[roomName];
+            if (room.controller && room.controller.my) {
+                // ΓΙα κάθε δωμάτιο στο οποίο είμαστε κάτοχοι(άρα είναι ή θα γίνει metropolis.
+				
+				// έλεγχος για το level του room. 
+				if(room.controller.level<3) {
+					return;
+				}
+				this.checkNeighborsFrom(roomName);
+			}
+        }
+	}
+	checkNeighborsFrom(roomName){ 
+		if(!roomName || roomName===null) {
+			return;
+		}
+		const room=Game.rooms[roomName];
+		
+		if (!room) {
+			return ;
+		}
+		console.log(room.name);
+		
+		const exits = Game.map.describeExits(roomName);
+		//debugConsole.debugObject("Extension","exits is",exits);		
+		const neighborsNames=Object.values(exits);
+         if (neighborsNames) {
+			
+            for (const neighborName of neighborsNames) {
+               // Στέλνει scout σε κάθε γείτονα για έλεγχο.
+			  this.sendScout(roomName,neighborName);
+            }
+		 }
+		
+		//debugConsole.debugObject("Extension","Neighbors is",neighborsNames);	
+	} 
     /**
      * Ελέγχει και αποθηκεύει δεδομένα για τα δωμάτια στα οποία έχουμε ορατότητα.
      */
@@ -70,7 +117,7 @@ class ExpansionManager {
     /**
      * Ενημερώνει τη μνήμη με τα δεδομένα του δωματίου (Sources, Controller, Enemies).
      */
-    updateRoomIntel(room, hasGCL) {
+    updateRoomIntel(room) {
         const mem = Memory.rooms[room.name] || (Memory.rooms[room.name] = {});
         const controller = room.controller;
 
@@ -97,6 +144,7 @@ class ExpansionManager {
                 mem.sources = sources.map(s => ({ id: s.id, x: s.pos.x, y: s.pos.y }));
                 mem.controllerPos = { x: controller.pos.x, y: controller.pos.y };
                 delete mem.enemyInfo;
+				//TODO ΠΩς θα ξεκινήσω τη διαχείριση του δωματίου για remotemining.
             }
         } else {
             mem.type = 'enemy';
@@ -207,10 +255,13 @@ class ExpansionManager {
             });
         } else {
             // Δεν υπάρχουν observers, άρα χρειαζόμαστε scouts
-            targets.forEach(t => this.markForScout(t));
+            targets.forEach(t => this.sendScout(t));
         }
     }
-
+	sendScout(roomName,targetName) {
+		spawnManager.addRoleToQueue(roomName, ROLES.SCOUT, 50, [MOVE],  {},  targetName);
+		
+	} // end of sendScout
     markForScout(roomName) {
         if (!Memory.rooms[roomName]) Memory.rooms[roomName] = {};
         if (!Game.rooms[roomName]) {

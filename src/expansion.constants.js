@@ -8,5 +8,5 @@ module.exports = {
 		REFRESH_INTEL_GRAPH_INTERVAL:1000,
 		DELEGATE_VISION_TASKS_INTERVAL:30,
 	},
-    
+
 };

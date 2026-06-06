@@ -71,7 +71,7 @@ module.exports.loop = function () {
     if (!Memory.rooms) {
         Memory.rooms = {};
     }
-	
+	debugConsole.debugObject("MAin","metropolis",roomCache.World.Metropolis);
 	
 	const rooms = Memory.rooms;
 	const roomsName = Object.keys(rooms);
@@ -79,7 +79,13 @@ module.exports.loop = function () {
 	//debugConsole.debugObject("Main", "Rooms is", roomsName);
 
 	
-	const mineRoomsNames = roomsName.filter(name => rooms[name].type === ROOM_TYPE.METROPOLIS);
+	const mineRoomsNames =roomCache.world().Metropolis;
+	
+	
+	
+	
+	
+	roomsName.filter(name => rooms[name].type === ROOM_TYPE.METROPOLIS);
 	//debugConsole.debugObject("Main", "Metropolis is", mineRoomsNames);
 
 	const remoteMiningNames = roomsName.filter(name => rooms[name].type === ROOM_TYPE.REMOTE_MINING);

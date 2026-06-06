@@ -5,6 +5,7 @@
  * Διαχειρίζεται εσωτερικά πολλαπλά δωμάτια χωρίς να χρειάζεται ξεχωριστό Registry, μειώνοντας το CPU overhead.
  */
 var debugConsole = require("utils.debugConsole");
+const {ROOM_TYPE}=require("expansion.constants");
 const CONFIG = {
     ROADS_THRESHOLD: 30,
     LINKS_THRESHOLD: 2,
@@ -18,6 +19,8 @@ class RoomCache {
          * @private
          */
         this._rooms = {};
+		this._world=null;
+		
     }
 
     /**
@@ -31,6 +34,12 @@ class RoomCache {
             this._rooms[roomName] = new RoomCacheInstance(roomName);
         }
         return this._rooms[roomName] || null;
+    }
+	World() {
+        if (!this._world) {
+            this._world = new WorldCacheInstance();
+        }
+        return this._world;
     }
 
     /**
@@ -53,6 +62,7 @@ class RoomCache {
         for (const roomName in this._rooms) {
             this._rooms[roomName].forceRefresh();
         }
+		
     }
     /**
      * Εξαναγκάζει την ανανέωση των στατικών δεδομένων για ένα ή όλα τα δωμάτια.
@@ -76,7 +86,35 @@ class RoomCache {
     getContainers(roomName) { return this.in(roomName).containers; }
     getHostileCreeps(roomName) { return this.in(roomName).hostileCreeps; }
 }
-
+class WorldCacheInstance{
+	constructor() {
+		if(!Memory.world){
+			Memory.world={};
+		}
+	}
+	get World() {
+		return Memory.world;
+	}
+	get Metropolis() {
+		if( !this.World.metropolis) {
+			const rooms = Memory.rooms||{};
+			const roomsName = Object.keys(rooms);
+			const cities=roomsName.filter(name =>rooms[name] && rooms[name].type === ROOM_TYPE.METROPOLIS);
+			if (cities && cities.length>0) {
+				debugConsole.debugObject("RoomCache","cities is",cities);
+				this.World.metropolis=cities;
+			} else {
+				return [];
+			}
+		}
+		return this.World.metropolis;
+		
+		
+	}
+	flush() {
+			Memory.world={};
+	}
+}
 /**
  * Εσωτερική κλάση που αντιπροσωπεύει την cache ενός συγκεκριμένου δωματίου.
  * Δεν εξάγεται απευθείας, αλλά η πρόσβαση γίνεται μέσω της RoomCache.in(roomName).
@@ -118,8 +156,8 @@ class RoomCacheInstance {
 
     clearTickCache() {
         this._tickCache = {};
-        if (Memory.rooms[this.roomName])
-            Memory.rooms[this.roomName].cache = this.cache;
+        // if (Memory.rooms[this.roomName])
+            // Memory.rooms[this.roomName].cache = this.cache;
     }
 
     forceRefresh() {

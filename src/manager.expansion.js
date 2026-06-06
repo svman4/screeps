@@ -29,7 +29,8 @@ class ExpansionManager {
 		if(!lastCheck || (Game.time-EXPANSION_CONSTANTS.REFRESH_INTEL_GRAPH_INTERVAL)>=lastCheck) {
 			Memory.expansionCheckTime=Game.time;
 			//console.log(Memory.expansionCheckTime);
-			this._refreshViewInNeigbors();
+			//this._refreshViewInNeigbors();
+			this._enableRemoteMiningRoom();
 		}
 		
 		
@@ -50,7 +51,7 @@ class ExpansionManager {
 			// //debugConsole.debugObject("Expansion", "Remote mining room is", rmRoom);
 			// const room = roomCache.in(rmRoom).room;
 			// debugConsole.debugText("Expansion", Remote mining room is", rmRoom);
-		// }
+		// } 
 		
 		
 		
@@ -63,6 +64,11 @@ class ExpansionManager {
           //  this.delegateVisionTasks();
         }
     }
+	_enableRemoteMiningRoom() {
+		
+		
+		
+	} // end of _enableRemoteMiningRoom
 	_refreshViewInNeigbors() {
 		for (const roomName in Game.rooms) {
             const room = Game.rooms[roomName];
@@ -135,9 +141,6 @@ class ExpansionManager {
         const mem = Memory.rooms[room.name] || (Memory.rooms[room.name] = {});
         const controller = room.controller;
 
-        mem.lastScouted = Game.time;
-        mem.scoutNeeded = false; // Καθαρίζει τη σημαία εφόσον έχουμε vision
-
         if (!controller) {
             mem.type = ROOM_TYPE.EMPTY;
             return;
@@ -158,7 +161,7 @@ class ExpansionManager {
                 mem.sources = sources.map(s => ({ id: s.id, x: s.pos.x, y: s.pos.y }));
                 mem.controllerPos = { x: controller.pos.x, y: controller.pos.y };
                 delete mem.enemyInfo;
-				//TODO ΠΩς θα ξεκινήσω τη διαχείριση του δωματίου για remotemining.
+
             }
         } else {
             mem.type = ROOM_TYPE.ENEMY;

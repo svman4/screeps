@@ -24,42 +24,46 @@ class ExpansionManager {
         // Εξοικονόμηση CPU: Σταματάμε αν το bucket είναι χαμηλό
         if (Game.cpu.bucket < 500) return;
 
-
-		if(Game.time%EXPANSION_CONSTANTS.REFRESH_INTEL_GRAPH_INTERVAL===0) {
-			this.refreshViewInNeigbors();
+		const lastCheck=Memory.expansionCheckTime;
+		
+		if(!lastCheck || (Game.time-EXPANSION_CONSTANTS.REFRESH_INTEL_GRAPH_INTERVAL)>=lastCheck) {
+			Memory.expansionCheckTime=Game.time;
+			//console.log(Memory.expansionCheckTime);
+			this._refreshViewInNeigbors();
 		}
 		
+		
+		
+		
+		// const rooms = Memory.rooms;
+		// const roomsName = Object.keys(rooms);
 
-		
-		
-		
-        // Βρίσκουμε τα δωμάτια που μας ανήκουν
-        //const hasGCL = Game.gcl.level > myRoomNames.length;
-		// TODO κάθε 30 tick
-		// έλεγχος για κάθε γειτονικό δωμάτιο. remote mining ή αν υπάρχει Observer και όλα τα υπόλοιπα.
-		
-		
-		// Κάθε refresh_intel_graph_interval 
-		//	Αν δεν υπάρχει observer αποστολή scout για έλεγχο του γειτονικού δωματίου.
-			
-		//
+		// //debugConsole.debugObject("Main", "Rooms is", roomsName);
 
+	
+		// //const mineRoomsNames = roomsName.filter(name => rooms[name].type === ROOM_TYPE.METROPOLIS);
+		// //debugConsole.debugObject("Main", "Metropolis is", mineRoomsNames);
 
-        // 1. Επεξεργασία δεδομένων από το προηγούμενο tick (από Observer ή Scout)
-        //this.readVisionData(false);
-        
-        // 2. Ανανέωση του χάρτη (Graph) των γειτονικών δωματίων (Βαριά εργασία)
-        if (Game.time % EXPANSION_CONSTANTS.REFRESH_INTEL_GRAPH_INTERVAL === 0) {
-          //  this.refreshIntelGraph(myRoomNames);
-        }
+		// const remoteMiningNames = roomsName.filter(name => rooms[name].type === ROOM_TYPE.REMOTE_MINING);
+		// //debugConsole.debugObject("Expansion", "Remote mining rooms is", remoteMiningNames);
+		// for (const rmRoom of remoteMiningNames) {
+			// //debugConsole.debugObject("Expansion", "Remote mining room is", rmRoom);
+			// const room = roomCache.in(rmRoom).room;
+			// debugConsole.debugText("Expansion", Remote mining room is", rmRoom);
+		// }
+		
+		
+		
+		
+		
 
-        // 3. Ανάθεση εργασιών στους Observers ή προετοιμασία για αποστολή Scouts
+		// 3. Ανάθεση εργασιών στους Observers ή προετοιμασία για αποστολή Scouts
 
         if (Game.time % EXPANSION_CONSTANTS.DELEGATE_VISION_TASKS_INTERVAL === 0) {
           //  this.delegateVisionTasks();
         }
     }
-	refreshViewInNeigbors() {
+	_refreshViewInNeigbors() {
 		for (const roomName in Game.rooms) {
             const room = Game.rooms[roomName];
             if (room.controller && room.controller.my) {
@@ -69,34 +73,41 @@ class ExpansionManager {
 				if(room.controller.level<3) {
 					return;
 				}
-				this.checkNeighborsFrom(roomName);
+				this._checkNeighborsFrom(roomName);
 			}
         }
 	}
-	checkNeighborsFrom(roomName){ 
-		if(!roomName || roomName===null) {
+	_checkNeighborsFrom(metropolisRoomName){ 
+		if(!metropolisRoomName || metropolisRoomName===null) {
 			return;
 		}
-		const room=Game.rooms[roomName];
+		const room=Game.rooms[metropolisRoomName];
 		
 		if (!room) {
 			return ;
 		}
-		console.log(room.name);
+		//console.log(metropolisRoomName.name);
 		
-		const exits = Game.map.describeExits(roomName);
+		const exits = Game.map.describeExits(metropolisRoomName);
 		//debugConsole.debugObject("Extension","exits is",exits);		
 		const neighborsNames=Object.values(exits);
-         if (neighborsNames) {
-			
-            for (const neighborName of neighborsNames) {
-               // Στέλνει scout σε κάθε γείτονα για έλεγχο.
-			  this.sendScout(roomName,neighborName);
-            }
-		 }
+        if (!neighborsNames) 
+			return;			
+        for (const neighborName of neighborsNames) {
+            // Στέλνει scout σε κάθε γείτονα για έλεγχο.
+			Memory.rooms[neighborName].metropolis=metropolisRoomName;
+			if (Game.rooms[neighborName]) {
+			 this.updateRoomIntel(neighborName);						
+			}
+			else			
+			{
+				this.sendScout(metropolisRoomName,neighborName);
+			}
+		}
+	}
 		
-		//debugConsole.debugObject("Extension","Neighbors is",neighborsNames);	
-	} 
+	
+	 
     /**
      * Ελέγχει και αποθηκεύει δεδομένα για τα δωμάτια στα οποία έχουμε ορατότητα.
      */
@@ -159,37 +170,37 @@ class ExpansionManager {
         }
     }
 
-    /**
-     * Σαρώνει τον χάρτη (BFS) γύρω από τα δωμάτιά μας μέχρι ένα συγκεκριμένο βάθος (MAX_REACH_DEPTH).
-     */
-    refreshIntelGraph(myRoomNames) {
-        let reachableRooms = new Set();
-        let queue = myRoomNames.map(name => ({ name: name, depth: 0 }));
-        let visited = new Set(myRoomNames);
+    // /**
+     // * Σαρώνει τον χάρτη (BFS) γύρω από τα δωμάτιά μας μέχρι ένα συγκεκριμένο βάθος (MAX_REACH_DEPTH).
+     // */
+    // refreshIntelGraph(myRoomNames) {
+        // let reachableRooms = new Set();
+        // let queue = myRoomNames.map(name => ({ name: name, depth: 0 }));
+        // let visited = new Set(myRoomNames);
 
-        while (queue.length > 0) {
-            let current = queue.shift();
-            if (current.depth >= EXPANSION_CONSTANTS.MAX_REACH_DEPTH) continue;
+        // while (queue.length > 0) {
+            // let current = queue.shift();
+            // if (current.depth >= EXPANSION_CONSTANTS.MAX_REACH_DEPTH) continue;
 
-            const exits = Game.map.describeExits(current.name);
-            if (!exits) continue;
+            // const exits = Game.map.describeExits(current.name);
+            // if (!exits) continue;
 
-            for (const neighborName of Object.values(exits)) {
-                if (visited.has(neighborName)) continue;
+            // for (const neighborName of Object.values(exits)) {
+                // if (visited.has(neighborName)) continue;
 
-                visited.add(neighborName);
-                reachableRooms.add(neighborName);
+                // visited.add(neighborName);
+                // reachableRooms.add(neighborName);
 
-                // Συνεχίζουμε το ψάξιμο εκτός αν είναι εχθρικό δωμάτιο
-                if (this.shouldExpandSearchThrough(neighborName)) {
-                    queue.push({ name: neighborName, depth: current.depth + 1 });
-                }
-            }
-        }
+                // // Συνεχίζουμε το ψάξιμο εκτός αν είναι εχθρικό δωμάτιο
+                // if (this.shouldExpandSearchThrough(neighborName)) {
+                    // queue.push({ name: neighborName, depth: current.depth + 1 });
+                // }
+            // }
+        // }
 
-        Memory.observerQueue = Array.from(reachableRooms);
-        this.cleanOldMemory(myRoomNames, Array.from(reachableRooms));
-    }
+        // Memory.observerQueue = Array.from(reachableRooms);
+        // this.cleanOldMemory(myRoomNames, Array.from(reachableRooms));
+    // }
 
     shouldExpandSearchThrough(roomName) {
         const mem = Memory.rooms[roomName];
@@ -265,25 +276,25 @@ class ExpansionManager {
 		spawnManager.addRoleToQueue(roomName, ROLES.SCOUT, 50, [MOVE],  {},  targetName);
 		
 	} // end of sendScout
-    markForScout(roomName) {
-        if (!Memory.rooms[roomName]) Memory.rooms[roomName] = {};
-        if (!Game.rooms[roomName]) {
-            Memory.rooms[roomName].scoutNeeded = true;
-        }
-    }
+    // markForScout(roomName) {
+        // if (!Memory.rooms[roomName]) Memory.rooms[roomName] = {};
+        // if (!Game.rooms[roomName]) {
+            // Memory.rooms[roomName].scoutNeeded = true;
+        // }
+    // }
 
     /**
      * Επιστρέφει ένα δωμάτιο που χρειάζεται Scout (χρήσιμο για το spawnManager).
      */
-    getScoutTarget() {
-        return _.find(Memory.observerQueue, name => Memory.rooms[name]?.scoutNeeded);
-    }
+    // getScoutTarget() {
+        // return _.find(Memory.observerQueue, name => Memory.rooms[name]?.scoutNeeded);
+    // }
 
-    clearScoutFlag(roomName) {
-        if (Memory.rooms[roomName]) {
-            delete Memory.rooms[roomName].scoutNeeded;
-        }
-    }
+    // clearScoutFlag(roomName) {
+        // if (Memory.rooms[roomName]) {
+            // delete Memory.rooms[roomName].scoutNeeded;
+        // }
+    // }
 
     cleanOldMemory(myRooms, neighbors) {
         const valid = _.union(myRooms, neighbors);

@@ -99,7 +99,7 @@ module.exports.loop = function () {
 			delete room.memory.type;
 			continue;
 		}
-          //    console.log(`🏠 Επεξεργασία δωματίου: ${roomName} (RCL: ${room.controller.level})`);
+        //console.log(`🏠 Επεξεργασία δωματίου: ${roomName} (RCL: ${room.controller.level})`);
 
             // HIGH PRIORITY - Πάντα τρέχουν
         runAndCatch((name) => defenceManager.run(name), "Error on defenceManager (" + roomName + ")", roomName);

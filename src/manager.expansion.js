@@ -29,7 +29,7 @@ class ExpansionManager {
 		if(!lastCheck || (Game.time-EXPANSION_CONSTANTS.REFRESH_INTEL_GRAPH_INTERVAL)>=lastCheck) {
 			Memory.expansionCheckTime=Game.time;
 			//console.log(Memory.expansionCheckTime);
-			//this._refreshViewInNeigbors();
+			this._refreshViewInNeigbors();
 			this._enableRemoteMiningRoom();
 		}
 		
@@ -101,7 +101,7 @@ class ExpansionManager {
 			return;			
         for (const neighborName of neighborsNames) {
             // Στέλνει scout σε κάθε γείτονα για έλεγχο.
-			Memory.rooms[neighborName].metropolis=metropolisRoomName;
+			Memory.rooms[neighborName].city=metropolisRoomName;
 			if (Game.rooms[neighborName]) {
 			 this.updateRoomIntel(neighborName);						
 			}

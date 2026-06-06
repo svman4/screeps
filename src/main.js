@@ -71,32 +71,31 @@ module.exports.loop = function () {
     if (!Memory.rooms) {
         Memory.rooms = {};
     }
-	debugConsole.debugObject("MAin","metropolis",roomCache.World.Metropolis);
 	
-	const rooms = Memory.rooms;
-	const roomsName = Object.keys(rooms);
-
-	//debugConsole.debugObject("Main", "Rooms is", roomsName);
+	
 
 	
-	const mineRoomsNames =roomCache.world().Metropolis;
+	
+	const citiesNames =roomCache.World().cities;
 	
 	
 	
 	
 	
-	roomsName.filter(name => rooms[name].type === ROOM_TYPE.METROPOLIS);
-	//debugConsole.debugObject("Main", "Metropolis is", mineRoomsNames);
-
-	const remoteMiningNames = roomsName.filter(name => rooms[name].type === ROOM_TYPE.REMOTE_MINING);
+	
+	// debugConsole.debugObject("Main", "Metropolis is", citiesNames);
+	
 	//debugConsole.debugObject("Main", "Remote mining rooms is", remoteMiningNames);
 
 	
     roomCache.run();  // Καθαρισμός cache ανά tick για όλα τα δωμάτια
     // Εκτέλεση ανά δωμάτιο
-    for (const roomName of mineRoomsNames) {
-  //for (const roomName in Game.rooms) {	
-	
+    for (const roomName of citiesNames) {
+  	
+		// const shiresOfCity=roomCache.World().getShiresOfCity(roomName);
+		 // debugConsole.debugObject("Main", "Shire of city of "+roomName, shiresOfCity);
+		
+		
         const room = roomCache.in(roomName).room; // Εξασφαλίζουμε ότι το RoomCache είναι έτοιμο για το δωμάτιο
 
 

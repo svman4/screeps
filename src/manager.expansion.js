@@ -4,11 +4,14 @@
  * μέσω Observers και Scouts.
  */
 
- const {EXPANSION_CONSTANTS}=require("expansion.constants");
+ const {EXPANSION_CONSTANTS,ROOM_TYPE}=require("expansion.constants");
  const roomCache=require("utils.RoomCache");
  const spawnManager=require("manager.spawn");
  const {ROLES}=require("spawn.constants");
  const debugConsole=require("utils.debugConsole");
+ 
+ 
+ 
 class ExpansionManager {
     constructor() {
 		
@@ -61,7 +64,7 @@ class ExpansionManager {
             const room = Game.rooms[roomName];
             if (room.controller && room.controller.my) {
                 // ΓΙα κάθε δωμάτιο στο οποίο είμαστε κάτοχοι(άρα είναι ή θα γίνει metropolis.
-				
+				room.memory.type=ROOM_TYPE.METROPOLIS;
 				// έλεγχος για το level του room. 
 				if(room.controller.level<3) {
 					return;
@@ -125,7 +128,7 @@ class ExpansionManager {
         mem.scoutNeeded = false; // Καθαρίζει τη σημαία εφόσον έχουμε vision
 
         if (!controller) {
-            mem.type = 'corridor';
+            mem.type = ROOM_TYPE.EMPTY;
             return;
         }
 
@@ -140,14 +143,14 @@ class ExpansionManager {
         if (isFree) {
             const sources = room.find(FIND_SOURCES);
             if (sources.length > 0) {
-                mem.type = 'remote_mining'; 
+                mem.type = ROOM_TYPE.REMOTE_MINING;
                 mem.sources = sources.map(s => ({ id: s.id, x: s.pos.x, y: s.pos.y }));
                 mem.controllerPos = { x: controller.pos.x, y: controller.pos.y };
                 delete mem.enemyInfo;
 				//TODO ΠΩς θα ξεκινήσω τη διαχείριση του δωματίου για remotemining.
             }
         } else {
-            mem.type = 'enemy';
+            mem.type = ROOM_TYPE.ENEMY;
             mem.enemyInfo = {
                 owner: controller.owner?.username || 'Invader',
                 level: controller.level,

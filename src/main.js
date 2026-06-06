@@ -19,6 +19,8 @@ var spawnManager = require('manager.spawn');
 var defenceManager = require('manager.defense');
 var constructionManager = require('manager.construction');
 var expansionManager = require('manager.expansion');
+
+var {ROOM_TYPE}=require("expansion.constants");
 var logisticsManager = require('manager.logistics');
 const militaryController = require('manager.military');
 var roleManager = require('manager.role');
@@ -27,6 +29,9 @@ var pixels = require('manager.pixels');
 var linkManager = require('manager.link');
 var roomCache = require('utils.RoomCache');
 var RollingAverage = require('utils.RollingAverage');
+
+const debugConsole=require("utils.debugConsole");
+
 global.RoomInfo = function () {
     let answer = "\n--- 🏰 Controller Progress Report ---\n";
 
@@ -36,7 +41,7 @@ global.RoomInfo = function () {
     const myRooms = Object.values(Game.rooms).filter(r => r.controller && r.controller.my);
 
     if (myRooms.length === 0) return "No rooms with active visibility found.";
-
+    
     for (const room of myRooms) {
         const controller = room.controller;
 
@@ -66,32 +71,53 @@ module.exports.loop = function () {
     if (!Memory.rooms) {
         Memory.rooms = {};
     }
+	
+	
+	const rooms = Memory.rooms;
+	const roomsName = Object.keys(rooms);
+
+	//debugConsole.debugObject("Main", "Rooms is", roomsName);
+
+	
+	const mineRoomsNames = roomsName.filter(name => rooms[name].type === ROOM_TYPE.METROPOLIS);
+	//debugConsole.debugObject("Main", "Metropolis is", mineRoomsNames);
+
+	const remoteMiningNames = roomsName.filter(name => rooms[name].type === ROOM_TYPE.REMOTE_MINING);
+	//debugConsole.debugObject("Main", "Remote mining rooms is", remoteMiningNames);
+
+	
     roomCache.run();  // Καθαρισμός cache ανά tick για όλα τα δωμάτια
     // Εκτέλεση ανά δωμάτιο
-    for (const roomName in Game.rooms) {
+    for (const roomName of mineRoomsNames) {
+  //for (const roomName in Game.rooms) {	
+	
         const room = roomCache.in(roomName).room; // Εξασφαλίζουμε ότι το RoomCache είναι έτοιμο για το δωμάτιο
 
 
-        if (room.controller && room.controller.my) {
-            //    console.log(`🏠 Επεξεργασία δωματίου: ${roomName} (RCL: ${room.controller.level})`);
+        // if (room.controller && room.controller.my) {
+		if (!room.controller.my) {
+			delete room.memory.type;
+			continue;
+		}
+          //    console.log(`🏠 Επεξεργασία δωματίου: ${roomName} (RCL: ${room.controller.level})`);
 
             // HIGH PRIORITY - Πάντα τρέχουν
-            runAndCatch((name) => defenceManager.run(name), "Error on defenceManager (" + roomName + ")", roomName);
+        runAndCatch((name) => defenceManager.run(name), "Error on defenceManager (" + roomName + ")", roomName);
             // runAndCatch((name) => militaryController.run(name), "Error on militaryController (" + roomName + ")", roomName);
 
-            runAndCatch((name) => logisticsManager.run(name), "Error on logisticsManager (" + roomName + ")", roomName);
+        runAndCatch((name) => logisticsManager.run(name), "Error on logisticsManager (" + roomName + ")", roomName);
 
-            runAndCatch((name) => linkManager.run(name), "error on linkmanager (" + roomName + ")", roomName);
+        runAndCatch((name) => linkManager.run(name), "error on linkmanager (" + roomName + ")", roomName);
 
-            runAndCatch((name) => constructionManager.run(name), "error on constructionManager (" + roomName + ")", roomName);
-            runAndCatch((name) => market.run(name), "error on market (" + roomName + ")", roomName);
+        runAndCatch((name) => constructionManager.run(name), "error on constructionManager (" + roomName + ")", roomName);
+        runAndCatch((name) => market.run(name), "error on market (" + roomName + ")", roomName);
 
 
-            //Οπτική πληροφόρηση
-            if (Memory.debug.status) {
-                showRoomInfo(room);
-            }
+        //Οπτική πληροφόρηση
+        if (Memory.debug.status) {
+            showRoomInfo(room);
         }
+        
     }
     runAndCatch(() => roleManager.run(), "Error on roleManager");
 

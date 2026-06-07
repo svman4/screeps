@@ -75,7 +75,7 @@ const POPULATION_MODULE_CONFIG = {
     UPGRADE_EFFICIENCY: 1,       // 1 WORK part = 1 energy per tick upgrade
 
     // Economic Balancing
-    MAINTENANCE_BUFFER: 7,       // Ενέργεια που κρατάμε για Towers/Spawning
+    MAINTENANCE_BUFFER: 5,       // Ενέργεια που κρατάμε για Towers/Spawning
     BUILDER_INCOME_SHARE: 0.5,   // Ποσοστό του εισοδήματος που πάει σε χτίσιμο
     MAX_BUILDER_WORK_BASELINE: 13, // Μέγιστο WORK για builders από το τρέχον εισόδημα
     SURPLUS_THRESHOLD: 0.5,      // Πάνω από ποιο ποσοστό Storage θεωρούμε ότι έχουμε πλεόνασμα

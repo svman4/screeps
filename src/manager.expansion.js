@@ -100,6 +100,9 @@ class ExpansionManager {
         if (!neighborsNames) 
 			return;			
         for (const neighborName of neighborsNames) {
+            if(!Memory.rooms[neighborName]) {
+                Memory.rooms[neighborName]={};
+            }
             // Στέλνει scout σε κάθε γείτονα για έλεγχο.
 			Memory.rooms[neighborName].city=metropolisRoomName;
 			if (Game.rooms[neighborName]) {

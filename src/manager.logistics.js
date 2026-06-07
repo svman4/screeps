@@ -446,7 +446,10 @@ const logisticsManager = {
         }
         this.initialiseLifecycle(creep);
 
-        if (!assignment) return;
+        if (!assignment) {
+            //TODO να πηγαίνει στην άκρη, εφόσον χρειάζεται για να μην ενοχλεί.
+            return;
+            }
 
         const isCarrying = creep.store[RESOURCE_ENERGY] > 0;
 

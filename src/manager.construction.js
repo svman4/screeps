@@ -101,13 +101,17 @@ class ConstructionManager {
         if (fullPlan.length === 0) return;
 		
         let remainingQuota = maxSites - sites.length;
+        let startingRemainingQuota=remainingQuota;
         remainingQuota = this.buildStructures(fullPlan, remainingQuota);
-        if (sites.length === 0) {
+        if (startingRemainingQuota===remainingQuota) {
 			const remainQuotaForDefence=100;
 			// Θέλουμε να χτίζει μονομιάς όλα τα αμυντικά κτίρια.
             remainingQuota = this.buildDefenses(fullPlan, remainQuotaForDefence);
+            if(remainingQuota!=remainQuotaForDefence) {
+                remainingQuota=0;
+            }
         }
-        if (sites.length === 0) {
+        if (startingRemainingQuota===remainingQuota) {
 			const remainQuotaForRoads=100;
 			// Θέλουμε να χτίζει μονομιάς όλους τους δρόμους στο τρέχον rcl.
             this.buildRoads(fullPlan, remainQuotaForRoads, rcl, builtMap);

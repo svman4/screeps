@@ -64,7 +64,8 @@ const POPULATION_GLOBAL_CONFIG = {
 };
 const SPAWN_MANAGER_CONFIG = {
     POPULATION_LIMIT_REFRESH_RATE: 100, //κάθε 100 TT
-    CREEP_PARTS_THRESHOLD: 0.3 // Αν η διαφορά στα parts είναι μικρότερη από 30%, περιμένουμε να πεθάνουν τα παλιά creeps για να κάνουμε πιο αποδοτική αντικατάσταση.
+    //CREEP_PARTS_THRESHOLD: 0.3 // Αν η διαφορά στα parts είναι μικρότερη από 30%, περιμένουμε να πεθάνουν τα παλιά creeps για να κάνουμε πιο αποδοτική αντικατάσταση.
+    DEFAULT_RETIREMENT_THRESHOLD:30
 }
 // --- MODULE SPECIFIC CONFIGURATION ---
 // Ρυθμίσεις που αφορούν αποκλειστικά τη λογική του Population Manager

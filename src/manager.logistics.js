@@ -1,7 +1,7 @@
 // manager.logistics.js
 const movementManager = require('manager.movement');
 const { STORAGE_LINK_ID } = require('manager.link');
-const { LEAD_TIME_KEY } = require("spawn.constants");
+const { LEAD_TIME_KEY, SPAWN_MANAGER_CONFIG } = require("spawn.constants")
 const roomCache = require('utils.RoomCache');
 const utilsRoomCache = require('./utils.RoomCache');
 /*
@@ -39,7 +39,7 @@ const TARGET_FULL_PERCENT = {
     POWER_SPAWN: 0
 };
 
-const MIN_LIFE_TO_LIVE = 50;
+const MIN_LIFE_TO_LIVE = SPAWN_MANAGER_CONFIG.DEFAULT_RETIREMENT_THRESHOLD;
 const UPDATE_TASKS_INTERVAL = 2;
 
 const DROPPED_SOURCE_ENERGY_LIMIT = 200;
@@ -431,12 +431,22 @@ const logisticsManager = {
              * Εκτελείται μία φορά όταν το creep φτάσει στη θέση του.
              */
     initialiseLifecycle: function (creep) {
+        
+        
         if (creep.memory.init === true) {
-            const spawnTimeConstant = (typeof CREEP_SPAWN_TIME !== 'undefined') ? CREEP_SPAWN_TIME : 3;
-            const spawnDuration = creep.body.length * spawnTimeConstant;
-            creep.memory[LEAD_TIME_KEY] = spawnDuration + 15;
+            creep.memory[LEAD_TIME_KEY] = this.getSpawningDuration(creep) + 15;
             delete creep.memory.init;
         }
+    },
+    /**
+     * Υπολογίζει πόσα ticks χρειάστηκαν για την κατασκευή του Creep.
+     * @returns {number} Ο συνολικός χρόνος σε ticks (body length * 3).
+     */
+    getSpawningDuration(creep) {
+        if (!creep || !creep.body) return 0;
+        // Το CREEP_SPAWN_TIME είναι συνήθως 3, αλλά καλό είναι να το έχουμε ως global constant
+        const spawnTimeConstant = (typeof CREEP_SPAWN_TIME !== 'undefined') ? CREEP_SPAWN_TIME : 3;
+        return creep.body.length * spawnTimeConstant;
     },
     runHaulerWithTask: function (creep, assignment) {
         if (creep.ticksToLive < MIN_LIFE_TO_LIVE) {

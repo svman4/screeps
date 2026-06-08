@@ -13,7 +13,7 @@
  */
 
 const movementManager = require('manager.movement');
-const { LEAD_TIME_KEY } = require("spawn.constants")
+const { LEAD_TIME_KEY, SPAWN_MANAGER_CONFIG } = require("spawn.constants")
 const roomCache = require('./utils.RoomCache');
 
 class BaseRole {
@@ -32,7 +32,7 @@ class BaseRole {
      * @returns {number}
      */
     getRetirementThreshold() {
-        return 30;
+        return SPAWN_MANAGER_CONFIG.DEFAULT_RETIREMENT_THRESHOLD;// 30;
     }
 
     /**

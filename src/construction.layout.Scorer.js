@@ -52,7 +52,7 @@ class Scorer {
         const { sources, controller, center } = context;
 
         const tempLinks = [];
-
+        // Αν υπάρχει πηγή σε απόσταση μικρότερη των 6 tiles τότε το link να φτιαχτεί τελευταίο.
         for (const pos of links) {
             let bonus = 0;
             let distToCenter = Math.abs(pos.x - center.x) + Math.abs(pos.y - center.y);
@@ -62,7 +62,7 @@ class Scorer {
             const isSourceLink = sources && sources.some(s => Math.max(Math.abs(s.x - pos.x), Math.abs(s.y - pos.y)) <= 2);
 
             if (isControllerLink) {
-                bonus = 70;
+                bonus = 78+ (distToCenter * 0.5);
             } else if (isStorageLink) {
                 bonus = 500;
             } else if (isSourceLink) {

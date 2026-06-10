@@ -220,11 +220,11 @@ class PopulationManager {
     _getContainerLimits(context) {
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
-                [ROLES.SIMPLE_HARVESTER]: Math.ceil(context.sources.length * POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE/3),
+                [ROLES.SIMPLE_HARVESTER]: 0,//Math.ceil(context.sources.length * POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE/4),
                 [ROLES.STATIC_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
             },
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
-                [ROLES.HAULER]: Math.ceil(this._calculateCarryQuota(context)/2),
+                [ROLES.HAULER]: Math.ceil(this._calculateCarryQuota(context)),
                 [ROLES.UPGRADER]: 2,
                 [ROLES.BUILDER]: 2
             },

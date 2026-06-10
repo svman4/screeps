@@ -424,7 +424,7 @@ class RoomCacheInstance {
             const spawns = this.room.find(FIND_MY_SPAWNS);
             if (spawns.length === 0) return null;
 
-            const containers = spawns[0].pos.findInRange(FIND_STRUCTURES, 4, {
+            const containers = spawns[0].pos.findInRange(FIND_STRUCTURES, 1, {
                 filter: s => s.structureType === STRUCTURE_CONTAINER
             });
             this.cache.recoveryContainerId = containers.length > 0 ? containers[0].id : null;

@@ -103,16 +103,21 @@ class ConstructionManager {
         let remainingQuota = maxSites - sites.length;
         let startingRemainingQuota=remainingQuota;
         remainingQuota = this.buildStructures(fullPlan, remainingQuota);
+        //console.log("start "+ remainingQuota + " "+startingRemainingQuota);
         if (startingRemainingQuota===remainingQuota) {
 			const remainQuotaForDefence=100;
 			// Θέλουμε να χτίζει μονομιάς όλα τα αμυντικά κτίρια.
             remainingQuota = this.buildDefenses(fullPlan, remainQuotaForDefence);
             if(remainingQuota!=remainQuotaForDefence) {
                 remainingQuota=0;
-            }
+            } else {
+                remainingQuota=startingRemainingQuota;
+            } 
+          //  console.log("roads "+ remainingQuota + " "+startingRemainingQuota);
         }
         if (startingRemainingQuota===remainingQuota) {
 			const remainQuotaForRoads=100;
+			//console.log("Defence " +remainingQuota + " "+startingRemainingQuota);
 			// Θέλουμε να χτίζει μονομιάς όλους τους δρόμους στο τρέχον rcl.
             this.buildRoads(fullPlan, remainQuotaForRoads, rcl, builtMap);
         }

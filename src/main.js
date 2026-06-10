@@ -100,7 +100,7 @@ module.exports.loop = function () {
 
 
         // if (room.controller && room.controller.my) {
-		if (!room.controller.my) {
+		if (!room || !room.controller.my) {
 			delete room.memory.type;
 			continue;
 		}

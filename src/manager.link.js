@@ -7,7 +7,7 @@
  * - Δυνατότητα αναγνώρισης του Link από το Logistics Manager για αυτόματη εκκένωση/τροφοδοσία.
  */
 
-const LIMIT_FOR_START_TRANSFER = 200;
+const LIMIT_FOR_START_TRANSFER = 400;
 const STORAGE_LINK_ID = "storageLinkId";
 
 class LinkManager {

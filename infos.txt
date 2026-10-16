@@ -1,0 +1,6 @@
+στη φάση 1 του construction να χτίζονται τα container των πηγών και του controller.
+
+στη φάση 2 του construction τα container και οι βασικοί δρόμοι.
+
+οι staticHarvester μπορούν να φτιάχτουν και πριν τα container των source. κι ας ρίχνουν την ενέργεια κάτω.
+Με αυτό το τρόπο θα κάνουν harvest ενέργεια και οι simpleHarvester θα κάνουν μόνο τις υπόλοιπες ενέργειες ή και harvester.

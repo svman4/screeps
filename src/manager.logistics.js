@@ -1,7 +1,7 @@
 // manager.logistics.js
 const movementManager = require('manager.movement');
 const { STORAGE_LINK_ID } = require('manager.link');
-const { LEAD_TIME_KEY } = require("spawn.constants");
+const { LEAD_TIME_KEY, SPAWN_MANAGER_CONFIG } = require("spawn.constants")
 const roomCache = require('utils.RoomCache');
 const utilsRoomCache = require('./utils.RoomCache');
 /*
@@ -29,17 +29,17 @@ const PRIORITIES = {
 };
 
 const TARGET_FULL_PERCENT = {
-    TERMINAL: 0.00,
+    TERMINAL: 0.6,
     STORAGE: 0.8,
     TOWER: 0.8,
     CONTROLLER_CONTAINER: 0.6,
-    FACTORY: 0.00,
-    LAB: 0.00,
-    NUKER: 0.00,
-    POWER_SPAWN: 0
+    FACTORY: 1.00,
+    LAB: 1.00,
+    NUKER: 1.00,
+    POWER_SPAWN: 1
 };
 
-const MIN_LIFE_TO_LIVE = 50;
+const MIN_LIFE_TO_LIVE = SPAWN_MANAGER_CONFIG.DEFAULT_RETIREMENT_THRESHOLD+10;
 const UPDATE_TASKS_INTERVAL = 2;
 
 const DROPPED_SOURCE_ENERGY_LIMIT = 200;
@@ -431,12 +431,22 @@ const logisticsManager = {
              * Εκτελείται μία φορά όταν το creep φτάσει στη θέση του.
              */
     initialiseLifecycle: function (creep) {
+        
+        
         if (creep.memory.init === true) {
-            const spawnTimeConstant = (typeof CREEP_SPAWN_TIME !== 'undefined') ? CREEP_SPAWN_TIME : 3;
-            const spawnDuration = creep.body.length * spawnTimeConstant;
-            creep.memory[LEAD_TIME_KEY] = spawnDuration + 15;
+            creep.memory[LEAD_TIME_KEY] = this.getSpawningDuration(creep) + 30;
             delete creep.memory.init;
         }
+    },
+    /**
+     * Υπολογίζει πόσα ticks χρειάστηκαν για την κατασκευή του Creep.
+     * @returns {number} Ο συνολικός χρόνος σε ticks (body length * 3).
+     */
+    getSpawningDuration(creep) {
+        if (!creep || !creep.body) return 0;
+        // Το CREEP_SPAWN_TIME είναι συνήθως 3, αλλά καλό είναι να το έχουμε ως global constant
+        const spawnTimeConstant = (typeof CREEP_SPAWN_TIME !== 'undefined') ? CREEP_SPAWN_TIME : 3;
+        return creep.body.length * spawnTimeConstant;
     },
     runHaulerWithTask: function (creep, assignment) {
         if (creep.ticksToLive < MIN_LIFE_TO_LIVE) {
@@ -446,7 +456,10 @@ const logisticsManager = {
         }
         this.initialiseLifecycle(creep);
 
-        if (!assignment) return;
+        if (!assignment) {
+            //TODO να πηγαίνει στην άκρη, εφόσον χρειάζεται για να μην ενοχλεί.
+            return;
+            }
 
         const isCarrying = creep.store[RESOURCE_ENERGY] > 0;
 
@@ -483,21 +496,24 @@ const logisticsManager = {
                 this.completeTask(creep);
             }
             // FEATURE: Scavenge adjacent structures/piles if hauler has free space left
-                if (creep.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
-                    //creep.say("I am hungry");
-                    
-                    // const adjacentStructures = creep.pos.findInRange(FIND_STRUCTURES, 1, {
-                    //     filter: (s) => s.store && s.store[RESOURCE_ENERGY] > 0 && s.id !== source.id
-                    // });
-                    // if (adjacentStructures.length > 0) {
-                    //     creep.withdraw(adjacentStructures[0], RESOURCE_ENERGY);
-                    // } else {
-                    //     const adjacentDrops = creep.pos.findInRange(FIND_DROPPED_RESOURCES, 1, {
-                    //         filter: (d) => d.resourceType === RESOURCE_ENERGY
-                    //     });
-                    //     if (adjacentDrops.length > 0) creep.pickup(adjacentDrops[0]);
-                    // }
+            if (creep.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+              // creep.say("I am hungry");
+                const adjacentStructures = creep.pos.findInRange(FIND_STRUCTURES, 1, {
+					filter: (s) => s.store && 
+						s.store[RESOURCE_ENERGY] > 0 && 
+						s.id !== source.id &&
+						(s.type===STRUCTURE_CONTAINER || s.type===STRUCTURE_STORAGE)
+                });
+                if (adjacentStructures.length > 0) {
+                    creep.withdraw(adjacentStructures[0], RESOURCE_ENERGY);
+                } else {
+                    const adjacentDrops = creep.pos.findInRange(FIND_DROPPED_RESOURCES, 1, {
+                        filter: (d) => d.resourceType === RESOURCE_ENERGY
+					});
+                    if (adjacentDrops.length > 0) 
+						creep.pickup(adjacentDrops[0]);
                 }
+            }
         } else {
             movementManager.smartMove(creep, source, 1);
         }

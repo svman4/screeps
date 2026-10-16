@@ -160,7 +160,8 @@ class SpawnManager {
         const maxEnergyAvailable = Game.rooms[roomName].energyCapacityAvailable;
 
         creepWithFlag.forEach(creep => {
-            if (creep.ticksToLive) {
+            if (creep.ticksToLive) { 
+				// έλεγχος αν το creep είναι ακόμα ζωντανό.
                 if (creep.memory.role === ROLES.STATIC_HARVESTER) {
                     const body = this.calculateBody(roomName, creep.memory.role, maxEnergyAvailable, 0);
 
@@ -172,7 +173,11 @@ class SpawnManager {
                     creep.memory[NEED_REPLACEMENT_FLAG] = false; // reset flag
                     // debugConsole.debugText("spawnManager", `Creep ${creep.name} is flagged for replacement. Requesting new ${creep.memory.role}.`);
                 }
-            }
+            } else {
+				// εφόσον το creep είναι νεκρό, κλείνουμε τo flag ώστε να μην επηρεάζει το κώδικα, μέχρι να διαγραφεί από τη μνήμη
+				creep.memory[NEED_REPLACEMENT_FLAG]=false;
+				debugConsole.debugText("Spawn","Βρέθηκε νεκρό creep με σημαία. Ακύρωση της σημαίας")
+			}
         });
 
     } // end of checkRoomNeeds

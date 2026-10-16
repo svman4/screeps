@@ -8,5 +8,11 @@ module.exports = {
 		REFRESH_INTEL_GRAPH_INTERVAL:1000,
 		DELEGATE_VISION_TASKS_INTERVAL:30,
 	},
-    
+	ROOM_TYPE:{
+		CITY:"city",
+		REMOTE_MINING:"remote_mining",
+		ENEMY:"enemy",
+		EMPTY:"empty"
+	}
+
 };

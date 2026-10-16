@@ -1,19 +1,30 @@
 const BaseRole = require('role.base');
-const movementManager = require('manager.movement');
+
+const FSM = require('utils.fsm');
+const simpleHarvesterStates = new FSM({
+    COLLECTING: function() {
+        if (this.creep.store.getFreeCapacity() === 0) {
+            simpleHarvesterStates.transition(this, 'WORKING',this.creep.memory);
+            return;
+        }
+		if (!this.getEnergyFromDroppedEnergy()) 
+			this.getEnergy();
+    }, 
+    WORKING: function() {
+        if (this.creep.store[RESOURCE_ENERGY] === 0) {
+            simpleHarvesterStates.transition(this, 'COLLECTING',this.creep.memory);
+            return;
+        }        
+        if (this.fillSpawnExtension()) return;
+        if (this.buildStructures()) return;
+        this.upgradeController();
+    }
+}); // end of simpleHarvesterStates
 
 class SimpleHarvester extends BaseRole {
     run() {
         if (this.travelToHomeRoom()) return;
-        if (this.creep.memory.working && this.creep.store[RESOURCE_ENERGY] === 0) this.creep.memory.working = false;
-        if (!this.creep.memory.working && this.creep.store.getFreeCapacity() === 0) this.creep.memory.working = true;
-
-        if (this.creep.memory.working) {
-            if (this.fillSpawnExtension()) return;
-            if (this.buildStructures()) return;
-            this.upgradeController();
-        } else {
-            if (!this.getEnergyFromDroppedEnergy()) this.getEnergy();
-        }
+        simpleHarvesterStates.run(this,'COLLECTING',this.creep.memory);
     }
 }
 module.exports = SimpleHarvester;

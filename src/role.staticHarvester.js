@@ -13,37 +13,63 @@ const BaseRole = require('role.base');
 const movementManager = require('manager.movement');
 const { NEED_REPLACEMENT_FLAG } = require('spawn.constants');
 const roomCache = require('utils.RoomCache');
+
+
+const FSM = require('utils.fsm');
+const staticHarvesterStates = new FSM(
+	{
+		gotoSource: function() {
+			const source = this.resolveSource();
+			if (!source) return;
+	
+			const container = roomCache.in(this.creep.room.name).getSourceContainer(source.id);
+			if (this.handlePositioning(source, container)) return;
+			staticHarvesterStates.transition(this,"initialiseLifecycle",this.creep.memory);		
+		}, 
+		initialiseLifecycle: function() { 
+			
+			const travelTime = CREEP_LIFE_TIME - this.creep.ticksToLive;
+			const spawnTime = this.getSpawningDuration();
+			const buffer = 30;
+
+			this.creep.memory.leadTime = travelTime + spawnTime + buffer;
+			delete this.creep.memory.init;
+			staticHarvesterStates.transition(this,"harvesting",this.creep.memory);		
+		
+		
+		},
+		harvesting:function() {
+			//Εφόσον είναι ήδη στη θέση, ξεκινά την εξόρυξη.
+			const source=this.resolveSource();
+			if (this.handleRetirement(source)) return;	
+			
+			
+			
+			// Έλεγχος αν πρέπει να ζητηθεί αντικαταστάτης
+			this.checkReplacementNeeds();
+
+			// Διαχείριση εφοδιασμού (Links/Containers)
+			this.manageLogistics();
+
+			// Εκτέλεση εξόρυξης
+			this.performHarvest(source);
+			// Έλεγχος αν ο αντικαταστάτης είναι εδώ για να αποχωρήσει (suicide)
+			
+		
+		
+		}
+	}); // end of staticHarvesterStates
+
+
+
 class StaticHarvester extends BaseRole {
     /**
      * Κύρια ροή εργασιών του creep.
      */
-    run() {
-        const source = this.resolveSource();
-        if (!source) return;
-
-        const container = roomCache.in(this.creep.room.name).getSourceContainer(source.id);
-
-        //debugConsole.debugObject("staticHarvester","source container",container);
-
-        // Διαχείριση κίνησης προς το σημείο εργασίας
-        if (this.handlePositioning(source, container)) return;
-
-        // Αρχικοποίηση δεδομένων αντικατάστασης μόλις φτάσει
-        this.initialiseLifecycle(container);
-
-        // Έλεγχος αν πρέπει να ζητηθεί αντικαταστάτης
-        this.checkReplacementNeeds();
-
-        // Διαχείριση εφοδιασμού (Links/Containers)
-        this.manageLogistics(container);
-
-        // Εκτέλεση εξόρυξης
-        this.performHarvest(source);
-        // Έλεγχος αν ο αντικαταστάτης είναι εδώ για να αποχωρήσει (suicide)
-        if (this.handleRetirement(source)) return;
-
-    }
-
+	 run() { 
+		staticHarvesterStates.run(this,"gotoSource",this.creep.memory);
+	 }
+   
     /**
      * Εντοπίζει ή ανακτά την πηγή ενέργειας από τη μνήμη.
      */
@@ -101,16 +127,16 @@ class StaticHarvester extends BaseRole {
     /**
      * Εκτελείται μία φορά όταν το creep φτάσει στη θέση του.
      */
-    initialiseLifecycle() {
-        if (this.creep.memory.init === true) {
-            const travelTime = CREEP_LIFE_TIME - this.creep.ticksToLive;
-            const spawnTime = this.getSpawningDuration();
-            const buffer = 15;
+    // initialiseLifecycle() {
+        // if (this.creep.memory.init === true) {
+            // const travelTime = CREEP_LIFE_TIME - this.creep.ticksToLive;
+            // const spawnTime = this.getSpawningDuration();
+            // const buffer = 30;
 
-            this.creep.memory.leadTime = travelTime + spawnTime + buffer;
-            delete this.creep.memory.init;
-        }
-    }
+            // this.creep.memory.leadTime = travelTime + spawnTime + buffer;
+            // delete this.creep.memory.init;
+        // }
+    // }
 
     /**
      * Ελέγχει το χρόνο ζωής και ενεργοποιεί το αίτημα αντικατάστασης.
@@ -128,7 +154,7 @@ class StaticHarvester extends BaseRole {
     /**
      * Μεταφέρει ενέργεια σε Link αν υπάρχει.
      */
-    manageLogistics(container) {
+    manageLogistics() {
 
         const link = roomCache.in(this.creep.room.name).getSourceLink(this.creep.memory.sourceId);
         if (link && this.creep.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {

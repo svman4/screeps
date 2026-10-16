@@ -39,6 +39,27 @@ const { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG } = require('.
 const debugConsole = require("utils.debugConsole");
 
 var roomCache = require('utils.RoomCache');
+
+const FSM = require('utils.fsm');
+const populationManagerStates = new FSM({
+	'earlyGameEra': function() { 
+		
+		
+		// αν controller level Πάνω από 1 τότε
+		populationManagerStates.transition(this,'noContainerEra',this.room.memory);
+	},
+	'noContainerEra':function() {
+	},
+	'containerEra':function() {
+	},
+	'storageEra':function() {
+	},
+	'recoveryTime':function() {
+	}
+	
+}); // end of populationManagerHarvesterStates
+
+
 class PopulationManager {
     constructor() {
         // Ο constructor παραμένει καθαρός από σταθερές παραμέτρους
@@ -220,7 +241,7 @@ class PopulationManager {
     _getContainerLimits(context) {
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
-                [ROLES.SIMPLE_HARVESTER]: Math.ceil(context.sources.length * POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE/3),
+                [ROLES.SIMPLE_HARVESTER]: 1,//Math.ceil(context.sources.length * POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE/4),
                 [ROLES.STATIC_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
             },
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
@@ -272,6 +293,7 @@ class PopulationManager {
      * Καλείται από το SpawnManager.
      */
     updateRoomLimits(roomName) {
+		
         const room = Game.rooms[roomName];
         if (!room) return;
 

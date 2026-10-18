@@ -19,7 +19,7 @@
 
 // Προστέθηκε το DEFAULTS_RCL στο destructuring
 const { PRIORITIES, STRUCTURE_RCL_STEPS, DEFAULTS_RCL } = require('construction.constants');
-//const RoadPlanner = require('construction.roadPlanner');
+const RoadPlanner = require('construction.roadPlanner');
 
 class Scorer {
     /**
@@ -62,7 +62,7 @@ class Scorer {
             const isSourceLink = sources && sources.some(s => Math.max(Math.abs(s.x - pos.x), Math.abs(s.y - pos.y)) <= 2);
 
             if (isControllerLink) {
-                bonus = 78+ (distToCenter * 0.5);
+                bonus = 78 + (distToCenter * 0.5);
             } else if (isStorageLink) {
                 bonus = 500;
             } else if (isSourceLink) {

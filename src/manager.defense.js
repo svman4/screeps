@@ -204,7 +204,7 @@ var towerController = {
             return;
         }
         let hits_minimum_value = _.min(walls, 'hits').hits;
-        hits_minimum_value = Math.max(room.controller.level * 10000, hits_minimum_value);
+        hits_minimum_value = Math.max(room.controller.level * 1000, hits_minimum_value);
         hits_minimum_value = Math.floor(hits_minimum_value / step) * step;
         if (room.controller.level === 8) {
 

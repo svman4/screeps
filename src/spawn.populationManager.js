@@ -58,7 +58,7 @@ const populationManagerStates = new FSM({
             return populationManagerStates.states['noContainerEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής           			
 
         }
-        return getEarlyGameLimits(context);
+        return this._getEarlyGameLimits(context);
     },
     'noContainerEra': function () {
         const context = this._createContext(this.room);
@@ -84,7 +84,7 @@ const populationManagerStates = new FSM({
 
         }
         //---------------
-        return _getNoContainerLimits(context);
+        return this._getNoContainerLimits(context);
     },
     'containerEra': function () {
         const context = this._createContext(this.room);
@@ -300,13 +300,13 @@ class PopulationManager {
     _getNoContainerLimits(context) {
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
-                [ROLES.SIMPLE_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE,
+                [ROLES.SIMPLE_HARVESTER]: context.sources.length,
                 [ROLES.STATIC_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
             },
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
-                [ROLES.HAULER]: Math.ceil(this._calculateCarryQuota(context) / 2),
-                [ROLES.UPGRADER]: 2,
-                [ROLES.BUILDER]: 2
+                [ROLES.HAULER]: 3,
+                [ROLES.UPGRADER]: 1,
+                [ROLES.BUILDER]: 5
             },
             isRecovery: false
         };

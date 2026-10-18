@@ -41,6 +41,7 @@ const staticHarvesterStates = new FSM(
 		harvesting:function() {
 			//Εφόσον είναι ήδη στη θέση, ξεκινά την εξόρυξη.
 			const source=this.resolveSource();
+			// Έλεγχος αν ο αντικαταστάτης είναι εδώ για να αποχωρήσει (suicide)
 			if (this.handleRetirement(source)) return;	
 			
 			
@@ -53,7 +54,6 @@ const staticHarvesterStates = new FSM(
 
 			// Εκτέλεση εξόρυξης
 			this.performHarvest(source);
-			// Έλεγχος αν ο αντικαταστάτης είναι εδώ για να αποχωρήσει (suicide)
 			
 		
 		
@@ -90,7 +90,6 @@ class StaticHarvester extends BaseRole {
         const flag = NEED_REPLACEMENT_FLAG || 'needReplacementFlag';
         const ARRIVAL_RANGE = 1; // Απόσταση στην οποία θεωρούμε ότι ο αντικαταστάτης έφτασε
 
-        // Τροποποιημένη συνθήκη: Αν υπάρχει το flag και είναι false, προχωράμε σε suicide αν έφτασε ο αντικαταστάτης
         if (this.creep.memory[flag] !== false) return false;
 
         // Αναζήτηση για τον αντικαταστάτη που πλησιάζει
@@ -108,7 +107,7 @@ class StaticHarvester extends BaseRole {
             return true;
         }
         return false;
-    }
+    } // end of handleRetirement(source)
 
     /**
      * Μετακινεί το creep στη σωστή θέση (πάνω στο container ή δίπλα στην πηγή).
@@ -124,21 +123,7 @@ class StaticHarvester extends BaseRole {
         return false;
     }
 
-    /**
-     * Εκτελείται μία φορά όταν το creep φτάσει στη θέση του.
-     */
-    // initialiseLifecycle() {
-        // if (this.creep.memory.init === true) {
-            // const travelTime = CREEP_LIFE_TIME - this.creep.ticksToLive;
-            // const spawnTime = this.getSpawningDuration();
-            // const buffer = 30;
-
-            // this.creep.memory.leadTime = travelTime + spawnTime + buffer;
-            // delete this.creep.memory.init;
-        // }
-    // }
-
-    /**
+        /**
      * Ελέγχει το χρόνο ζωής και ενεργοποιεί το αίτημα αντικατάστασης.
      */
     checkReplacementNeeds() {

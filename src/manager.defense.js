@@ -9,7 +9,7 @@ var towerController = {
         const room = Game.rooms[roomName];
         if (!room) return;
         if (Game.time % 3000 === 0) {
-          //  this.refreshWallThreshold(room);
+            this.refreshWallThreshold(room);
 
 
         }

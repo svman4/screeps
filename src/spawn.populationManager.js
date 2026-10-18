@@ -42,55 +42,115 @@ var roomCache = require('utils.RoomCache');
 
 const FSM = require('utils.fsm');
 const populationManagerStates = new FSM({
-	'earlyGameEra': function() { 
-		
-		
-		// αν controller level Πάνω από 1 τότε
-		populationManagerStates.transition(this,'noContainerEra',this.room.memory);
-	},
-	'noContainerEra':function() {
-	},
-	'containerEra':function() {
-	},
-	'storageEra':function() {
-	},
-	'recoveryTime':function() {
-	}
-	
+    'earlyGameEra': function () {
+        const context = this._createContext(this.room);
+
+        if (context.isRecovery) {
+            populationManagerStates.transition(this, 'recoveryTime', this.room.memory);
+            return populationManagerStates.states['recoveryTime'].call(this); // Αμέσως εκτέλεση της νέας εποχής
+
+        }
+
+        // Αν controller level πάνω από 1 -> μετάβαση σε noContainerEra
+        if (context.level >= 2) {
+            populationManagerStates.transition(this, 'noContainerEra', this.room.memory);
+            console.log(`[PopulationManager] Room ${this.room.name} transitioned to noContainerEra`);
+            return populationManagerStates.states['noContainerEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής           			
+
+        }
+        return getEarlyGameLimits(context);
+    },
+    'noContainerEra': function () {
+        const context = this._createContext(this.room);
+
+        if (context.isRecovery) {
+            populationManagerStates.transition(this, 'recoveryTime', this.room.memory);
+            return populationManagerStates.states['recoveryTime'].call(this); // Αμέσως εκτέλεση της νέας εποχής           
+
+        }
+
+        // Αν πέσαμε πίσω στο RCL 1
+        if (context.level < 2) {
+            populationManagerStates.transition(this, 'earlyGameEra', this.room.memory);
+            console.log(`[PopulationManager] Room ${this.room.name} reverted to earlyGameEra`);
+            return populationManagerStates.states['earlyGameEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής    
+
+        }
+
+        if (context.hasContainers) {
+            populationManagerStates.transition(this, 'containerEra', this.room.memory);
+            console.log(`[PopulationManager] Room ${this.room.name} transitioned to containerEra`);
+            return populationManagerStates.states['containerEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής    
+
+        }
+        //---------------
+        return _getNoContainerLimits(context);
+    },
+    'containerEra': function () {
+        const context = this._createContext(this.room);
+
+        if (context.isRecovery) {
+            populationManagerStates.transition(this, 'recoveryTime', this.room.memory);
+            return populationManagerStates.states['recoveryTime'].call(this); // Αμέσως εκτέλεση της νέας εποχής    
+
+        }
+
+        if (!context.hasContainers && !context.storage) {
+            populationManagerStates.transition(this, 'noContainerEra', this.room.memory);
+            console.log(`[PopulationManager] Room ${this.room.name} reverted to noContainerEra`);
+            return populationManagerStates.states['noContainerEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής    
+
+        }
+
+        if (context.storage) {
+            populationManagerStates.transition(this, 'storageEra', this.room.memory);
+            console.log(`[PopulationManager] Room ${this.room.name} transitioned to storageEra`);
+            return populationManagerStates.states['storageEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής    			
+
+        }
+        return this._getContainerLimits(context);
+    },
+    'storageEra': function () {
+        const context = this._createContext(this.room);
+
+        if (context.isRecovery) {
+            populationManagerStates.transition(this, 'recoveryTime', this.room.memory);
+            console.log(`[PopulationManager] Room ${this.room.name} entered recoveryTime`);
+            return populationManagerStates.states['recoveryTime'].call(this); // Αμέσως εκτέλεση της νέας εποχής    			
+
+        }
+
+        if (!context.storage) {
+            populationManagerStates.transition(this, 'containerEra', this.room.memory);
+            console.log(`[PopulationManager] Room ${this.room.name} reverted to containerEra`);
+            populationManagerStates.states['containerEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής    			
+            return;
+        }
+        return this._getStorageLimits(context);
+
+    },
+    'recoveryTime': function () {
+        const context = this._createContext(this.room);
+        if (!context.isRecovery) {
+            populationManagerStates.transition(this, 'earlyGameEra', this.room.memory);
+            console.log(`[PopulationManager] Room ${this.room.name} entered earlyGameEra`);
+            return populationManagerStates.states['earlyGameEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής    			
+
+        }
+        // -------------------------------------------
+        const answer = this._getRecoveryLimits(context);
+        //debugConsole.debugObject("updateRoomLimits", "test", answer);
+        return answer;
+
+    }
 }); // end of populationManagerHarvesterStates
 
 
 class PopulationManager {
     constructor() {
-        // Ο constructor παραμένει καθαρός από σταθερές παραμέτρους
+
     }
 
-    /**
-     * Κεντρική μέθοδος υπολογισμού ορίων.
-     * @param {Room} room - Το αντικείμενο του δωματίου.
-     * @returns {Object} Τα όρια πληθυσμού χωρισμένα σε creeps και parts.
-     */
-    calculateLimits(room) {
-        const context = this._createContext(room);
-
-        // Αν το δωμάτιο είναι σε κατάσταση έκτακτης ανάγκης
-        if (context.isRecovery) {
-            return this._getRecoveryLimits(context);
-        }
-        // Αν έχουμε Storage (Mid-Late Game)
-        if (context.storage) {
-            return this._getStorageLimits(context);
-        }
-        //console.log(context.hasContainers);
-        // Αν έχουμε Containers (Early-Mid Game)
-        if (context.hasContainers) {
-            return this._getContainerLimits(context);
-        }
-
-        // Αρχή του παιχνιδιού (No infra)
-        
-        return this._getEarlyGameLimits(context);
-    }
 
     /**
      * Υπολογίζει τα διαθέσιμα WORK parts βάσει πραγματικού εισοδήματος.
@@ -167,7 +227,7 @@ class PopulationManager {
 
 
             const range = cache.getSourceDistance(source.id);
-			//debugConsole.debugText("PopulationManager","Source "+source.id+" distance is "+range);
+            //debugConsole.debugText("PopulationManager","Source "+source.id+" distance is "+range);
             const distance = (range !== Infinity) ? range : FALLBACK_DISTANCE;
 
             totalCarryRequired += (ENERGY_INCOME_TICK * distance * 2) / CARRY_CAPACITY;
@@ -214,7 +274,7 @@ class PopulationManager {
 
             hasConstruction: cache.constructionSites.length > 0,
             isRecovery: (!hasWork ||
-                (!hasCarry )) &&
+                (!hasCarry)) &&
                 room.controller &&
                 room.controller.level > 1
         };
@@ -237,6 +297,22 @@ class PopulationManager {
         this._distributeWorkQuotas(context, limits);
         return limits;
     }
+    _getNoContainerLimits(context) {
+        let limits = {
+            [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
+                [ROLES.SIMPLE_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE,
+                [ROLES.STATIC_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
+            },
+            [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
+                [ROLES.HAULER]: Math.ceil(this._calculateCarryQuota(context) / 2),
+                [ROLES.UPGRADER]: 2,
+                [ROLES.BUILDER]: 2
+            },
+            isRecovery: false
+        };
+        this._distributeWorkQuotas(context, limits);
+        return limits;
+    }
 
     _getContainerLimits(context) {
         let limits = {
@@ -245,7 +321,7 @@ class PopulationManager {
                 [ROLES.STATIC_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
             },
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
-                [ROLES.HAULER]: Math.ceil(this._calculateCarryQuota(context)/2),
+                [ROLES.HAULER]: Math.ceil(this._calculateCarryQuota(context) / 2),
                 [ROLES.UPGRADER]: 2,
                 [ROLES.BUILDER]: 2
             },
@@ -259,7 +335,7 @@ class PopulationManager {
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
                 [ROLES.SIMPLE_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE,
-                [ROLES.STATIC_HARVESTER]: 0//context.sources.length * POPULATION_MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
+                [ROLES.STATIC_HARVESTER]: 0,//context.sources.length //* POPULATION_MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
             },
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
                 [ROLES.HAULER]: 0,
@@ -293,11 +369,14 @@ class PopulationManager {
      * Καλείται από το SpawnManager.
      */
     updateRoomLimits(roomName) {
-		
+
         const room = Game.rooms[roomName];
         if (!room) return;
+        this.room = room;
 
-        const limits = this.calculateLimits(room);
+        const limits = populationManagerStates.run(this, "earlyGameEra", Memory.
+            rooms[roomName]);
+
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY] = limits;
 
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.HAVE_ROAD_KEY] = roomCache.in(roomName).hasRoads;
@@ -305,7 +384,7 @@ class PopulationManager {
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.ROOM_LEVEL_KEY] = room.controller.level;
     } // end of updateRoomLimits
 
-    
+
 } // end of class PopulationManager
 
 module.exports = PopulationManager;

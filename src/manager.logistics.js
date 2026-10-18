@@ -29,7 +29,7 @@ const PRIORITIES = {
 };
 
 const TARGET_FULL_PERCENT = {
-    TERMINAL: 0.6,
+    TERMINAL: 0.0,
     STORAGE: 0.8,
     TOWER: 0.8,
     CONTROLLER_CONTAINER: 0.6,

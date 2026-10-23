@@ -63,9 +63,10 @@ const POPULATION_GLOBAL_CONFIG = {
 
 };
 const SPAWN_MANAGER_CONFIG = {
-    POPULATION_LIMIT_REFRESH_RATE: 100, //κάθε 100 TT
+    POPULATION_LIMIT_REFRESH_RATE: 100, //κάθε 100 Tick
+    EMA_SMOOTHING_PERIODS: 13, // Πόσους κύκλους πίσω θέλουμε να "θυμάται" το EMA 
     //CREEP_PARTS_THRESHOLD: 0.3 // Αν η διαφορά στα parts είναι μικρότερη από 30%, περιμένουμε να πεθάνουν τα παλιά creeps για να κάνουμε πιο αποδοτική αντικατάσταση.
-    DEFAULT_RETIREMENT_THRESHOLD:30
+    DEFAULT_RETIREMENT_THRESHOLD: 30
 }
 // --- MODULE SPECIFIC CONFIGURATION ---
 // Ρυθμίσεις που αφορούν αποκλειστικά τη λογική του Population Manager
@@ -76,7 +77,7 @@ const POPULATION_MODULE_CONFIG = {
     UPGRADE_EFFICIENCY: 1,       // 1 WORK part = 1 energy per tick upgrade
 
     // Economic Balancing
-    MAINTENANCE_BUFFER: 7,       // Ενέργεια που κρατάμε για Towers/Spawning
+    MAINTENANCE_BUFFER: 4,       // Ενέργεια που κρατάμε για Towers/Spawning
     BUILDER_INCOME_SHARE: 0.5,   // Ποσοστό του εισοδήματος που πάει σε χτίσιμο
     MAX_BUILDER_WORK_BASELINE: 13, // Μέγιστο WORK για builders από το τρέχον εισόδημα
     SURPLUS_THRESHOLD: 0.5,      // Πάνω από ποιο ποσοστό Storage θεωρούμε ότι έχουμε πλεόνασμα

@@ -196,7 +196,8 @@ var towerController = {
         }
         const step = 1000;
 
-        if (!Memory.rooms[room.name]) Memory.rooms[room.name] = { wallLimit: 10000 };
+        if (!Memory.rooms[room.name]) 
+            Memory.rooms[room.name] = { wallLimit: 1000 };
 
 
         const walls = room.find(FIND_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART });

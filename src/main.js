@@ -103,7 +103,7 @@ module.exports.loop = function () {
 		if (room &&   room.controller.my) {
 		} else {
 		    //console.log(room.name);
-			delete room.memory.type;
+		//	delete room.memory.type;
 			continue;
 		}
         //console.log(`🏠 Επεξεργασία δωματίου: ${roomName} (RCL: ${room.controller.level})`);

@@ -35,7 +35,7 @@
  * - Αν υπάρχει έστω και ένα container τότε αλλάζει η διαχείριση του πληθυσμού.
  * VERSION 1.1.0 Ακύρωση λειτουργίας storageContainer
  */
-const { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG } = require('./spawn.constants');
+const { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG, SPAWN_MANAGER_CONFIG } = require('./spawn.constants');
 const debugConsole = require("utils.debugConsole");
 
 var roomCache = require('utils.RoomCache');
@@ -152,11 +152,16 @@ class PopulationManager {
     }
 
 
+
     /**
      * Υπολογίζει τα διαθέσιμα WORK parts βάσει πραγματικού εισοδήματος.
      */
     _calculateAvailableWorkParts(context) {
-        const INCOME_PER_SOURCE = (context.room.controller) ? 10 : 5;
+        const INCOME_PER_SOURCE = (context.room.controller) ? 10 : 5; //energyPerTick
+
+
+
+
 
         const totalIncome = context.sources.length * INCOME_PER_SOURCE;
         let availableWork = totalIncome - POPULATION_MODULE_CONFIG.MAINTENANCE_BUFFER;
@@ -373,7 +378,7 @@ class PopulationManager {
         const room = Game.rooms[roomName];
         if (!room) return;
         this.room = room;
-
+        this._trackDynamicEnergyFlow(room);
         const limits = populationManagerStates.run(this, "earlyGameEra", Memory.
             rooms[roomName]);
 
@@ -383,7 +388,35 @@ class PopulationManager {
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.HAVE_LINK_KEY] = roomCache.in(roomName).hasLinks;
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.ROOM_LEVEL_KEY] = room.controller.level;
     } // end of updateRoomLimits
+    /**
+     *  Υπολογίζει δυναμικά το ρυθμό εισροών ενέργειας για το δωμάτιο room που δίνεται.
+     * Αποθηκεύεται σε δύο μεταβλητές(room.memory.energyNetFlow και room.memory.lastEnergyStore)
+    */
+    _trackDynamicEnergyFlow(room) {
 
+        if (!room.memory)
+            return;
+        let currentScore = 0;
+        if (room.storage) {
+            currentScore += room.storage.store[RESOURCE_ENERGY];
+        }
+        if (room.terminal) {
+            currentScore += room.terminal.store[RESOURCE_ENERGY];
+        }
+        const cache = roomCache.in(room.name);
+        const containers = cache.groupedStructures[STRUCTURE_CONTAINER];
+        for (const container of containers) {
+            currentScore += container.store[RESOURCE_ENERGY];
+        }
+        if (room.memory.lastEnergyStore !== undefined) {
+            const delta = currentScore - room.memory.lastEnergyStore;
+            const netPerTickThisInterval = delta / SPAWN_MANAGER_CONFIG.POPULATION_LIMIT_REFRESH_RATE;
+            const alpha = 2 / (SPAWN_MANAGER_CONFIG.EMA_SMOOTHING_PERIODS + 1);
+            room.memory.energyNetFlow = ((room.memory.energyNetFlow || 0) * (1 - alpha) + netPerTickThisInterval * alpha);
+            debugConsole.debugText("Population manager", "energyNetFlow=" + room.memory.energyNetFlow);
+        }
+        room.memory.lastEnergyStore = currentScore;
+    }
 
 } // end of class PopulationManager
 

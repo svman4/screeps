@@ -14,13 +14,13 @@ TODO όταν ο hauler δεν έχει δουλειά να πηγαίνει κ�
 
 //TODO ο scorer του consturction να χτίζει πρώτα το controller container και μετά αυτά των πηγών.
 // Sto ρψλ=3 να χτίζνται οι δρόμοι center-->sources και center-->controller
- */ 
+ */
 var spawnManager = require('manager.spawn');
 var defenceManager = require('manager.defense');
 var constructionManager = require('manager.construction');
 var expansionManager = require('manager.expansion');
 
-var {ROOM_TYPE}=require("expansion.constants"); 
+var { ROOM_TYPE } = require("expansion.constants");
 var logisticsManager = require('manager.logistics');
 const militaryController = require('manager.military');
 var roleManager = require('manager.role');
@@ -29,8 +29,9 @@ var pixels = require('manager.pixels');
 var linkManager = require('manager.link');
 var roomCache = require('utils.RoomCache');
 var RollingAverage = require('utils.RollingAverage');
+var DynamicEnergyFlow = require('dynamicEnergyFlow');
 
-const debugConsole=require("utils.debugConsole");
+const debugConsole = require("utils.debugConsole");
 
 global.RoomInfo = function () {
     let answer = "\n--- 🏰 Controller Progress Report ---\n";
@@ -41,7 +42,7 @@ global.RoomInfo = function () {
     const myRooms = Object.values(Game.rooms).filter(r => r.controller && r.controller.my);
 
     if (myRooms.length === 0) return "No rooms with active visibility found.";
-    
+
     for (const room of myRooms) {
         const controller = room.controller;
 
@@ -71,46 +72,41 @@ module.exports.loop = function () {
     if (!Memory.rooms) {
         Memory.rooms = {};
     }
-	
-	
+    const citiesNames = roomCache.World().cities;
 
-	
-	
-	const citiesNames =roomCache.World().cities;
-	
-	
-	
-	
-	
-	
-	// debugConsole.debugObject("Main", "Metropolis is", citiesNames);
-	
-	//debugConsole.debugObject("Main", "Remote mining rooms is", remoteMiningNames);
 
-	
+
+
+
+
+    // debugConsole.debugObject("Main", "Metropolis is", citiesNames);
+
+    //debugConsole.debugObject("Main", "Remote mining rooms is", remoteMiningNames);
+
+
     roomCache.run();  // Καθαρισμός cache ανά tick για όλα τα δωμάτια
     // Εκτέλεση ανά δωμάτιο
     for (const roomName of citiesNames) {
-  	
-		// const shiresOfCity=roomCache.World().getShiresOfCity(roomName);
-		 // debugConsole.debugObject("Main", "Shire of city of "+roomName, shiresOfCity);
-		
-		
+
+        // const shiresOfCity=roomCache.World().getShiresOfCity(roomName);
+        // debugConsole.debugObject("Main", "Shire of city of "+roomName, shiresOfCity);
+
+
         const room = roomCache.in(roomName).room; // Εξασφαλίζουμε ότι το RoomCache είναι έτοιμο για το δωμάτιο
 
 
         // if (room.controller && room.controller.my) {
-		if (room &&   room.controller.my) {
-		} else {
-		    //console.log(room.name);
-		//	delete room.memory.type;
-			continue;
-		}
+        if (room && room.controller.my) {
+        } else {
+            //console.log(room.name);
+            //	delete room.memory.type;
+            continue;
+        }
         //console.log(`🏠 Επεξεργασία δωματίου: ${roomName} (RCL: ${room.controller.level})`);
-
-            // HIGH PRIORITY - Πάντα τρέχουν
+        runAndCatch((name) => DynamicEnergyFlow.refresh(room), "Error on DynamicEnergyFlow (" + roomName + ")", roomName);
+        // HIGH PRIORITY - Πάντα τρέχουν
         runAndCatch((name) => defenceManager.run(name), "Error on defenceManager (" + roomName + ")", roomName);
-        
+
         //runAndCatch((name) => militaryController.run(name), "Error on militaryController (" + roomName + ")", roomName);
 
         runAndCatch((name) => logisticsManager.run(name), "Error on logisticsManager (" + roomName + ")", roomName);
@@ -125,13 +121,13 @@ module.exports.loop = function () {
         if (Memory.debug.status) {
             showRoomInfo(room);
         }
-        
+
     }
     runAndCatch(() => roleManager.run(), "Error on roleManager");
 
     runAndCatch(() => spawnManager.run(), "error on spawnManager");
     runAndCatch(() => expansionManager.run(), "error on expansionManager");
-    
+
     runAndCatch(pixels.run, "Error on pixels");
     var endCpu = Game.cpu.getUsed();
     var cpuUsed = (endCpu - startCpu).toFixed(3);

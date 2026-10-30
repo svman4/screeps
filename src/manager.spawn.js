@@ -38,7 +38,7 @@ class SpawnManager {
     run() {
         this.cleanup();
         if (Game.time % SPAWN_MANAGER_CONFIG.POPULATION_LIMIT_REFRESH_RATE === 0) {
-            //this.queue.flush(); // Καθαρισμός ουράς για το δωμάτιο σε περίπτωση αλλαγής ορίων
+
             this.queue.cleanStaleRequests();
         }
         // Εκτύπωση της ουράς για debugging
@@ -121,6 +121,7 @@ class SpawnManager {
             this.optimizeCreepSizes(roomName);
 
         }
+        //TODO να υπολογίζει και το creep που γίνεται spawn τώρα, και όχι μόνο αυτά στην ουρά.
 
         const limits = Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY];
         if (!limits) return;
@@ -160,8 +161,8 @@ class SpawnManager {
         const maxEnergyAvailable = Game.rooms[roomName].energyCapacityAvailable;
 
         creepWithFlag.forEach(creep => {
-            if (creep.ticksToLive) { 
-				// έλεγχος αν το creep είναι ακόμα ζωντανό.
+            if (creep.ticksToLive) {
+                // έλεγχος αν το creep είναι ακόμα ζωντανό.
                 if (creep.memory.role === ROLES.STATIC_HARVESTER) {
                     const body = this.calculateBody(roomName, creep.memory.role, maxEnergyAvailable, 0);
 
@@ -174,10 +175,10 @@ class SpawnManager {
                     // debugConsole.debugText("spawnManager", `Creep ${creep.name} is flagged for replacement. Requesting new ${creep.memory.role}.`);
                 }
             } else {
-				// εφόσον το creep είναι νεκρό, κλείνουμε τo flag ώστε να μην επηρεάζει το κώδικα, μέχρι να διαγραφεί από τη μνήμη
-				creep.memory[NEED_REPLACEMENT_FLAG]=false;
-				debugConsole.debugText("Spawn","Βρέθηκε νεκρό creep με σημαία. Ακύρωση της σημαίας")
-			}
+                // εφόσον το creep είναι νεκρό, κλείνουμε τo flag ώστε να μην επηρεάζει το κώδικα, μέχρι να διαγραφεί από τη μνήμη
+                creep.memory[NEED_REPLACEMENT_FLAG] = false;
+                debugConsole.debugText("Spawn", "Βρέθηκε νεκρό creep με σημαία. Ακύρωση της σημαίας")
+            }
         });
 
     } // end of checkRoomNeeds

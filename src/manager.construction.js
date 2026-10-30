@@ -13,7 +13,7 @@
     - Πλήρης ενσωμάτωση των MEMORY_KEYS από το αρχείο constants.
     - Κατάργηση hardcoded strings στη διαχείριση μνήμης.
 */
-
+const defenceManager = require('manager.defense');
 const ConstructionVisualizer = require('construction.visualizer');
 const BaseLayout = require('construction.layout.BaseLayout');
 const FileLayout = require('construction.layout.FileLayout');
@@ -21,14 +21,59 @@ const RoadPlanner = require('construction.roadPlanner');
 const debugConsole = require("utils.debugConsole");
 const roomCache = require('utils.RoomCache');
 const { MEMORY_KEYS, MAX_CONSTRUCTION_SITE } = require('construction.constants');
+const constructionFSM = {
+    'earlyEra': function () {
+        if (this.room.controller.level > 1) {
+            constructionFSM.transition(this, 'containerEra', this.room.memory);
+            return populationManagerStates.states['containerEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής
+        }
+        if (defenceManager.isWarModeActive(room)) {
+            // βρισκόμαστε σε κατάσταση πολέμου.
+            constructionFSM.transition(this, 'warTime', this.room.memory);
+            return populationManagerStates.states['warTime'].call(this); // Αμέσως εκτέλεση της νέας εποχής
+        }
 
-/**
- * SCAN INTERVALS
- */
-const SCAN_INTERVALS = {
-    UPDATE_BUILT_CACHE: 10,
-    CHECK_CONSTRUCTION_SITES: 5
-};
+    },
+    'containerEra': function () {
+        // αν χτίστηκε το storage που απαιτούνται τότε προχωράμε στην container εποχή.
+        constructionFSM.transition(this, 'storageEra', this.room.memory);
+        return populationManagerStates.states['storageEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής
+        if (defenceManager.isWarModeActive(room)) {
+            // βρισκόμαστε σε κατάσταση πολέμου.
+            constructionFSM.transition(this, 'warTime', this.room.memory);
+            return populationManagerStates.states['warTime'].call(this); // Αμέσως εκτέλεση της νέας εποχής
+        }
+
+    },
+    'storageEra': function () {
+        //αν είμαστε σε rcl 8 τότε
+        constructionFSM.transition(this, 'topLevel', this.room.memory);
+        return populationManagerStates.states['topLevel'].call(this); // Αμέσως εκτέλεση της νέας εποχής
+        if (defenceManager.isWarModeActive(room)) {
+            // βρισκόμαστε σε κατάσταση πολέμου.
+            constructionFSM.transition(this, 'warTime', this.room.memory);
+            return populationManagerStates.states['warTime'].call(this); // Αμέσως εκτέλεση της νέας εποχής
+        }
+
+    },
+    'topLevel': function () {
+        if (defenceManager.isWarModeActive(room)) {
+            // βρισκόμαστε σε κατάσταση πολέμου.
+            constructionFSM.transition(this, 'warTime', this.room.memory);
+            return populationManagerStates.states['warTime'].call(this); // Αμέσως εκτέλεση της νέας εποχής
+        }
+
+    },
+    'warTime': function () {
+        //Σε κατάσταση πολέμου δε προσπαθούμε να χτίσουμε κάτι.
+        // Απλά αναμονή για λήξη πολέμου.
+        if (!defenceManager.isWarModeActive(room)) {
+            //εφόσον έληξε η πολεμική λειτουργία. Επανερχόμαστε.
+            constructionFSM.transition(this, 'earlyEra', this.room.memory);
+            return populationManagerStates.states['earlyEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής
+        }
+    },
+} // end of constructionFSM
 
 /**
  * CONSTRUCTION MANAGER CLASS
@@ -55,73 +100,80 @@ class ConstructionManager {
 
     }
 
-    run() {
-        if (!this.room || !this.room.controller || !this.room.controller.my) return;
+    run(room) {
+
+        if (!roomMemory) {
+            return;
+        }
+        if (room.controller || room.controller.my) {
+            return;
+        }
 
         if (Game.time % SCAN_INTERVALS.UPDATE_BUILT_CACHE === 0) {
-            this.updateBuiltCache();
+            this.updateBuiltCache(room);
         }
 
         if (Game.time % SCAN_INTERVALS.CHECK_CONSTRUCTION_SITES === 0) {
-            this.processConstruction();
+            this.processConstruction(room);
         }
 
-        this.drawVisuals();
+        this.drawVisuals(room);
     }
 
-    updateBuiltCache() {
-        const structures = roomCache.in(this.room.name).structures;
+    updateBuiltCache(room) {
+        const structures = roomCache.in(room.name).structures;
         const cache = {};
 
         structures.forEach(s => {
             cache[`${s.pos.x},${s.pos.y}`] = s.structureType;
         });
 
-        const constructionMem = Memory.rooms[this.roomName][MEMORY_KEYS.ROOT];
+        const constructionMem = Memory.rooms[roomName][MEMORY_KEYS.ROOT];
         constructionMem[MEMORY_KEYS.STRUCTURES] = cache;
 
 
-    }
+    } // end of updateBuiildCache
 
 
 
 
-    processConstruction() {
-        const cache = roomCache.in(this.room.name);
+    processConstruction(room) {
+        const cache = roomCache.in(room.name);
         let sites = cache.constructionSites;
-        //this.room.find(FIND_MY_CONSTRUCTION_SITES);
+
         const maxSites = MAX_CONSTRUCTION_SITE || 2;
+
         if (sites.length >= maxSites) return;
 
-        const constructionMem = Memory.rooms[this.roomName][MEMORY_KEYS.ROOT];
+        const constructionMem = Memory.rooms[roomName][MEMORY_KEYS.ROOT];
         const builtMap = constructionMem[MEMORY_KEYS.STRUCTURES] || {};
-        const rcl = this.room.controller.level;
+        const rcl = room.controller.level;
 
         const fullPlan = this.layout.getPlanForRCL(rcl, builtMap);
         if (fullPlan.length === 0) return;
-		
+
         let remainingQuota = maxSites - sites.length;
-        let startingRemainingQuota=remainingQuota;
+        let startingRemainingQuota = remainingQuota;
         remainingQuota = this.buildStructures(fullPlan, remainingQuota);
         //console.log("start "+ remainingQuota + " "+startingRemainingQuota);
-        if (startingRemainingQuota===remainingQuota) {
-			const remainQuotaForDefence=100;
-			// Θέλουμε να χτίζει μονομιάς όλα τα αμυντικά κτίρια.
+        if (startingRemainingQuota === remainingQuota) {
+            const remainQuotaForDefence = 100;
+            // Θέλουμε να χτίζει μονομιάς όλα τα αμυντικά κτίρια.
             remainingQuota = this.buildDefenses(fullPlan, remainQuotaForDefence);
-            if(remainingQuota!=remainQuotaForDefence) {
-                remainingQuota=0;
+            if (remainingQuota != remainQuotaForDefence) {
+                remainingQuota = 0;
             } else {
-                remainingQuota=startingRemainingQuota;
-            } 
-          //  console.log("roads "+ remainingQuota + " "+startingRemainingQuota);
+                remainingQuota = startingRemainingQuota;
+            }
+            //  console.log("roads "+ remainingQuota + " "+startingRemainingQuota);
         }
-        if (startingRemainingQuota===remainingQuota) {
-			const remainQuotaForRoads=100;
-			//console.log("Defence " +remainingQuota + " "+startingRemainingQuota);
-			// Θέλουμε να χτίζει μονομιάς όλους τους δρόμους στο τρέχον rcl.
+        if (startingRemainingQuota === remainingQuota) {
+            const remainQuotaForRoads = 100;
+            //console.log("Defence " +remainingQuota + " "+startingRemainingQuota);
+            // Θέλουμε να χτίζει μονομιάς όλους τους δρόμους στο τρέχον rcl.
             this.buildRoads(fullPlan, remainQuotaForRoads, rcl, builtMap);
         }
-    }
+    } // end of processConstruction
 
     buildStructures(fullPlan, quota) {
         const structures = fullPlan.filter(s => !['road', 'rampart', 'constructedWall'].includes(s.type));
@@ -131,7 +183,7 @@ class ConstructionManager {
             if (this.createSite(s.x, s.y, s.type)) placed++;
         }
         return quota - placed;
-    }
+    } // end of buildStructures
 
     buildDefenses(fullPlan, quota) {
         const defenses = fullPlan.filter(s => ['rampart', 'constructedWall'].includes(s.type));
@@ -141,7 +193,7 @@ class ConstructionManager {
             if (this.createSite(s.x, s.y, s.type)) placed++;
         }
         return quota - placed;
-    }
+    } // end of buildDefences
 
     buildRoads(fullPlan, quota, rcl, builtMap) {
         const roads = fullPlan.filter(s => s.type === 'road');
@@ -184,8 +236,12 @@ class ConstructionManager {
     }
 
     drawVisuals() {
-        if (Memory.debug && Memory.debug.construction === false) return;
-        if (!this.layout || !this.layout.blueprint) return;
+        if (Memory.debug && Memory.debug.construction === false) {
+            return;
+        }
+        if (!this.layout || !this.layout.blueprint) {
+            return;
+        }
 
         const currentRCL = this.room.controller ? this.room.controller.level : 0;
 
@@ -198,11 +254,12 @@ class ConstructionManager {
 
 
     }
-}
+} // end of class ConstructionManager
+module.exports = new ConstructionManager();
 
-module.exports = {
-    run: function (roomName) {
-        const manager = new ConstructionManager(roomName);
-        manager.run();
-    }
-};
+// module.exports = {
+//     run: function (roomName) {
+//         const manager = new ConstructionManager(roomName);
+//         manager.run();
+//     }
+// };

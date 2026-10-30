@@ -165,7 +165,13 @@ var towerController = {
 
         return structures[0];
     },
-
+    /**
+     * Ενημερώνει αν υπάρχει επίθεση στο δωμάτιο ή στα Mining.
+     */
+    isWarModeActive: function (room) {
+        //TODO Να ενημερώνει για την κατάσταση
+        return false;
+    } // end of isWarModeActive
     /**
      * Επιστρέφει την προτεραιότητα μιας δομής (υψηλότερος αριθμός = υψηλότερη προτεραιότητα)
      */
@@ -196,7 +202,7 @@ var towerController = {
         }
         const step = 1000;
 
-        if (!Memory.rooms[room.name]) 
+        if (!Memory.rooms[room.name])
             Memory.rooms[room.name] = { wallLimit: 1000 };
 
 
@@ -208,8 +214,11 @@ var towerController = {
         hits_minimum_value = Math.max(room.controller.level * 1000, hits_minimum_value);
         hits_minimum_value = Math.floor(hits_minimum_value / step) * step;
         if (room.controller.level === 8) {
-
-            hits_minimum_value += 1000;
+            if (room.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 900000) {
+                hits_minimum_value += 10000;
+            } else {
+                hits_minimum_value += 1000;
+            }
             hits_minimum_value = Math.min(hits_minimum_value, 100000000);
 
         } else {
@@ -218,7 +227,6 @@ var towerController = {
             // hits_minimum_value=15000*room.controller.level;
 
         }
-        if (!Memory.rooms[room.name]) Memory.rooms[room.name] = {};
         Memory.rooms[room.name].wallLimit = hits_minimum_value;
 
         //console.log(room.name+"_"+ room.controller.level+" hit "+room.memory.wallLimit);

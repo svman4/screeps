@@ -58,6 +58,13 @@ module.exports = {
         CONTROLLER: 'controllerContainerId',
         ROAD_PLAN: 'roadPlannerData',
         BLUE_PRINT: 'blueprint'
-    } // end of MEMORY_KEYS
+    }, // end of MEMORY_KEYS
+    /**
+ * SCAN INTERVALS
+ */
+    SCAN_INTERVALS: {
+        UPDATE_BUILT_CACHE: 10,
+        CHECK_CONSTRUCTION_SITES: 5
+    },
 
 };

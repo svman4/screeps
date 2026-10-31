@@ -44,7 +44,8 @@ const FSM = require('utils.fsm');
 const populationManagerStates = new FSM({
     'earlyGameEra': function () {
         const context = this._createContext(this.room);
-
+        //TODO να δημιουργεί μόνο simpleHarvester που να μην προσπαθούν να τραβήξουν από τυχόν container. Νομίζω καλό θα ήταν οι simpleHarvester να είναι όσα workpart χρειάζονται για να αδειάσουν οι πηγές επί δύο.Μιας και οι περισσότεροι δε θα κάνουν harvesting αλλά building ή upgrader ή θα είναι σε διαδρομοί.
+        //TODO από το earlyGameEra να φεύγει όταν μπορούν να φτιαχτούν ολόκληροι staticHarvester με 5 work parts. Και τότε θα πηγαίνουμε στην containerEra.
         if (context.isRecovery) {
             populationManagerStates.transition(this, 'recoveryTime', this.room.memory);
             return populationManagerStates.states['recoveryTime'].call(this); // Αμέσως εκτέλεση της νέας εποχής
@@ -154,10 +155,10 @@ class PopulationManager {
 
 
     /**
-     * Υπολογίζει τα διαθέσιμα WORK parts βάσει πραγματικού εισοδήματος.
+     * Υπολογίζει τα διαθέσιμα energy per tick για την δημιουργία κατάλληλων worker
      * @return energyPerTick
      */
-    _calculateAvailableWorkParts(context) {
+    _calculateAvailableEnergyPerTick(context) {
         const INCOME_PER_SOURCE = (context.room.controller) ? 10 : 5; //energyPerTick
 
         //TODO να υπολογίζει πόσα Works Parts μπορούμε να χρησιμοποιήσουμε βάσει του room.memory.energyNetFlow Και να δούμε τι θα κάνουμε όταν δεν υπάρχει.
@@ -165,7 +166,7 @@ class PopulationManager {
 
 
         const totalIncome = context.sources.length * INCOME_PER_SOURCE;
-        let availableWork = totalIncome - POPULATION_MODULE_CONFIG.MAINTENANCE_BUFFER;
+        let availableEnergyPerTick = totalIncome - POPULATION_MODULE_CONFIG.MAINTENANCE_BUFFER;
         // Να υπολογίζει την ανάγκη για συντήρηση του δωματίου. ROADS, RAMPART Κτλ.
         // ΝΑ υπολογίζει την ανάγκη για αναβάθμιση των τοιχών (CONSTRUCTED WALL)
         if (context.storage) {
@@ -175,17 +176,17 @@ class PopulationManager {
 
             if (fillPercent > POPULATION_MODULE_CONFIG.SURPLUS_THRESHOLD) {
                 const surplusBonus = Math.floor((fillPercent - POPULATION_MODULE_CONFIG.SURPLUS_THRESHOLD) * POPULATION_MODULE_CONFIG.SURPLUS_SCALER);
-                availableWork += surplusBonus;
+                availableEnergyPerTick += surplusBonus;
             }
         }
 
-        return Math.max(availableWork, 1);
+        return Math.max(availableEnergyPerTick, 1);
     }
     /**
      * Κατανομή των διαθέσιμων WORK parts σε Builders και Upgraders (Μπαίνουν στη λίστα 'parts').
      */
     _distributeWorkQuotas(context, limits) {
-        let availableEnergyPerTick = this._calculateAvailableWorkParts(context); // πόσα energy ανά tick μπορούμε να χρησιμοποιήσουμε.
+        let availableEnergyPerTick = this._calculateAvailableEnergyPerTick(context); // πόσα energy ανά tick μπορούμε να χρησιμοποιήσουμε.
 
         let builderWork = 0;
         let upgraderWork = 1 * POPULATION_MODULE_CONFIG.UPGRADE_EFFICIENCY; // Το λιγότερο 1 work για upgrade.
@@ -245,7 +246,7 @@ class PopulationManager {
         if (!cache.controllerLink) {
             const controllerRange = cache.controllerDistance;
             const controllerDistance = (controllerRange !== Infinity) ? controllerRange : FALLBACK_DISTANCE;
-            const upgradeRate = Math.min(this._calculateAvailableWorkParts(context), 15);
+            const upgradeRate = Math.min(this._calculateAvailableEnergyPerTick(context), 15);
             totalCarryRequired += (upgradeRate * controllerDistance * 2) / CARRY_CAPACITY;
         }
         // ---------
@@ -328,7 +329,7 @@ class PopulationManager {
                 [ROLES.STATIC_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
             },
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
-                [ROLES.HAULER]: Math.ceil(this._calculateCarryQuota(context) / 2),
+                [ROLES.HAULER]: Math.ceil(this._calculateCarryQuota(context) / 1),
                 [ROLES.UPGRADER]: 2,
                 [ROLES.BUILDER]: 2
             },

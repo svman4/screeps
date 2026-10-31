@@ -155,6 +155,7 @@ class PopulationManager {
 
     /**
      * Υπολογίζει τα διαθέσιμα WORK parts βάσει πραγματικού εισοδήματος.
+     * @return energyPerTick
      */
     _calculateAvailableWorkParts(context) {
         const INCOME_PER_SOURCE = (context.room.controller) ? 10 : 5; //energyPerTick
@@ -184,17 +185,18 @@ class PopulationManager {
      * Κατανομή των διαθέσιμων WORK parts σε Builders και Upgraders (Μπαίνουν στη λίστα 'parts').
      */
     _distributeWorkQuotas(context, limits) {
-        let availableWork = this._calculateAvailableWorkParts(context);
+        let availableEnergyPerTick = this._calculateAvailableWorkParts(context); // πόσα energy ανά tick μπορούμε να χρησιμοποιήσουμε.
 
         let builderWork = 0;
-        let upgraderWork = 0;
+        let upgraderWork = 1 * POPULATION_MODULE_CONFIG.UPGRADE_EFFICIENCY; // Το λιγότερο 1 work για upgrade.
 
         if (context.hasConstruction) {
-            builderWork = Math.min(availableWork * POPULATION_MODULE_CONFIG.BUILDER_INCOME_SHARE, POPULATION_MODULE_CONFIG.MAX_BUILDER_WORK_BASELINE);
-            availableWork -= builderWork;
+            builderWork = (availableEnergyPerTick - upgraderWork) / POPULATION_MODULE_CONFIG.BUILDING_EFFICIENCY;
+            availableEnergyPerTick -= builderWork * POPULATION_MODULE_CONFIG.BUILDING_EFFICIENCY;
+
         }
 
-        upgraderWork = availableWork;
+        upgraderWork = availableEnergyPerTick / POPULATION_MODULE_CONFIG.UPGRADE_EFFICIENCY;;
 
         if (context.level === 8) {
             upgraderWork = Math.min(upgraderWork, POPULATION_MODULE_CONFIG.MAX_UPGRADER_WORK_RCL8);

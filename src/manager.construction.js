@@ -23,14 +23,28 @@ const roomCache = require('utils.RoomCache');
 const { MEMORY_KEYS, MAX_CONSTRUCTION_SITE } = require('construction.constants');
 const constructionFSM = {
     'earlyEra': function () {
-        if (this.room.controller.level > 1) {
-            constructionFSM.transition(this, 'containerEra', this.room.memory);
-            return populationManagerStates.states['containerEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής
-        }
+
         if (defenceManager.isWarModeActive(room)) {
             // βρισκόμαστε σε κατάσταση πολέμου.
             constructionFSM.transition(this, 'warTime', this.room.memory);
             return populationManagerStates.states['warTime'].call(this); // Αμέσως εκτέλεση της νέας εποχής
+        }
+        if (!this.checkIfMemoryIsOk(this.room)) {
+            // εφόσον δεν υπάρχει αρχικοποιημένη μνήμη, ξεκινάμε την ανάλυση του δωματίου.
+            this.initRoom(this.room);
+            return;
+        }
+        // construction of containers(controller and sources)
+        // construction of criticalRoads
+
+
+        if (
+            this.info[room.name].constructionRemain &&
+            this.info[room.name].constructionRemain.length === 0 &&
+            this.room.controller.level > 1
+        ) {
+            constructionFSM.transition(this, 'containerEra', this.room.memory);
+            return populationManagerStates.states['containerEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής
         }
 
     },
@@ -38,6 +52,11 @@ const constructionFSM = {
         // αν χτίστηκε το storage που απαιτούνται τότε προχωράμε στην container εποχή.
         constructionFSM.transition(this, 'storageEra', this.room.memory);
         return populationManagerStates.states['storageEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής
+        if (!this.checkIfMemoryIsOk()) {
+            // βρισκόμαστε σε κατάσταση πολέμου.
+            constructionFSM.transition(this, 'earlyEra', this.room.memory);
+            return populationManagerStates.states['earlyEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής
+        }
         if (defenceManager.isWarModeActive(room)) {
             // βρισκόμαστε σε κατάσταση πολέμου.
             constructionFSM.transition(this, 'warTime', this.room.memory);
@@ -46,24 +65,35 @@ const constructionFSM = {
 
     },
     'storageEra': function () {
+        if (!this.checkIfMemoryIsOk()) {
+            // βρισκόμαστε σε κατάσταση πολέμου.
+            constructionFSM.transition(this, 'earlyEra', this.room.memory);
+            return populationManagerStates.states['earlyEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής
+        }
+        if (defenceManager.isWarModeActive(room)) {
+            // βρισκόμαστε σε κατάσταση πολέμου.
+            constructionFSM.transition(this, 'warTime', this.room.memory);
+            return populationManagerStates.states['warTime'].call(this); // Αμέσως εκτέλεση της νέας εποχής
+        }
         //αν είμαστε σε rcl 8 τότε
         constructionFSM.transition(this, 'topLevel', this.room.memory);
         return populationManagerStates.states['topLevel'].call(this); // Αμέσως εκτέλεση της νέας εποχής
-        if (defenceManager.isWarModeActive(room)) {
-            // βρισκόμαστε σε κατάσταση πολέμου.
-            constructionFSM.transition(this, 'warTime', this.room.memory);
-            return populationManagerStates.states['warTime'].call(this); // Αμέσως εκτέλεση της νέας εποχής
-        }
+
 
     },
     'topLevel': function () {
+        if (!this.checkIfMemoryIsOk()) {
+            // βρισκόμαστε σε κατάσταση πολέμου.
+            constructionFSM.transition(this, 'earlyEra', this.room.memory);
+            return populationManagerStates.states['earlyEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής
+        }
         if (defenceManager.isWarModeActive(room)) {
             // βρισκόμαστε σε κατάσταση πολέμου.
             constructionFSM.transition(this, 'warTime', this.room.memory);
             return populationManagerStates.states['warTime'].call(this); // Αμέσως εκτέλεση της νέας εποχής
         }
 
-    },
+    }, // end of topLevel
     'warTime': function () {
         //Σε κατάσταση πολέμου δε προσπαθούμε να χτίσουμε κάτι.
         // Απλά αναμονή για λήξη πολέμου.
@@ -72,7 +102,7 @@ const constructionFSM = {
             constructionFSM.transition(this, 'earlyEra', this.room.memory);
             return populationManagerStates.states['earlyEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής
         }
-    },
+    } // end of warTime
 } // end of constructionFSM
 
 /**
@@ -80,13 +110,19 @@ const constructionFSM = {
  */
 class ConstructionManager {
     constructor(roomName) {
-        this.roomName = roomName;
-        this.room = Game.rooms[roomName];
-        this.initMemory();
-        this.layout = new FileLayout(roomName);
         this.visualizer = new ConstructionVisualizer(roomName);
+        this.info = {};
     }
+    checkIfMemoryIsOk(room) {
+        if (room.memory[MEMORY_KEYS.ROOT] && this.info[room.name]) {
+            return true;
+        } else {
+            return false;
+        }
+    } // end of checkIfMemory
+    initRoom(room) {
 
+    } // end of initinitRoom(room)
     initMemory() {
         if (!Memory.rooms[this.roomName]) Memory.rooms[this.roomName] = {};
         if (!Memory.debug) Memory.debug = {};
@@ -102,20 +138,23 @@ class ConstructionManager {
 
     run(room) {
 
-        if (!roomMemory) {
+        if (!room.memory) {
             return;
         }
         if (room.controller || room.controller.my) {
             return;
         }
 
-        if (Game.time % SCAN_INTERVALS.UPDATE_BUILT_CACHE === 0) {
-            this.updateBuiltCache(room);
-        }
+        const limits = constructionFSM.run(this, "earlyEra", Memory.
+            rooms[room.name]);
 
-        if (Game.time % SCAN_INTERVALS.CHECK_CONSTRUCTION_SITES === 0) {
-            this.processConstruction(room);
-        }
+        // if (Game.time % SCAN_INTERVALS.UPDATE_BUILT_CACHE === 0) {
+        //     this.updateBuiltCache(room);
+        // }
+
+        // if (Game.time % SCAN_INTERVALS.CHECK_CONSTRUCTION_SITES === 0) {
+        //     this.processConstruction(room);
+        // }
 
         this.drawVisuals(room);
     }

@@ -73,6 +73,7 @@ const SPAWN_MANAGER_CONFIG = {
 const POPULATION_MODULE_CONFIG = {
 
     // Efficiency values
+    BUILDING_EFFICIENCY: 5,      // 1 WORK PART = 5 energy per tick
     WORK_EFFICIENCY: 2,          // 1 WORK part = 2 energy per tick harvest
     UPGRADE_EFFICIENCY: 1,       // 1 WORK part = 1 energy per tick upgrade
 

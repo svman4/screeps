@@ -35,23 +35,27 @@ const constructionFSM = {
 
         }
         // TODO θΈΛΩ ΝΑ ΤΟ ΚΑΛΕΊ ΜΙΑ ΦΟΡΆ ΚΑΙ ΜΕΤΆ απλά να χτίζει.
-        debugConsole.debugText("ConstructionMAnager,EarlyEra", "constructionRemain length is " + this.info[room.name].constructionRemain.length);
-        if (room.controller.level !== this.info[thisroom.name].level) {
-            this.getUnlockedStructuresToBuild(room);
-            this.info[this.room.name].level = room.controller.level;
-        }
-        if (room.controller.level === 1) {
-            // στο πρώτο rcl θέλουμε μόνο upgrade.
-            return;
-        }
+        debugConsole.debugText("ConstructionMAnager,EarlyEra", "constructionRemain length is " + this.info[this.room.name].constructionRemain.length);
+        if (this.room.controller.level !== this.info[this.room.name].level) {
+            if (this.room.controller.level === 1) {
+                // στο πρώτο rcl θέλουμε μόνο upgrade.
+                return;
+            }
+            if (this.room.controller.level === 2) {
+                // construction of criticalRoads
+                this.info[this.room.name].constructionRemain.push(...this.getCriticalRoads(this.room));
 
-        // construction of criticalRoads
-        this.info[room.name].constructionRemain = this.getCriticalRoads(room);
+            }
+            this.info[this.room.name].constructionRemain.push(...this.getUnlockedStructuresToBuild(this.room));
+            this.info[this.room.name].level = this.room.controller.level;
+        }
+        this.processConstruction(this.room);
 
-        debugConsole.debugText("ConstructionMAnager,EarlyEra", "constructionRemain length is " + this.info[room.name].constructionRemain.length);
+
+        debugConsole.debugText("ConstructionMAnager,EarlyEra", "constructionRemain length is " + this.info[this.room.name].constructionRemain.length);
         if (
-            this.info[room.name].constructionRemain &&
-            this.info[room.name].constructionRemain.length === 0 &&
+            this.info[this.room.name].constructionRemain &&
+            this.info[this.room.name].constructionRemain.length === 0 &&
             this.room.controller.level > 2
         ) {
             // αν έχουν χτιστεί τα βασικά στοιχεία του δωματίου, critical road, containers και ο controller είναι πάνω από level 2
@@ -197,13 +201,17 @@ class ConstructionManager {
 
         const maxSites = MAX_CONSTRUCTION_SITE || 2;
 
-        if (sites.length >= maxSites) return;
+        if (sites.length >= maxSites) {
+            // Εφόσον τα buildingSite είναι περισσότερα ή όσα επιτρέπονται 
+            return;
+        }
+
 
         const constructionMem = Memory.rooms[roomName][MEMORY_KEYS.ROOT];
         const builtMap = constructionMem[MEMORY_KEYS.STRUCTURES] || {};
         const rcl = room.controller.level;
 
-        const fullPlan = this.layout.getPlanForRCL(rcl, builtMap);
+        const fullPlan = this.info[room.name].constructionRemain;
         if (fullPlan.length === 0) return;
 
         let remainingQuota = maxSites - sites.length;
@@ -238,7 +246,7 @@ class ConstructionManager {
         const roads = blueprint.filter(s => s.type === 'road');
         debugConsole.debugText("Construction,getCriticalRoads", "found " + roads.length + " roads");
 
-
+        // TODO πρεπει να βρίσκει τη θέση των storage, firstSpawn και containers
         const placeOfstorage = { x=5, y=5 }; // Ο χώρος που θα μπει το storage
         const placeOfFirstSpawn = { x=5, y=5 }; // Ο χώρος που θα μπει το spawn
         const placeOfContainers = [{ x=5, y=5 }, { x=5, y=5 }, { x=5, y=5 }, { x=5, y=5 }] // ο χώρος που θα βρίσκονται τα containers (Πηγών και controller)
@@ -257,12 +265,14 @@ class ConstructionManager {
     }
     buildStructures(fullPlan, quota) {
         const structures = fullPlan.filter(s => !['road', 'rampart', 'constructedWall'].includes(s.type));
-        let placed = 0;
+
         for (const s of structures) {
-            if (placed >= quota) break;
-            if (this.createSite(s.x, s.y, s.type)) placed++;
+            if (quota <= 0) {
+                break;
+            }
+            if (this.createSite(s.x, s.y, s.type)) quota--;
         }
-        return quota - placed;
+        return quota;
     } // end of buildStructures
 
     buildDefenses(fullPlan, quota) {

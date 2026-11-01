@@ -32,35 +32,47 @@ const constructionFSM = {
         if (!this.checkIfMemoryIsOk(this.room)) {
             // εφόσον δεν υπάρχει αρχικοποιημένη μνήμη, ξεκινάμε την ανάλυση του δωματίου.
             this.initRoom(this.room);
+
+        }
+        // TODO θΈΛΩ ΝΑ ΤΟ ΚΑΛΕΊ ΜΙΑ ΦΟΡΆ ΚΑΙ ΜΕΤΆ απλά να χτίζει.
+        debugConsole.debugText("ConstructionMAnager,EarlyEra", "constructionRemain length is " + this.info[room.name].constructionRemain.length);
+        if (room.controller.level !== this.info[thisroom.name].level) {
+            this.getUnlockedStructuresToBuild(room);
+            this.info[this.room.name].level = room.controller.level;
+        }
+        if (room.controller.level === 1) {
+            // στο πρώτο rcl θέλουμε μόνο upgrade.
             return;
         }
-        // construction of containers(controller and sources)
+
         // construction of criticalRoads
+        this.info[room.name].constructionRemain = this.getCriticalRoads(room);
 
-
+        debugConsole.debugText("ConstructionMAnager,EarlyEra", "constructionRemain length is " + this.info[room.name].constructionRemain.length);
         if (
             this.info[room.name].constructionRemain &&
             this.info[room.name].constructionRemain.length === 0 &&
-            this.room.controller.level > 1
+            this.room.controller.level > 2
         ) {
+            // αν έχουν χτιστεί τα βασικά στοιχεία του δωματίου, critical road, containers και ο controller είναι πάνω από level 2
             constructionFSM.transition(this, 'containerEra', this.room.memory);
-            return populationManagerStates.states['containerEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής
+            return constructionFSM.states['containerEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής
         }
 
     },
     'containerEra': function () {
         // αν χτίστηκε το storage που απαιτούνται τότε προχωράμε στην container εποχή.
         constructionFSM.transition(this, 'storageEra', this.room.memory);
-        return populationManagerStates.states['storageEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής
+        return constructionFSM.states['storageEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής
         if (!this.checkIfMemoryIsOk()) {
             // βρισκόμαστε σε κατάσταση πολέμου.
             constructionFSM.transition(this, 'earlyEra', this.room.memory);
-            return populationManagerStates.states['earlyEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής
+            return constructionFSM.states['earlyEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής
         }
         if (defenceManager.isWarModeActive(room)) {
             // βρισκόμαστε σε κατάσταση πολέμου.
             constructionFSM.transition(this, 'warTime', this.room.memory);
-            return populationManagerStates.states['warTime'].call(this); // Αμέσως εκτέλεση της νέας εποχής
+            return constructionFSM.states['warTime'].call(this); // Αμέσως εκτέλεση της νέας εποχής
         }
 
     },
@@ -68,12 +80,12 @@ const constructionFSM = {
         if (!this.checkIfMemoryIsOk()) {
             // βρισκόμαστε σε κατάσταση πολέμου.
             constructionFSM.transition(this, 'earlyEra', this.room.memory);
-            return populationManagerStates.states['earlyEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής
+            return constructionFSM.states['earlyEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής
         }
         if (defenceManager.isWarModeActive(room)) {
             // βρισκόμαστε σε κατάσταση πολέμου.
             constructionFSM.transition(this, 'warTime', this.room.memory);
-            return populationManagerStates.states['warTime'].call(this); // Αμέσως εκτέλεση της νέας εποχής
+            return constructionFSM.states['warTime'].call(this); // Αμέσως εκτέλεση της νέας εποχής
         }
         //αν είμαστε σε rcl 8 τότε
         constructionFSM.transition(this, 'topLevel', this.room.memory);
@@ -112,6 +124,7 @@ class ConstructionManager {
     constructor(roomName) {
         this.visualizer = new ConstructionVisualizer(roomName);
         this.info = {};
+        this.layout = new FileLayout(roomName);
     }
     checkIfMemoryIsOk(room) {
         if (room.memory[MEMORY_KEYS.ROOT] && this.info[room.name]) {
@@ -121,6 +134,8 @@ class ConstructionManager {
         }
     } // end of checkIfMemory
     initRoom(room) {
+        this.info[room.name].level = room.conroller.level;
+        this.info[room.name].constructionRemain = {};
 
     } // end of initinitRoom(room)
     initMemory() {
@@ -213,7 +228,33 @@ class ConstructionManager {
             this.buildRoads(fullPlan, remainQuotaForRoads, rcl, builtMap);
         }
     } // end of processConstruction
+    /**
+     * Αναζητεί από το blueprint του δωματίου τα critical roads.
+     * @param {*} room 
+     */
+    getCriticalRoads(room) {
 
+        const blueprint = room.memory[MEMORY_KEYS.ROOT][MEMORY_KEYS.BLUE_PRINT];
+        const roads = blueprint.filter(s => s.type === 'road');
+        debugConsole.debugText("Construction,getCriticalRoads", "found " + roads.length + " roads");
+
+
+        const placeOfstorage = { x=5, y=5 }; // Ο χώρος που θα μπει το storage
+        const placeOfFirstSpawn = { x=5, y=5 }; // Ο χώρος που θα μπει το spawn
+        const placeOfContainers = [{ x=5, y=5 }, { x=5, y=5 }, { x=5, y=5 }, { x=5, y=5 }] // ο χώρος που θα βρίσκονται τα containers (Πηγών και controller)
+
+        const criticalRoads = findCriticalPath(roads, placeOfstorage, placeOfFirstSpawn, placeOfContainers);
+
+        debugConsole.debugText("Construction,getCriticalRoads", "found " + criticalRoads.length + " critical roads");
+
+
+
+        return criticalRoads;
+
+    } // end of getCriticalRoads
+    findCriticalPath(roads, storage, spawn, containers) {
+        throw new Error(`[BaseLayout] loadRawData not implemented for ${this.constructor.name}`);
+    }
     buildStructures(fullPlan, quota) {
         const structures = fullPlan.filter(s => !['road', 'rampart', 'constructedWall'].includes(s.type));
         let placed = 0;

@@ -1,7 +1,7 @@
 /**
  * Construction Constants & Configuration
  * Shared across different layout managers.
- * Version 1.0.1
+ * Version 1.1.0
  */
 
 module.exports = {
@@ -39,7 +39,7 @@ module.exports = {
     // Προεπιλεγμένα RCL ξεκλειδώματος αν δεν ορίζεται στα steps
     DEFAULTS_RCL: {
         road: 3,
-        container: 1,
+        container: 2,
         spawn: 1,
         extension: 2,
         rampart: 5,
@@ -66,5 +66,7 @@ module.exports = {
         UPDATE_BUILT_CACHE: 10,
         CHECK_CONSTRUCTION_SITES: 5
     },
+    STORAGE_LIMIT_FOR_INDUSTRIAL_ERA=600000,
+    CONTROLLER_LEVEL_FOR_INDUSTRIAL_ERA=6,
 
 };

@@ -119,6 +119,7 @@ const constructionFSM = {
  * CONSTRUCTION MANAGER CLASS
  */
 class ConstructionManager {
+
     constructor(roomName) {
         this.visualizer = new ConstructionVisualizer(roomName);
         this.info = {};

@@ -1,0 +1,14 @@
+{
+  "name": "screeps-project",
+  "version": "1.0.0",
+  "description": "My Screeps AI",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/screeps": "^3.4.0",
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "es2018",
+    "module": "commonjs",
+    "lib": [
+      "es2018"
+    ],
+    "allowJs": true,
+    "checkJs": false,
+    "outDir": "./dist", // Εδώ θα αποθηκεύονται τα ξεχωριστά .js αρχεία
+    "rootDir": "./src", // Ο φάκελος με τον πηγαίο κώδικα σου
+    "sourceMap": true, // Δημιουργεί .js.map αρχεία για τέλειο debugging!
+    "types": [
+      "node",
+      "screeps"
+    ],
+    "strict": false,
+    "noEmitOnError": false
+  },
+  "include": [
+    "src/**/*"
+  ]
+}

@@ -171,7 +171,7 @@ var towerController = {
     isWarModeActive: function (room) {
         //TODO Να ενημερώνει για την κατάσταση
         return false;
-    } // end of isWarModeActive
+    }, // end of isWarModeActive
     /**
      * Επιστρέφει την προτεραιότητα μιας δομής (υψηλότερος αριθμός = υψηλότερη προτεραιότητα)
      */

@@ -4,15 +4,21 @@
  * Version 1.0.0
  */
 
-require('RoomVisual'); // Βεβαιώσου ότι έχεις το RoomVisual polyfill αν χρησιμοποιείς εξωτερικά εργαλεία
+import "RoomVisual";
+import { BlueprintStructure, Position } from './types';
+
 const debugConsole = require("utils.debugConsole");
-class ConstructionVisualizer {
-    /**
-     * @param {string} roomName - Το όνομα του δωματίου
-     */
-    constructor(roomName) {
-        this.roomName = roomName;
-        this.visual = new RoomVisual(roomName);
+
+
+
+
+
+
+export class ConstructionVisualizer {
+    public visual: RoomVisual;
+    constructor() {
+        this.visual = new RoomVisual("");
+
     }
 
     /**
@@ -25,7 +31,7 @@ class ConstructionVisualizer {
     /**
      * Κεντρική μέθοδος σχεδίασης του blueprint
      */
-    drawBlueprint(blueprint, builtMap, currentRCL) {
+    drawBlueprint(roomName: string, blueprint: BlueprintStructure[], builtMap: Record<string, string>, currentRCL: number) {
         if (!blueprint || !Array.isArray(blueprint)) return;
 
         // Πίνακας για να αποθηκεύουμε προσωρινά τα overlays των δρόμων
@@ -88,7 +94,7 @@ class ConstructionVisualizer {
  * Σχεδίαση δρόμου με το κανονικό εικονίδιο της roomVisual
  * και χρωματική επισήμανση ανά κατηγορία.
  */
-    drawRoad(s, opacity) {
+    drawRoad(s: BlueprintStructure, opacity: number) {
         // Σχεδίαση του βασικού δρόμου (texture)
         this.visual.structure(s.x, s.y, 'road', { opacity: opacity });
         //console.log(s.category);
@@ -119,7 +125,7 @@ class ConstructionVisualizer {
     /**
      * Σχεδίαση κτιρίου με το εικονίδιο του Screeps
      */
-    drawStructure(s, isAvailable, opacity) {
+    drawStructure(s: BlueprintStructure, isAvailable: boolean, opacity: number) {
         // Χρήση του ενσωματωμένου structure visualizer αν υποστηρίζεται ή fallback σε σχήματα
         try {
             this.visual.structure(s.x, s.y, s.type, { opacity: opacity });
@@ -138,7 +144,7 @@ class ConstructionVisualizer {
     /**
      * Σχεδίαση του επιπέδου RCL πάνω από το κτίριο
      */
-    drawStructureBadge(x, y, rcl, isAvailable, opacity) {
+    drawStructureBadge(x: number, y: number, rcl: number, isAvailable: boolean, opacity: number) {
         const rclColor = isAvailable ? '#00ff00' : '#ff4444';
         const labelY = x % 2 === 0 ? y - 0.6 : y + 0.8;
 
@@ -162,7 +168,7 @@ class ConstructionVisualizer {
     /**
      * Σχεδίαση πληροφοριών στην πάνω αριστερή γωνία
      */
-    drawHeader(currentRCL) {
+    drawHeader(currentRCL: number) {
         const x = 0.5;
         let y = 0.5;
 
@@ -178,7 +184,7 @@ class ConstructionVisualizer {
     /**
      * Highlights special containers (Recovery, Controller etc)
      */
-    drawSpecialFocus(pos, label, color = '#ff00ff') {
+    drawSpecialFocus(pos: Position, label: string, color: string = '#ff00ff') {
         if (!pos) return;
         this.visual.circle(pos.x, pos.y, {
             fill: 'transparent',

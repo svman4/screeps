@@ -13,38 +13,57 @@
  */
 
 var debugConsole = require("utils.debugConsole");
-const { ROOM_TYPE } = require("expansion.constants");
+import _ from "lodash";
+import { ROOM_TYPE } from "./expansion.constants";
 
-/** @type {Object} Σταθερές ρυθμίσεις για thresholds αξιολόγησης οικονομίας του δωματίου */
+/**  Σταθερές ρυθμίσεις για thresholds αξιολόγησης οικονομίας του δωματίου */
 const CONFIG = {
     ROADS_THRESHOLD: 30,
     LINKS_THRESHOLD: 2,
 };
+export interface World {
+    cities?: string[];
+    Shires?: string[];
+}
+export interface RoomCacheData {
+    sourceIds: string[] | null;
+    controllerLinkId: string | null;
+    storageLinkId: string | null;
+    sourceLinkIds: { [sourceId: string]: string }; // Mapping { sourceId: linkId }
+    recoveryContainerId: string | null;
+    controllerContainerId: string | null;
 
-class RoomCache {
-    constructor() {
-        /**
+    lastUpdated: number;
+}
+// Interface για το εσωτερικό Volatile Tick Cache (RAM)
+interface TickCache {
+    sources?: Source[];
+    links?: StructureLink[];
+    containers?: StructureContainer[];
+    hostileCreeps?: Creep[];
+    [key: string]: any; // Επιτρέπει δυναμικά properties αν χρειαστεί
+}
+
+class RoomCacheManager {
+    /**
          * Τοπική αποθήκη (RAM) για τα instances των επιμέρους δωματίων.
          * @type {Object<string, RoomCacheInstance>}
          * @private
          */
-        this._rooms = {};
-        
-        /**
+    private _rooms: { [roomName: string]: RoomCacheInstance } = {};
+    /**
          * Instance για την καθολική cache του κόσμου (αυτοκρατορίας).
          * @type {WorldCacheInstance|null}
          * @private
          */
-        this._world = null;
-    }
-
+    private _world: WorldCacheInstance | null = null;
     /**
      * Επιστρέφει (ή δημιουργεί) το cache instance για ένα συγκεκριμένο δωμάτιο.
      * @example RoomCache.in('E12S28').sources
      * @param {string} roomName Το όνομα του δωματίου (π.χ. W1N1)
      * @returns {RoomCacheInstance}
      */
-    in(roomName) {
+    in(roomName: string): RoomCacheInstance {
         if (!this._rooms[roomName]) {
             this._rooms[roomName] = new RoomCacheInstance(roomName);
         }
@@ -55,7 +74,7 @@ class RoomCache {
      * Επιστρέφει το global instance για τον έλεγχο της αυτοκρατορίας (World/Global level).
      * @returns {WorldCacheInstance}
      */
-    World() {
+    World(): WorldCacheInstance {
         if (!this._world) {
             this._world = new WorldCacheInstance();
         }
@@ -66,7 +85,7 @@ class RoomCache {
      * Καθαρίζει τα tick caches (RAM) για όλα τα εγγεγραμμένα δωμάτια.
      * Σημαντικό: Πρέπει να καλείται στην ΑΡΧΗ κάθε tick στο main loop (πριν τρέξουν τα Creeps).
      */
-    clearTickCaches() {
+    clearTickCaches(): void {
         for (const roomName in this._rooms) {
             this._rooms[roomName].clearTickCache();
         }
@@ -76,9 +95,9 @@ class RoomCache {
      * Κεντρική μέθοδος εκτέλεσης της cache ανά tick.
      * Αναλαμβάνει τον καθαρισμό της tick-μνήμης και τον περιοδικό συγχρονισμό (Garbage Collection / Force Refresh).
      */
-    run() {
+    run(): void {
         this.clearTickCaches();
-        
+
         // Κάθε 500 ticks γίνεται πλήρης ανανέωση για την αποφυγή "ορφανών" IDs (π.χ. κατεστραμμένα links/containers)
         if (Game.time % 500 === 0) {
             this.forceRefreshAll();
@@ -93,14 +112,14 @@ class RoomCache {
             this._rooms[roomName].forceRefresh();
         }
         this.World().flush();
-		
+
     }
 
     /**
      * Εξαναγκάζει την ανανέωση των στατικών δεδομένων για ένα συγκεκριμένο ή για όλα τα δωμάτια.
      * @param {string} [roomName] - Αν παραλειφθεί, καθαρίζει όλα τα δωμάτια.
      */
-    forceRefresh(roomName) {
+    forceRefresh(roomName?: string): void {
         if (roomName) {
             if (this._rooms[roomName]) this._rooms[roomName].forceRefresh();
         } else {
@@ -113,10 +132,10 @@ class RoomCache {
     // =========================================================================
     // ΒΟΗΘΗΤΙΚΕΣ DIRECT ΜΕΘΟΔΟΙ (Για απευθείας κλήση με roomName)
     // =========================================================================
-    getSources(roomName) { return this.in(roomName).sources; }
-    getLinks(roomName) { return this.in(roomName).links; }
-    getContainers(roomName) { return this.in(roomName).containers; }
-    getHostileCreeps(roomName) { return this.in(roomName).hostileCreeps; }
+    getSources(roomName: string): Source[] { return this.in(roomName).sources; }
+    getLinks(roomName: string): StructureLink[] { return this.in(roomName).links; }
+    getContainers(roomName: string): StructureContainer[] { return this.in(roomName).containers; }
+    getHostileCreeps(roomName: string): Creep[] { return this.in(roomName).hostileCreeps; }
 }
 
 /**
@@ -131,7 +150,7 @@ class WorldCacheInstance {
     }
 
     /** @returns {Object} Πρόσβαση στο global Memory object του κόσμου μας */
-    get World() {
+    get World(): World {
         return Memory.world;
     }
 
@@ -139,12 +158,12 @@ class WorldCacheInstance {
      * Επιστρέφει τα ονόματα των δωματίων (Cities) που μας ανήκουν (έχουν Controller και είναι My).
      * @returns {string[]} Πίνακας με ονόματα δωματίων
      */
-    get cities() {
+    get cities(): string[] {
         if (!this.World.cities) {
             // Φιλτράρισμα των ενεργών δωματίων στα οποία έχουμε vision αυτή τη στιγμή
             const cities = Object.values(Game.rooms).filter(r => r.controller && r.controller.my);
             const citiesName = cities.map(city => city.name);
-            
+
             if (cities && cities.length > 0) {
                 this.World.cities = citiesName;
             } else {
@@ -158,15 +177,15 @@ class WorldCacheInstance {
      * Επιστρέφει τα ονόματα όλων των Remote Mining δωματίων (Shires) της αυτοκρατορίας.
      * @returns {string[]} Πίνακας με ονόματα remote δωματίων
      */
-    get shires() {
+    get shires(): string[] {
         if (!this.World.Shires) {
             const rooms = Memory.rooms || {}; // Διόρθωση: Ήταν [] ενώ το Memory.rooms είναι Object
             const roomsName = Object.keys(rooms);
             const remoteMiningNames = roomsName.filter(name => rooms[name].type === ROOM_TYPE.REMOTE_MINING);
-            
+
             if (remoteMiningNames && remoteMiningNames.length > 0) {
                 this.World.Shires = remoteMiningNames;
-            }			
+            }
         }
         return this.World.Shires || [];
     }
@@ -176,12 +195,12 @@ class WorldCacheInstance {
      * @param {string} cityName Το όνομα της μητρόπολης (π.χ. 'W1N1')
      * @returns {string[]} Πίνακας με τα ονόματα των Shires
      */
-    getShiresOfCity(cityName) { 
+    getShiresOfCity(cityName: string): string[] {
         if (!cityName) return [];
-        
+
         const shiresName = this.shires;
         if (!shiresName || shiresName.length === 0) return [];
-        
+
         // Φιλτράρισμα βάσει του cross-reference attribute 'city' στη μνήμη του δωματίου
         return _.filter(shiresName, shireName => Memory.rooms[shireName].city === cityName);
     }
@@ -199,10 +218,13 @@ class WorldCacheInstance {
  * Η πρόσβαση γίνεται πάντα ελεγχόμενα μέσω της RoomCache.in(roomName).
  */
 class RoomCacheInstance {
+    private roomName: string;
+    private cache: RoomCacheData;
+    private _tickCache = {};
     /**
      * @param {string} roomName 
      */
-    constructor(roomName) {
+    constructor(roomName: string) {
         this.roomName = roomName;
 
         // Ασφαλής αρχικοποίηση δομών Memory αν το Bot μπαίνει σε νέο δωμάτιο
@@ -229,14 +251,14 @@ class RoomCacheInstance {
      * Επιστρέφει το native Game Object του Room αν υπάρχει Vision.
      * @returns {Room|null} Σημείωση: Επιστρέφει null αν δεν έχουμε creeps/structures στο δωμάτιο.
      */
-    get room() {
+    get room(): Room | null {
         return Game.rooms[this.roomName] || null;
     }
 
     /**
      * Μηδενισμός της volatile cache. Καλείται στην αρχή του tick.
      */
-    clearTickCache() {
+    private clearTickCache(): void {
         this._tickCache = {};
     }
 
@@ -244,7 +266,7 @@ class RoomCacheInstance {
      * Πλήρης εκκαθάριση της persistent μνήμης (Memory).
      * Χρήσιμο όταν αλλάζει το layout του δωματίου ή καταστρέφονται κτίρια.
      */
-    forceRefresh() {
+    public forceRefresh(): void {
         this.cache.sourceIds = null;
         this.cache.controllerLinkId = null;
         this.cache.storageLinkId = null;
@@ -266,21 +288,21 @@ class RoomCacheInstance {
     // =========================================================================
     // ΠΡΟΣΒΑΣΗ ΣΕ ΣΤΑΤΙΚΑ ΔΕΔΟΜΕΝΑ (Persistent Cache)
     // =========================================================================
-    
-    get center() {
-    if (this.cache.center === undefined || this.cache.center === null) {
-        if (!this.room) return null;
-        
-        // Προσοχή: Χρησιμοποιούμε || επειδή η this.spawns μπορεί να είναι άδειος πίνακας []
-        const target = this.room.storage || (this.spawns.length > 0 ? this.spawns[0] : null) || new RoomPosition(25, 25, this.roomName);
-        if (!target) return null;
-        
-        // Αποθηκεύουμε μόνο απλό object στη μνήμη, όχι ολόκληρο το RoomPosition class
-        this.cache.center = { x: target.pos.x, y: target.pos.y, roomName: this.roomName };
-    }
-    return new RoomPosition(this.cache.center.x, this.cache.center.y, this.cache.center.roomName);
 
-        
+    get center() {
+        if (this.cache.center === undefined || this.cache.center === null) {
+            if (!this.room) return null;
+
+            // Προσοχή: Χρησιμοποιούμε || επειδή η this.spawns μπορεί να είναι άδειος πίνακας []
+            const target = this.room.storage || (this.spawns.length > 0 ? this.spawns[0] : null) || new RoomPosition(25, 25, this.roomName);
+            if (!target) return null;
+
+            // Αποθηκεύουμε μόνο απλό object στη μνήμη, όχι ολόκληρο το RoomPosition class
+            this.cache.center = { x: target.pos.x, y: target.pos.y, roomName: this.roomName };
+        }
+        return new RoomPosition(this.cache.center.x, this.cache.center.y, this.cache.center.roomName);
+
+
 
     }
     get sourceIds() {
@@ -300,23 +322,23 @@ class RoomCacheInstance {
             if (!this.room || !this.room.controller) return Infinity;
             const center = this.center || null; // Μπορείς να ορίσεις το κέντρο του δωματίου στη cache αν θέλεις, π.χ. κοντά στον controller ή στο storage
             if (!center) return Infinity;
-            
-            const distanceCenterToControllerContainer=this.controllerContainerDistance;
-            if(distanceCenterToControllerContainer!=0) {
+
+            const distanceCenterToControllerContainer = this.controllerContainerDistance;
+            if (distanceCenterToControllerContainer != 0) {
                 this.cache.controllerDistance = distanceCenterToControllerContainer;
             } else {
                 this.cache.controllerDistance = this.room.controller.pos.getRangeTo(center);
             }
         }
-        
+
         return this.cache.controllerDistance || 0;
     }
     get controllerContainerDistance() {
-        const controllerContainer=this.controllerContainer;
+        const controllerContainer = this.controllerContainer;
         const center = this.center || null; // Μπορείς να ορίσεις το κέντρο του δωματίου στη cache αν θέλεις, π.χ. κοντά στον controller ή στο storage
-        if (controllerContainer && center){
+        if (controllerContainer && center) {
             return controllerContainer.pos.getRangeTo(center);
-            
+
         }
         return 0;
     }
@@ -357,41 +379,41 @@ class RoomCacheInstance {
 
 
     }
-	getSourceContainer(sourceId) {
-    // 1. Σιγουρευόμαστε ότι η δομή στη μνήμη είναι σωστά αρχικοποιημένη
-    if (!this.cache.sourceContainerIds) {
-        this.cache.sourceContainerIds = {};
-    }
-    
-    // 2. Αν έχουμε ήδη αποθηκευμένο ID, προσπαθούμε να επιστρέψουμε το αντικείμενο απευθείας
-    if (this.cache.sourceContainerIds[sourceId]) {
-        const cachedObj = Game.getObjectById(this.cache.sourceContainerIds[sourceId]);
-        if (cachedObj) return cachedObj;
-        
-        // Αν το ID υπάρχει αλλά το Game.getObjectById επέστρεψε null ΕΝΩ έχουμε vision, 
-        // σημαίνει ότι το container καταστράφηκε, οπότε καθαρίζουμε το ID για να ξαναψάξει.
-        if (this.room) {
-            this.cache.sourceContainerIds[sourceId] = null;
+    getSourceContainer(sourceId) {
+        // 1. Σιγουρευόμαστε ότι η δομή στη μνήμη είναι σωστά αρχικοποιημένη
+        if (!this.cache.sourceContainerIds) {
+            this.cache.sourceContainerIds = {};
         }
-    }
-    
-    // 3. Αν δεν υπάρχει αποθηκευμένο ID (ή μηδενίστηκε παραπάνω) και ΕΧΟΥΜΕ vision στο δωμάτιο
-    if (this.room && (!this.cache.sourceContainerIds[sourceId])) {
-        const source = Game.getObjectById(sourceId);
-        if (source) {
-            // Σιγουρευόμαστε ότι υπάρχουν containers διαθέσιμα στην tick cache
-            const allContainers = this.containers || [];
-            const container = allContainers.find(c => c.pos.isNearTo(source));
-            
-            if (container) {
-                this.cache.sourceContainerIds[sourceId] = container.id;
-                return container;
+
+        // 2. Αν έχουμε ήδη αποθηκευμένο ID, προσπαθούμε να επιστρέψουμε το αντικείμενο απευθείας
+        if (this.cache.sourceContainerIds[sourceId]) {
+            const cachedObj = Game.getObjectById(this.cache.sourceContainerIds[sourceId]);
+            if (cachedObj) return cachedObj;
+
+            // Αν το ID υπάρχει αλλά το Game.getObjectById επέστρεψε null ΕΝΩ έχουμε vision, 
+            // σημαίνει ότι το container καταστράφηκε, οπότε καθαρίζουμε το ID για να ξαναψάξει.
+            if (this.room) {
+                this.cache.sourceContainerIds[sourceId] = null;
             }
         }
+
+        // 3. Αν δεν υπάρχει αποθηκευμένο ID (ή μηδενίστηκε παραπάνω) και ΕΧΟΥΜΕ vision στο δωμάτιο
+        if (this.room && (!this.cache.sourceContainerIds[sourceId])) {
+            const source = Game.getObjectById(sourceId);
+            if (source) {
+                // Σιγουρευόμαστε ότι υπάρχουν containers διαθέσιμα στην tick cache
+                const allContainers = this.containers || [];
+                const container = allContainers.find(c => c.pos.isNearTo(source));
+
+                if (container) {
+                    this.cache.sourceContainerIds[sourceId] = container.id;
+                    return container;
+                }
+            }
+        }
+
+        return null;
     }
-    
-    return null;
-}
     getSourceLink(sourceId) {
         if (!this.cache.sourceLinkIds) this.cache.sourceLinkIds = {};
 
@@ -483,27 +505,26 @@ class RoomCacheInstance {
         }
         return this._tickCache.groupedStructures || [];
     }
-	get spawns() {
-		return this.groupedStructures[STRUCTURE_SPAWN] || [];
-	}
+    get spawns() {
+        return this.groupedStructures[STRUCTURE_SPAWN] || [];
+    }
     get containers() {
         return this.groupedStructures[STRUCTURE_CONTAINER] || [];
     }
     get hasContainers() {
-        const sourceLength=this.sources.length;
-        const containersCount=this.containers.length||0;
-        const hasControllerContainer=(this.controllerContainer && this.controllerContainer!=null);
-        if(containersCount>=3 && hasControllerContainer )
-         {
+        const sourceLength = this.sources.length;
+        const containersCount = this.containers.length || 0;
+        const hasControllerContainer = (this.controllerContainer && this.controllerContainer != null);
+        if (containersCount >= 3 && hasControllerContainer) {
             // console.log("controoler container found");
-             return true;
-         }
-         
+            return true;
+        }
+
         // console.log("controller container not found");
         // Το πρώτο container που χτίζεται είναι αυτό του controller.
         const answer = containersCount > (3);
         //console.log("source is "+sourceLength+" containers is "+containersCount+"   "+answer);
-        
+
         return answer;
     }
     get hasRoads() {

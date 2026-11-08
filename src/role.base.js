@@ -17,6 +17,7 @@ const { LEAD_TIME_KEY, SPAWN_MANAGER_CONFIG } = require("spawn.constants")
 const roomCache = require('./utils.RoomCache');
 
 class BaseRole {
+
     /**
      * Αρχικοποίηση της βασικής κλάσης.
      * @param {Creep} creep - Το αντικείμενο του creep από το Game.creeps.
@@ -247,7 +248,7 @@ class BaseRole {
     gotoHarvesting() {
         const sources = roomCache.in(this.creep.room.name).sources;
         const source = this.creep.pos.findClosestByRange(sources);
-		
+
         if (source) {
             if (this.creep.pos.inRangeTo(source, 1)) {
 

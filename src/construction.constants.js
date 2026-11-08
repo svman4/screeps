@@ -4,7 +4,7 @@
  * Version 1.1.0
  */
 
-module.exports = {
+export default {
 
     MAX_CONSTRUCTION_SITE: 1,
     // Προτεραιότητες κατασκευής (Υψηλότερο = Πιο σημαντικό)

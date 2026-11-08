@@ -1,0 +1,18 @@
+
+export const EXPANSION_CONSTANTS = {
+	USERNAME: "Svman4",
+	OBSERVER_RANGE: 10,
+	MAX_REACH_DEPTH: 2,
+	INTEL_STALE_TIME: 5000,
+	REFRESH_INTEL_GRAPH_INTERVAL: 1000,
+	DELEGATE_VISION_TASKS_INTERVAL: 30,
+
+};
+export const CPU_BUCKET_SAFETY_THRESHOLD = 5000;
+export const ROOM_TYPE = {
+	CITY: "city",
+	REMOTE_MINING: "remote_mining",
+	ENEMY: "enemy",
+	EMPTY: "empty",
+	METROPOLIS: "Metropolis"
+};

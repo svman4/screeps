@@ -12,3 +12,6 @@ export interface Position {
     x: number;
     y: number;
 }
+interface Memory {
+    observerQueue: string[];
+}

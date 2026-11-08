@@ -12,12 +12,14 @@
     "sourceMap": true, // Δημιουργεί .js.map αρχεία για τέλειο debugging!
     "types": [
       "node",
-      "screeps"
+      "screeps",
+      "lodash"
     ],
     "strict": false,
     "noEmitOnError": false
   },
   "include": [
-    "src/**/*"
+    "src/**/*.ts",
+    "src/**/*.d.ts",
   ]
 }

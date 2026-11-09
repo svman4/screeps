@@ -13,8 +13,9 @@
  */
 
 var debugConsole = require("utils.debugConsole");
-import _ from "lodash";
+import * as _ from "lodash";
 import { ROOM_TYPE } from "./expansion.constants";
+
 
 /**  Σταθερές ρυθμίσεις για thresholds αξιολόγησης οικονομίας του δωματίου */
 const CONFIG = {
@@ -27,7 +28,7 @@ export interface World {
 }
 export interface RoomCacheData {
     controllerDistance?: number;
-    center?: { x: number; y: number; roomName: string; };
+    center?: RoomPosition;
     sourceDistanceIds?: {};
     containers?: null;
     links?: null;
@@ -314,13 +315,13 @@ class RoomCacheInstance {
             if (!this.room) return null;
 
             // Προσοχή: Χρησιμοποιούμε || επειδή η this.spawns μπορεί να είναι άδειος πίνακας []
-            const target = this.room.storage || (this.spawns.length > 0 ? this.spawns[0] : null) || new RoomPosition(25, 25, this.roomName);
+            const target: RoomPosition = this.room.storage || (this.spawns.length > 0 ? this.spawns[0] : null) || new RoomPosition(25, 25, this.roomName);
             if (!target) return null;
 
             // Αποθηκεύουμε μόνο απλό object στη μνήμη, όχι ολόκληρο το RoomPosition class
-            this.cache.center = { x: target.pos.x, y: target.pos.y, roomName: this.roomName };
+            this.cache.center = target;
         }
-        return new RoomPosition(this.cache.center.x, this.cache.center.y, this.cache.center.roomName);
+        return this.cache.center;
 
 
 
@@ -339,9 +340,11 @@ class RoomCacheInstance {
     }
     get controllerDistance() {
         if (this.cache.controllerDistance === undefined || this.cache.controllerDistance === null) {
-            if (!this.room || !this.room.controller) return Infinity;
+            if (!this.room || !this.room.controller)
+                return Infinity;
             const center = this.center || null; // Μπορείς να ορίσεις το κέντρο του δωματίου στη cache αν θέλεις, π.χ. κοντά στον controller ή στο storage
-            if (!center) return Infinity;
+            if (!center)
+                return Infinity;
 
             const distanceCenterToControllerContainer = this.controllerContainerDistance;
             if (distanceCenterToControllerContainer != 0) {

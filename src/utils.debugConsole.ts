@@ -46,4 +46,4 @@ class DebugConsole {
 } // end of class DebugConsole
 
 // Εξαγωγή ενός singleton instance της κλάσης για να διατηρείται το ίδιο context σε όλη την εφαρμογή
-module.exports = new DebugConsole();
+export default new DebugConsole();

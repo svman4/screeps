@@ -20,12 +20,22 @@ const LIMITS = {
     BUCKET_LIMIT: 10000 
 }
 
-const pixels = {
+class PixelsManager{
+    private static instance: PixelsManager;
+
+    private constructor() {}
+
+    public static getInstance(): PixelsManager {
+        if (!PixelsManager.instance) {
+            PixelsManager.instance = new PixelsManager();
+        }
+        return PixelsManager.instance;
+    }
     /**
      * Η κύρια λειτουργία που ελέγχει το CPU Bucket και παράγει Pixels.
      * Χρησιμοποιεί το Memory.pixels.counter για να μετρήσει συνεχόμενα ticks με γεμάτο Bucket.
      */
-    run: function() {
+    run():void {
         
         // --- 1. Έλεγχος Συχνότητας Εκτέλεσης ---
         // Αν η συνάρτηση καλείται από τη main.js κάθε tick, ο έλεγχος αυτός περιορίζει
@@ -87,4 +97,4 @@ const pixels = {
     }
 };
 
-module.exports = pixels;
+export = PixelsManager.getInstance();

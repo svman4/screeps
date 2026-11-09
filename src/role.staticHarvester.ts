@@ -8,77 +8,79 @@
  * 2.5.0: Πλήρες Refactoring σε αυτόνομες μεθόδους. Βελτίωση λογικής αυτοκτονίας.
  * 2.4.1: Διόρθωση logs και debugging για το NEED_REPLACEMENT_FLAG.
  */
-const debugConsole = require('utils.debugConsole');
-const BaseRole = require('role.base');
+//import debugConsole from './utils.debugConsole';
+import BaseRole = require('./role.base');
 const movementManager = require('manager.movement');
 const { NEED_REPLACEMENT_FLAG } = require('spawn.constants');
-const roomCache = require('utils.RoomCache');
-
-
+const roomCache = require('./utils.RoomCache');
 const FSM = require('utils.fsm');
+
 const staticHarvesterStates = new FSM(
-	{
-		gotoSource: function() {
-			const source = this.resolveSource();
-			if (!source) return;
-	
-			const container = roomCache.in(this.creep.room.name).getSourceContainer(source.id);
-			if (this.handlePositioning(source, container)) return;
-			staticHarvesterStates.transition(this,"initialiseLifecycle",this.creep.memory);		
-		}, 
-		initialiseLifecycle: function() { 
-			
-			const travelTime = CREEP_LIFE_TIME - this.creep.ticksToLive;
-			const spawnTime = this.getSpawningDuration();
-			const buffer = 30;
+    {
+        gotoSource: function (this: StaticHarvester) {
+            const source: Source = this.resolveSource();
+            if (!source) return;
 
-			this.creep.memory.leadTime = travelTime + spawnTime + buffer;
-			delete this.creep.memory.init;
-			staticHarvesterStates.transition(this,"harvesting",this.creep.memory);		
-		
-		
-		},
-		harvesting:function() {
-			//Εφόσον είναι ήδη στη θέση, ξεκινά την εξόρυξη.
-			const source=this.resolveSource();
-			// Έλεγχος αν ο αντικαταστάτης είναι εδώ για να αποχωρήσει (suicide)
-			if (this.handleRetirement(source)) return;	
-			
-			
-			
-			// Έλεγχος αν πρέπει να ζητηθεί αντικαταστάτης
-			this.checkReplacementNeeds();
+            const container: StructureContainer | null = roomCache.in(this.creep.room.name).getSourceContainer(source.id);
+            if (this.handlePositioning(source, container)) return;
+            staticHarvesterStates.transition(this, "initialiseLifecycle", this.creep.memory);
+        },
+        initialiseLifecycle: function (this: StaticHarvester) {
 
-			// Διαχείριση εφοδιασμού (Links/Containers)
-			this.manageLogistics();
+            const travelTime = CREEP_LIFE_TIME - this.creep.ticksToLive;
+            const spawnTime = this.getSpawningDuration();
+            const buffer = 30;
 
-			// Εκτέλεση εξόρυξης
-			this.performHarvest(source);
-			
-		
-		
-		}
-	}); // end of staticHarvesterStates
+            this.creep.memory.leadTime = travelTime + spawnTime + buffer;
+            delete this.creep.memory.init;
+            staticHarvesterStates.transition(this, "harvesting", this.creep.memory);
+
+
+        },
+        harvesting: function (this: StaticHarvester) {
+            //Εφόσον είναι ήδη στη θέση, ξεκινά την εξόρυξη.
+            const source = this.resolveSource();
+            // Έλεγχος αν ο αντικαταστάτης είναι εδώ για να αποχωρήσει (suicide)
+            if (this.handleRetirement(source)) return;
+
+
+
+            // Έλεγχος αν πρέπει να ζητηθεί αντικαταστάτης
+            this.checkReplacementNeeds();
+
+            // Διαχείριση εφοδιασμού (Links/Containers)
+            this.manageLogistics();
+
+            // Εκτέλεση εξόρυξης
+            this.performHarvest(source);
+
+
+
+        }
+    }); // end of staticHarvesterStates
 
 
 
 class StaticHarvester extends BaseRole {
+    constructor(creep: Creep) {
+        super(creep);
+    }
     /**
      * Κύρια ροή εργασιών του creep.
      */
-	 run() { 
-		staticHarvesterStates.run(this,"gotoSource",this.creep.memory);
-	 }
-   
+    run(): void {
+        staticHarvesterStates.run(this, "gotoSource", this.creep.memory);
+    }
+
     /**
      * Εντοπίζει ή ανακτά την πηγή ενέργειας από τη μνήμη.
      */
-    resolveSource() {
+    resolveSource(): Source | null {
         if (!this.creep.memory.sourceId) {
             const closest = this.creep.pos.findClosestByPath(FIND_SOURCES);
             if (closest) this.creep.memory.sourceId = closest.id;
         }
-        return Game.getObjectById(this.creep.memory.sourceId);
+        return this.creep.memory.sourceId ? Game.getObjectById(this.creep.memory.sourceId) : null;
     }
 
 
@@ -86,11 +88,12 @@ class StaticHarvester extends BaseRole {
      * Διαχειρίζεται την "αποστρατεία" του creep.
      * Επιστρέφει true αν το creep αυτοκτόνησε.
      */
-    handleRetirement(source) {
+    handleRetirement(source: Source) {
         const flag = NEED_REPLACEMENT_FLAG || 'needReplacementFlag';
         const ARRIVAL_RANGE = 1; // Απόσταση στην οποία θεωρούμε ότι ο αντικαταστάτης έφτασε
 
-        if (this.creep.memory[flag] !== false) return false;
+        if (this.creep.memory[flag] !== false)
+            return false;
 
         // Αναζήτηση για τον αντικαταστάτη που πλησιάζει
         const replacement = roomCache.in(this.creep.room.name).myCreeps.filter(
@@ -112,9 +115,9 @@ class StaticHarvester extends BaseRole {
     /**
      * Μετακινεί το creep στη σωστή θέση (πάνω στο container ή δίπλα στην πηγή).
      */
-    handlePositioning(source, container) {
-        const targetPos = container ? container.pos : source.pos;
-        const range = container ? 0 : 1;
+    handlePositioning(source: Source, container: StructureContainer | null): boolean {
+        const targetPos: RoomPosition = container ? container.pos : source.pos;
+        const range: number = container ? 0 : 1;
 
         if (!this.creep.pos.inRangeTo(targetPos, range)) {
             movementManager.smartMove(this.creep, targetPos, range);
@@ -123,10 +126,10 @@ class StaticHarvester extends BaseRole {
         return false;
     }
 
-        /**
-     * Ελέγχει το χρόνο ζωής και ενεργοποιεί το αίτημα αντικατάστασης.
-     */
-    checkReplacementNeeds() {
+    /**
+ * Ελέγχει το χρόνο ζωής και ενεργοποιεί το αίτημα αντικατάστασης.
+ */
+    checkReplacementNeeds(): void {
         const flag = NEED_REPLACEMENT_FLAG || 'needReplacementFlag';
 
         if (this.creep.memory.leadTime && (this.creep.ticksToLive < this.creep.memory.leadTime)) {
@@ -139,9 +142,10 @@ class StaticHarvester extends BaseRole {
     /**
      * Μεταφέρει ενέργεια σε Link αν υπάρχει.
      */
-    manageLogistics() {
-
-        const link = roomCache.in(this.creep.room.name).getSourceLink(this.creep.memory.sourceId);
+    manageLogistics(): void {
+        if (!this.creep.memory.sourceId)
+            return;
+        const link: StructureLink = roomCache.in(this.creep.room.name).getSourceLink(this.creep.memory.sourceId);
         if (link && this.creep.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
             this.creep.transfer(link, RESOURCE_ENERGY);
         }
@@ -152,7 +156,7 @@ class StaticHarvester extends BaseRole {
     /**
      * Εκτελεί το harvest στην πηγή.
      */
-    performHarvest(source) {
+    performHarvest(source: Source): void {
         if (source.energy > 0) {
             this.creep.harvest(source);
         }
@@ -160,9 +164,9 @@ class StaticHarvester extends BaseRole {
     /**
         Ο staticHarvester θέλουμε να εργάζεται μέχρι το τελευταίο tick.
     */
-    getRetirementThreshold() {
+    getRetirementThreshold(): number {
         return 0;
     }
-}
+} // end of class 
 
-module.exports = StaticHarvester;
+export = StaticHarvester;

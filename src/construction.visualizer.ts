@@ -4,10 +4,10 @@
  * Version 1.0.0
  */
 
-import "RoomVisual";
-import { BlueprintStructure, Position } from './types';
+//import "./RoomVisual";
+import { BlueprintStructure } from './types';
 
-const debugConsole = require("utils.debugConsole");
+//import debugConsole from "./utils.debugConsole";
 
 
 
@@ -184,7 +184,7 @@ export class ConstructionVisualizer {
     /**
      * Highlights special containers (Recovery, Controller etc)
      */
-    drawSpecialFocus(pos: Position, label: string, color: string = '#ff00ff') {
+    drawSpecialFocus(pos: RoomPosition, label: string, color: string = '#ff00ff') {
         if (!pos) return;
         this.visual.circle(pos.x, pos.y, {
             fill: 'transparent',

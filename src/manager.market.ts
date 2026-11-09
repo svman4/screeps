@@ -34,9 +34,13 @@ const NUKER_CONFIG = {
 // Κοινό όριο ασφαλείας χρημάτων
 const GLOBAL_MIN_CREDITS = 50000;
 
-const market = {
-    run: function (roomName) {
-        if (Game.time % INTERVALS.RUN !== 0) return;
+class MarketManager {
+    constructor() {
+
+    }
+    run(roomName: string): void {
+        if (Game.time % INTERVALS.RUN !== 0)
+            return;
 
         const room = Game.rooms[roomName];
         if (!room || !room.storage || !room.terminal) return;
@@ -52,23 +56,27 @@ const market = {
 
         // 4. Αγορά Ghodium (αν υπάρχει Nuker)
         this.handleNukerBuying(room, roomName);
-    },
+    }
 
     // --- Διαχείριση Πώλησης Minerals (Liquidation) ---
-    handleMineralSelling: function (room, roomName) {
+    handleMineralSelling(room: Room, roomName: string): void {
         const terminal = room.terminal;
-
+        if (!terminal) {
+            return;
+        }
         // Λίστα με RESOURCES που ΔΕΝ θέλουμε να πουλήσουμε
-        const RESOURCES_TO_KEEP = [RESOURCE_ENERGY, RESOURCE_POWER, RESOURCE_GHODIUM];
+        const RESOURCES_TO_KEEP: ResourceConstant[] = [RESOURCE_ENERGY, RESOURCE_POWER, RESOURCE_GHODIUM];
 
-        for (const resourceType in terminal.store) {
+        for (const resourceTypeStr in terminal.store) {
+            const resourceType = resourceTypeStr as ResourceConstant;
+            if (RESOURCES_TO_KEEP.includes(resourceType))
+                continue;
 
-            if (RESOURCES_TO_KEEP.includes(resourceType)) continue;
-
-            const amountInTerminal = terminal.store[resourceType];
+            const amountInTerminal = terminal.store.getUsedCapacity(resourceType);
 
             // Αν έχουμε λιγότερα από το ελάχιστο όριο, δεν ασχολούμαστε
-            if (amountInTerminal < MARKET_CONFIG.MIN_DEAL_AMOUNT) continue;
+            if (amountInTerminal < MARKET_CONFIG.MIN_DEAL_AMOUNT)
+                continue;
 
             // 1. Βρες Αγοραστές
             const buyOrders = Game.market.getAllOrders(order =>
@@ -77,13 +85,14 @@ const market = {
                 order.remainingAmount >= MARKET_CONFIG.MIN_DEAL_AMOUNT // Να θέλει μια σεβαστή ποσότητα
             );
 
-            if (buyOrders.length === 0) continue;
+            if (buyOrders.length === 0)
+                continue;
 
             // 2. Ταξινόμηση για την καλύτερη τιμή (High to Low)
             buyOrders.sort((a, b) => b.price - a.price);
 
             // 3. Εύρεση κατάλληλου αγοραστή (Loop για έλεγχο απόστασης)
-            let bestOrder = null;
+            let bestOrder: Order | null = null;
             let finalDealAmount = 0;
 
             for (let order of buyOrders) {
@@ -126,7 +135,8 @@ const market = {
                 const result = Game.market.deal(bestOrder.id, finalDealAmount, roomName);
 
                 if (result === OK) {
-                    const buyerName = bestOrder.owner ? bestOrder.owner.username : "NPC/Unknown";
+                    const orderAny = bestOrder as any; //Χρησιμοποιείται μόνο για να βρούμε τον αγοραστή
+                    const buyerName = orderAny.owner ? orderAny.owner.username : "NPC/Unknown";
                     const msg = `💰 LIQUIDATION -- ${resourceType} -- από ${roomName}: ` +
                         `Πουλήθηκαν ${finalDealAmount} με τιμή ${bestOrder.price}. ` +
                         `Buyer: ${buyerName} (${bestOrder.roomName})`;
@@ -135,10 +145,10 @@ const market = {
                 }
             }
         }
-    },
+    }
 
     // --- Διαχείριση Πώλησης Ενέργειας ---
-    handleEnergySelling: function (room, roomName) {
+    handleEnergySelling(room: Room, roomName: string): void {
         const storageCapacity = room.storage.store.getCapacity();
         const energyAmount = room.storage.store.getUsedCapacity(RESOURCE_ENERGY);
 
@@ -150,10 +160,10 @@ const market = {
         if (terminalEnergy < (STORE_LIMITS.TERMINAL * terminalTotalCapacity)) return;
 
         this.searchAndSellEnergy(roomName, terminalEnergy / 2);
-    },
+    }
 
     // --- Διαχείριση Αγοράς Power ---
-    handlePowerBuying: function (room, roomName) {
+    handlePowerBuying(room: Room, roomName: string): void {
         const powerSpawn = room.find(FIND_MY_STRUCTURES, { filter: { structureType: STRUCTURE_POWER_SPAWN } })[0];
         if (!powerSpawn) return;
 
@@ -164,10 +174,10 @@ const market = {
         amountNeeded = Math.min(amountNeeded, POWER_CONFIG.BATCH_SIZE);
 
         this.searchAndBuyResource(roomName, RESOURCE_POWER, amountNeeded, POWER_CONFIG.MAX_PRICE);
-    },
+    }
 
     // --- Διαχείριση Αγοράς Ghodium (Nuker) ---
-    handleNukerBuying: function (room, roomName) {
+    handleNukerBuying(room: Room, roomName: string): void {
         const nuker = room.find(FIND_MY_STRUCTURES, { filter: { structureType: STRUCTURE_NUKER } })[0];
         if (!nuker) return;
 
@@ -178,10 +188,10 @@ const market = {
         amountNeeded = Math.min(amountNeeded, NUKER_CONFIG.BATCH_SIZE);
 
         this.searchAndBuyResource(roomName, RESOURCE_GHODIUM, amountNeeded, NUKER_CONFIG.MAX_PRICE);
-    },
+    }
 
     // --- Generic Συνάρτηση Αγοράς ---
-    searchAndBuyResource(roomName, resourceType, amountToBuy, maxPrice) {
+    searchAndBuyResource(roomName: string, resourceType: ResourceConstant, amountToBuy: number, maxPrice: number) {
         if (Game.market.credits < GLOBAL_MIN_CREDITS) return;
 
         const terminal = Game.rooms[roomName].terminal;
@@ -246,10 +256,10 @@ const market = {
                 Game.notify(msg, 60);
             }
         }
-    },
+    }
 
     // --- Συνάρτηση Πώλησης Ενέργειας ---
-    searchAndSellEnergy(roomName, sellAmount, minPrice = 0.005) {
+    searchAndSellEnergy(roomName: string, sellAmount: number, minPrice: number = 0.005) {
         console.log(`--- Αναζήτηση αγοραστών Energy για ${roomName} ---`);
         const terminal = Game.rooms[roomName].terminal;
 
@@ -297,6 +307,5 @@ const market = {
             }
         }
     }
-};
-
-module.exports = market;
+}; // end of class
+export = new MarketManager();

@@ -1,4 +1,4 @@
-const debugConsole = require("utils.debugConsole");
+import debugConsole from "./utils.debugConsole";
 var roomCache = require('utils.RoomCache');
 
 const DYNAMIC_ENERGY_FLOW_CONSTANT = {
@@ -10,13 +10,14 @@ const MEMORY_KEY = {
    ENERGY_NET_FLOW_KEY: "energyNetFlow",
 }
 class DynamicEnergyFlow {
-   refresh(room) {
+   refresh(room: Room) {
       if (!room.memory) {
          return;
       }
 
       // Optional: If you want this to strictly run only on your refresh interval ticks:
-      if (Game.time % DYNAMIC_ENERGY_FLOW_CONSTANT.REFRESH_RATE !== 0) return;
+      if (Game.time % DYNAMIC_ENERGY_FLOW_CONSTANT.REFRESH_RATE !== 0)
+         return;
 
       let currentScore = 0;
 
@@ -28,7 +29,7 @@ class DynamicEnergyFlow {
          currentScore += room.terminal.store[RESOURCE_ENERGY];
       }
       //console.log("2 "+currentScore);  
-      const containers = roomCache.getContainers(room.name);
+      const containers: StructureContainer[] = roomCache.getContainers(room.name);
       if (containers) {
          for (const container of containers) {
             currentScore += container.store[RESOURCE_ENERGY];

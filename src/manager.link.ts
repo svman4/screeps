@@ -8,24 +8,32 @@
  */
 
 const LIMIT_FOR_START_TRANSFER = 400;
-const STORAGE_LINK_ID = "storageLinkId";
-
+const STORAGE_LINK_ID_KEY = "storageLinkId";
+// Τύπος για την κατηγοριοποίηση των links
+interface LinkCategories {
+    senders: StructureLink[];
+    receivers: StructureLink[];
+    storageLink: StructureLink | null;
+    controllerLink: StructureLink | null;
+}
 class LinkManager {
+    private room: Room;
+    private links: StructureLink[];
+    private categories: LinkCategories;
     /**
      * @param {Room} room - Το αντικείμενο του δωματίου που διαχειρίζεται ο manager.
      */
-    constructor(room) {
+    constructor(room: Room) {
         this.room = room;
         this.links = room.find(FIND_MY_STRUCTURES, {
             filter: { structureType: STRUCTURE_LINK }
-        });
+        }) as StructureLink[];
         this.categories = this.categorizeLinks();
     }
-
     /**
-     * Εκτυπώνει την κατάσταση του δικτύου Link για debugging.
-     */
-    debugCategories() {
+         * Εκτυπώνει την κατάσταση του δικτύου Link για debugging.
+         */
+    debugCategories(): void {
         const { senders, storageLink, controllerLink } = this.categories;
         console.log(`--- Link Report [${this.room.name}] ---`);
         console.log(`Senders: ${senders.length}`);
@@ -36,7 +44,7 @@ class LinkManager {
     /**
      * Κύρια λογική εκτέλεσης.
      */
-    run() {
+    run(): void {
         if (this.links.length < 2) return;
 
         const { senders, storageLink, controllerLink } = this.categories;
@@ -64,7 +72,7 @@ class LinkManager {
     /**
      * Κατηγοριοποιεί τα links βάσει θέσης και ενημερώνει τη μνήμη.
      */
-    categorizeLinks() {
+    categorizeLinks(): LinkCategories {
         const senders = [];
         const receivers = [];
         let storageLink = null;
@@ -87,7 +95,7 @@ class LinkManager {
                 storageLink = link;
                 isSpecial = true;
                 // Ενημέρωση Memory για χρήση από άλλους managers (π.χ. Logistics)
-                this.room.memory[STORAGE_LINK_ID] = storageLink.id;
+                this.room.memory[STORAGE_LINK_ID_KEY] = storageLink.id;
             }
 
             // Αν δεν είναι ειδικό Link, θεωρείται Sender (από Sources)
@@ -99,14 +107,11 @@ class LinkManager {
         return { senders, receivers, storageLink, controllerLink };
     }
 }
+// Export για χρήση σε JavaScript/CommonJS modules αν χρειάζεται
+export function run(roomName: string): void {
+    const room = Game.rooms[roomName];
+    if (!room) return;
 
-module.exports = {
-    STORAGE_LINK_ID,
-    run: function (roomName) {
-        const room = Game.rooms[roomName];
-        if (!room) return;
-
-        const manager = new LinkManager(room);
-        manager.run();
-    }
-};
+    const manager = new LinkManager(room);
+    manager.run();
+}

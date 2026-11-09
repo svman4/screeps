@@ -5,59 +5,8 @@
  */
 import * as _ from "lodash";
 import { EXPANSION_CONSTANTS, ROOM_TYPE, CPU_BUCKET_SAFETY_THRESHOLD } from "./expansion.constants";
-import roomCache = require("./utils.RoomCache");
 import spawnManager = require("./manager.spawn");
 import { ROLES } from "./spawn.constants";
-import { RoomCacheData, World } from "./utils.RoomCache";
-//const debugConsole = require("utils.debugConsole");
-
-
-declare global {
-    interface Memory {
-        expansionCheckTime?: number;
-        obsTarget?: string;
-        observerQueue?: string[];
-        world?: World
-    }
-    // Δημιουργία τύπου από τα values του ROOM_TYPE
-
-    interface RoomMemory {
-        type?: typeof ROOM_TYPE[keyof typeof ROOM_TYPE];
-        city?: string;
-        lastScouted?: number;
-        scoutNeeded?: boolean;
-        sources?: Array<{ id: string; x: number; y: number }>;
-        controllerPos?: { x: number; y: number };
-        cache?: RoomCacheData;
-        enemyInfo?: {
-            owner: string;
-            level: number;
-            towers: number;
-        };
-    }
-
-    interface EnemyInfo {
-        owner: string;
-        level: number;
-        towers: number;
-    }
-
-    interface RoomMemoryData {
-        type?: string;
-        sources?: Array<{ id: string, x: number, y: number }>;
-        controllerPos?: { x: number; y: number };
-        enemyInfo?: EnemyInfo;
-        lastScouted?: number;
-        scoutNeeded?: boolean;
-        city?: string;
-    }
-
-}
-
-
-
-
-
 
 class ExpansionManager {
     constructor() {
@@ -109,7 +58,7 @@ class ExpansionManager {
             return;
         }
         const room = Game.rooms[metropolisRoomName];
-
+        room.memory.type
         if (!room) {
             return;
         }

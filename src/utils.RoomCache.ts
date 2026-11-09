@@ -26,14 +26,34 @@ export interface World {
     Shires?: string[];
 }
 export interface RoomCacheData {
-    sourceIds: string[] | null;
-    controllerLinkId: string | null;
-    storageLinkId: string | null;
-    sourceLinkIds: { [sourceId: string]: string }; // Mapping { sourceId: linkId }
-    recoveryContainerId: string | null;
-    controllerContainerId: string | null;
+    controllerDistance?: number;
+    center?: { x: number; y: number; roomName: string; };
+    sourceDistanceIds?: {};
+    containers?: null;
+    links?: null;
+    patrolPoints?: any[];
+    sourceContainerIds?: any;
+    sourceIds?: string[] | null;
+    controllerLinkId?: string | null;
+
+    storageLinkId?: string | null;
+    sourceLinkIds?: { [sourceId: string]: string }; // Mapping { sourceId: linkId }
+    recoveryContainerId?: string | null;
+    controllerContainerId?: string | null;
 
     lastUpdated: number;
+}
+export interface RoomTickCacheData {
+    myStructures?: Structure[];
+    groupedStructures?: any;
+    structures?: any;
+    myCreeps?: Creep[];
+    hostileCreeps?: Creep[];
+    constructionSites?: any;
+    damagedStructures?: any;
+    ruins?: Ruin[];
+    droppedEnergy?: any;
+
 }
 // Interface για το εσωτερικό Volatile Tick Cache (RAM)
 interface TickCache {
@@ -220,7 +240,7 @@ class WorldCacheInstance {
 class RoomCacheInstance {
     private roomName: string;
     private cache: RoomCacheData;
-    private _tickCache = {};
+    private _tickCache: RoomTickCacheData;
     /**
      * @param {string} roomName 
      */
@@ -258,7 +278,7 @@ class RoomCacheInstance {
     /**
      * Μηδενισμός της volatile cache. Καλείται στην αρχή του tick.
      */
-    private clearTickCache(): void {
+    public clearTickCache(): void {
         this._tickCache = {};
     }
 
@@ -289,7 +309,7 @@ class RoomCacheInstance {
     // ΠΡΟΣΒΑΣΗ ΣΕ ΣΤΑΤΙΚΑ ΔΕΔΟΜΕΝΑ (Persistent Cache)
     // =========================================================================
 
-    get center() {
+    get center(): RoomPosition {
         if (this.cache.center === undefined || this.cache.center === null) {
             if (!this.room) return null;
 
@@ -305,7 +325,7 @@ class RoomCacheInstance {
 
 
     }
-    get sourceIds() {
+    get sourceIds(): Id<Source>[] {
         if (!this.cache.sourceIds || this.cache.sourceIds.length === 0) {
             if (!this.room) return [];
             const sources = this.room.find(FIND_SOURCES);
@@ -333,8 +353,8 @@ class RoomCacheInstance {
 
         return this.cache.controllerDistance || 0;
     }
-    get controllerContainerDistance() {
-        const controllerContainer = this.controllerContainer;
+    get controllerContainerDistance(): number {
+        const controllerContainer: StructureContainer = this.controllerContainer;
         const center = this.center || null; // Μπορείς να ορίσεις το κέντρο του δωματίου στη cache αν θέλεις, π.χ. κοντά στον controller ή στο storage
         if (controllerContainer && center) {
             return controllerContainer.pos.getRangeTo(center);
@@ -342,7 +362,7 @@ class RoomCacheInstance {
         }
         return 0;
     }
-    get controllerLink() {
+    get controllerLink(): StructureLink {
         if (this.cache.controllerLinkId === undefined || this.cache.controllerLinkId === null) {
             if (!this.room || !this.room.controller) return null;
 
@@ -365,12 +385,12 @@ class RoomCacheInstance {
         }
         return Game.getObjectById(this.cache.storageLinkId) || null;
     }
-    getSourceDistance(sourceId) {
+    getSourceDistance(sourceId: Id<Source>): number {
         if (!this.cache.sourceDistanceIds) this.cache.sourceDistanceIds = {};
         if (this.cache.sourceDistanceIds[sourceId] === undefined) {
             const source = Game.getObjectById(sourceId);
             if (!source) return Infinity;
-            const center = this.center || Infinity; // Μπορείς να ορίσεις το κέντρο του δωματίου στη cache αν θέλεις, π.χ. κοντά στον controller ή στο storage
+            const center: RoomPosition = this.center; // Μπορείς να ορίσεις το κέντρο του δωματίου στη cache αν θέλεις, π.χ. κοντά στον controller ή στο storage
             if (!center) return Infinity;
 
             this.cache.sourceDistanceIds[sourceId] = source.pos.getRangeTo(center);
@@ -414,11 +434,11 @@ class RoomCacheInstance {
 
         return null;
     }
-    getSourceLink(sourceId) {
+    getSourceLink(sourceId: Id<Source>) {
         if (!this.cache.sourceLinkIds) this.cache.sourceLinkIds = {};
 
         if (this.cache.sourceLinkIds[sourceId] === undefined || this.cache.sourceLinkIds[sourceId] === null) {
-            const source = Game.getObjectById(sourceId);
+            const source: Source = Game.getObjectById(sourceId);
             if (!source) return null;
 
             const links = source.pos.findInRange(FIND_MY_STRUCTURES, 2, {
@@ -454,7 +474,7 @@ class RoomCacheInstance {
         return Game.getObjectById(this.cache.recoveryContainerId) || null;
     }
 
-    get controllerContainer() {
+    get controllerContainer(): StructureContainer {
         if (!this.cache.controllerContainerId) {
             if (!this.room || !this.room.controller) return null;
 
@@ -468,7 +488,7 @@ class RoomCacheInstance {
     get patrolPoints() {
         if (!this.cache.patrolPoints) {
             if (!this.room) return [];
-            let points = [];
+            let points: RoomPosition[] = [];
             if (this.room.controller) {
                 points.push(this.room.controller.pos);
             }
@@ -491,7 +511,7 @@ class RoomCacheInstance {
     // ΠΡΟΣΒΑΣΗ ΣΕ ΔΥΝΑΜΙΚΑ ΔΕΔΟΜΕΝΑ (Volatile Tick Cache)
     // =========================================================================
 
-    get myStructures() {
+    get myStructures(): Structure[] {
         if (!this._tickCache.myStructures) {
             if (!this.room) return [];
             this._tickCache.myStructures = this.room.find(FIND_MY_STRUCTURES);
@@ -596,7 +616,7 @@ class RoomCacheInstance {
         }
         return this._tickCache.ruins || [];
     }
-    get droppedEnergy() {
+    get droppedEnergy(): Resource<RESOURCE_ENERGY>[] {
         if (!this._tickCache.droppedEnergy) {
             if (!this.room) return [];
             this._tickCache.droppedEnergy = this.room.find(FIND_DROPPED_RESOURCES, {
@@ -608,4 +628,4 @@ class RoomCacheInstance {
 }
 
 // Εξαγωγή ενός μοναδικού (Singleton) instance της κλάσης RoomCache
-module.exports = new RoomCache();
+module.exports = new RoomCacheManager();

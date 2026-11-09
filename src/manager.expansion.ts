@@ -18,10 +18,11 @@ declare global {
         obsTarget?: string;
         observerQueue?: string[];
         world?: World
-    };
+    }
+    // Δημιουργία τύπου από τα values του ROOM_TYPE
 
     interface RoomMemory {
-        type?: string;
+        type?: typeof ROOM_TYPE[keyof typeof ROOM_TYPE];
         city?: string;
         lastScouted?: number;
         scoutNeeded?: boolean;
@@ -126,7 +127,7 @@ class ExpansionManager {
             // Στέλνει scout σε κάθε γείτονα για έλεγχο.
             Memory.rooms[neighborName].city = metropolisRoomName;
             if (Game.rooms[neighborName]) {
-                this.updateRoomIntel(neighborName);
+                this.updateRoomIntelWithRoomName(neighborName, false);
             }
             else {
                 this.sendScout(metropolisRoomName, neighborName);
@@ -164,7 +165,11 @@ class ExpansionManager {
         return true;
     }
 
+    public updateRoomIntelWithRoomName(roomName: string, hasGCL: boolean): void {
+        const room = Game.rooms[roomName];
+        this.updateRoomIntel(room, hasGCL);
 
+    }
     public updateRoomIntel(room: Room, hasGCL: boolean = true): void {
         const mem = ((Memory.rooms[room.name] || (Memory.rooms[room.name] = {})) as RoomMemory);
         const controller = room.controller;
@@ -226,9 +231,13 @@ class ExpansionManager {
             targets.forEach(t => this.sendScout(t));
         }
     }
-    public sendScout(startRoomName: string, targetRoomName: string): void {
-        spawnManager.addRoleToQueue(startRoomName, ROLES.SCOUT, 50, [MOVE], {}, targetRoomName);
+    public sendScout(targetRoomName: string, metropolisName: string = ""): void {
+        if (metropolisName === "") {
+            //TODO find the nearest metropolisTo send scount
+        } else {
+            spawnManager.addRoleToQueue(metropolisName, ROLES.SCOUT, 50, [MOVE], {}, targetRoomName);
 
+        }
     }
 
     public cleanOldMemory(myRooms: string[], neighbors: string[]): void {

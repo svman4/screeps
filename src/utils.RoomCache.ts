@@ -33,10 +33,10 @@ export interface RoomCacheData {
     links?: null;
     patrolPoints?: any[];
     sourceContainerIds?: any;
-    sourceIds?: string[] | null;
-    controllerLinkId?: string | null;
+    sourceIds?: Id<Source>[];
+    controllerLinkId?: string;
 
-    storageLinkId?: string | null;
+    storageLinkId?: string;
     sourceLinkIds?: { [sourceId: string]: string }; // Mapping { sourceId: linkId }
     recoveryContainerId?: string | null;
     controllerContainerId?: string | null;

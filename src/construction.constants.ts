@@ -58,6 +58,7 @@ export default {
         CONTROLLER: 'controllerContainerId',
         ROAD_PLAN: 'roadPlannerData',
         BLUE_PRINT: 'blueprint'
+
     }, // end of MEMORY_KEYS
     /**
  * SCAN INTERVALS
@@ -66,7 +67,7 @@ export default {
         UPDATE_BUILT_CACHE: 10,
         CHECK_CONSTRUCTION_SITES: 5
     },
-    STORAGE_LIMIT_FOR_INDUSTRIAL_ERA:600000,
-    CONTROLLER_LEVEL_FOR_INDUSTRIAL_ERA:6,
+    STORAGE_LIMIT_FOR_INDUSTRIAL_ERA: 600000,
+    CONTROLLER_LEVEL_FOR_INDUSTRIAL_ERA: 6,
 
 };

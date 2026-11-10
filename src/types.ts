@@ -102,7 +102,7 @@ declare global {
      */
     export interface RawBlueprintData {
         /** Το μέγιστο Room Controller Level (RCL) για το οποίο έχει σχεδιαστεί το πλάνο */
-        rcl: number;
+        rcl?: number;
 
         /** 
          * Λεξικό που αντιστοιχίζει κάθε τύπο κτιρίου του Screeps (π.χ. "spawn", "road", "extension")
@@ -112,7 +112,7 @@ declare global {
         buildings: Partial<Record<BuildableStructureConstant, BlueprintCoord[]>>;
 
         /** Το όνομα του δωματίου στο οποίο ανήκει το blueprint (π.χ. "W1N3") */
-        name: string;
+        name?: string;
 
         /** Προαιρετικό αναγνωριστικό του shard (π.χ. "05d12231a3fd" ή "shard3") */
         shard?: string;

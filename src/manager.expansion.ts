@@ -79,7 +79,7 @@ class ExpansionManager {
                 this.updateRoomIntelWithRoomName(neighborName, false);
             }
             else {
-                this.sendScout(metropolisRoomName, neighborName);
+                this.sendScout( neighborName,metropolisRoomName);
             }
         }
     } // end of _checkNeighborsFrom(metropolis)
@@ -113,7 +113,9 @@ class ExpansionManager {
         if (mem && mem.type === 'enemy') return false;
         return true;
     }
-
+    /**
+     * test
+     */
     public updateRoomIntelWithRoomName(roomName: string, hasGCL: boolean): void {
         const room = Game.rooms[roomName];
         this.updateRoomIntel(room, hasGCL);

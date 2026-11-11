@@ -13,26 +13,26 @@
     - Πλήρης ενσωμάτωση των MEMORY_KEYS από το αρχείο constants.
     - Κατάργηση hardcoded strings στη διαχείριση μνήμης.
 */
-const defenceManager = require('manager.defense');
-const ConstructionVisualizer = require('construction.visualizer');
-const BaseLayout = require('construction.layout.BaseLayout');
-const FileLayout = require('construction.layout.FileLayout');
-const RoadPlanner = require('construction.roadPlanner');
-const debugConsole = require("utils.debugConsole");
-const roomCache = require('utils.RoomCache');
-const {
+import defenceManager = require('./manager.defense');
+import ConstructionVisualizer = require('./construction.visualizer');
+import BaseLayout = require('./construction.layout.BaseLayout');
+import FileLayout = require('./construction.layout.FileLayout');
+import RoadPlanner = require('./construction.roadPlanner');
+const debugConsole = require("./utils.debugConsole");
+import roomCache = require('./utils.RoomCache');
+import {
     MEMORY_KEYS,
     MAX_CONSTRUCTION_SITE,
     STORAGE_LIMIT_FOR_INDUSTRIAL_ERA,
     CONTROLLER_LEVEL_FOR_INDUSTRIAL_ERA
 } = require('construction.constants');
-const constructionFSM = {
+const constructionFSM = new FSM({
     'earlyEra': function () {
 
-        if (defenceManager.isWarModeActive(room)) {
+        if (defenceManager.isWarModeActive(this.room)) {
             // βρισκόμαστε σε κατάσταση πολέμου.
             constructionFSM.transition(this, 'warTime', this.room.memory);
-            return populationManagerStates.states['warTime'].call(this); // Αμέσως εκτέλεση της νέας εποχής
+            return constructionFSM.states['warTime'].call(this); // Αμέσως εκτέλεση της νέας εποχής
         }
         if (!this.checkIfMemoryIsOk(this.room)) {
             // εφόσον δεν υπάρχει αρχικοποιημένη μνήμη, ξεκινάμε την ανάλυση του δωματίου.
@@ -58,7 +58,7 @@ const constructionFSM = {
             constructionFSM.transition(this, 'earlyEra', this.room.memory);
             return constructionFSM.states['earlyEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής
         }
-        if (defenceManager.isWarModeActive(room)) {
+        if (defenceManager.isWarModeActive(this.room)) {
             // βρισκόμαστε σε κατάσταση πολέμου.
             constructionFSM.transition(this, 'warTime', this.room.memory);
             return constructionFSM.states['warTime'].call(this); // Αμέσως εκτέλεση της νέας εποχής
@@ -95,7 +95,7 @@ const constructionFSM = {
             constructionFSM.transition(this, 'earlyEra', this.room.memory);
             return constructionFSM.states['earlyEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής
         }
-        if (defenceManager.isWarModeActive(room)) {
+        if (defenceManager.isWarModeActive(this.room)) {
             // βρισκόμαστε σε κατάσταση πολέμου.
             constructionFSM.transition(this, 'warTime', this.room.memory);
             return constructionFSM.states['warTime'].call(this); // Αμέσως εκτέλεση της νέας εποχής
@@ -107,50 +107,72 @@ const constructionFSM = {
     'warTime': function () {
         //Σε κατάσταση πολέμου δε προσπαθούμε να χτίσουμε κάτι.
         // Απλά αναμονή για λήξη πολέμου.
-        if (!defenceManager.isWarModeActive(room)) {
+        if (!defenceManager.isWarModeActive(this.room)) {
             //εφόσον έληξε η πολεμική λειτουργία. Επανερχόμαστε.
             constructionFSM.transition(this, 'earlyEra', this.room.memory);
-            return populationManagerStates.states['earlyEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής
+            return constructionFSM.states['earlyEra'].call(this); // Αμέσως εκτέλεση της νέας εποχής
         }
     } // end of warTime
-} // end of constructionFSM
-
+}); // end of constructionFSM
+interface RoomInfoData {
+    level: number;
+    constructionRemain: BlueprintStructure[];
+}
 /**
  * CONSTRUCTION MANAGER CLASS
  */
 class ConstructionManager {
+    public roomName!: string;
+    public visualizer: ConstructionVisualizer;
+    public layout: BaseLayout;
+    public info: { [roomName: string]: RoomInfoData };
 
-    constructor(roomName) {
-        this.visualizer = new ConstructionVisualizer(roomName);
+    constructor(roomName: string) {
+
+        if (roomName) {
+            this.roomName = roomName;
+            this.visualizer = new ConstructionVisualizer(roomName);
+            this.layout = new FileLayout(roomName);
+        }
         this.info = {};
-        this.layout = new FileLayout(roomName);
     }
-    checkIfMemoryIsOk(room) {
+    checkIfMemoryIsOk(room: Room): boolean {
         if (room.memory[MEMORY_KEYS.ROOT] && this.info[room.name]) {
             return true;
         } else {
             return false;
         }
     } // end of checkIfMemory
-    initRoom(room) {
-        this.info[room.name].level = room.conroller.level;
-        this.info[room.name].constructionRemain = {};
-
+    initRoom(room: Room): void {
+        if (!this.info[room.name]) {
+            this.info[room.name] = {
+                level: room.controller ? room.controller.level : 0,
+                constructionRemain: []
+            };
+        } else {
+            this.info[room.name].level = room.controller ? room.controller.level : 0,
+                this.info[room.name].constructionRemain = []
+        }
     } // end of initinitRoom(room)
-    initMemory() {
-        if (!Memory.rooms[this.roomName]) Memory.rooms[this.roomName] = {};
-        if (!Memory.debug) Memory.debug = {};
-        if (!Memory.debug[MEMORY_KEYS.ROOT]) Memory.debug[MEMORY_KEYS.ROOT] = false;
+    initMemory(): void {
+
+        if (!Memory.rooms[this.roomName])
+            Memory.rooms[this.roomName] = {};
+        if (!Memory.debug)
+            Memory.debug = {};
+
+
+        if (!Memory.debug[MEMORY_KEYS.ROOT])
+            Memory.debug[MEMORY_KEYS.ROOT] = false;
 
         if (!Memory.rooms[this.roomName][MEMORY_KEYS.ROOT]) {
             Memory.rooms[this.roomName][MEMORY_KEYS.ROOT] = {
                 [MEMORY_KEYS.STRUCTURES]: {}
             };
         }
+    } // end of initMemory
 
-    }
-
-    run(room) {
+    run(room: Room): void {
 
         if (!room.memory) {
             return;
@@ -158,10 +180,14 @@ class ConstructionManager {
         if (room.controller || room.controller.my) {
             return;
         }
-
+        this.roomName = room.name;
         const limits = constructionFSM.run(this, "earlyEra", Memory.
             rooms[room.name]);
 
+        if (!this.visualizer)
+            this.visualizer = new ConstructionVisualizer(room.name);
+        if (!this.layout)
+            this.layout = new FileLayout(room.name);
         // if (Game.time % SCAN_INTERVALS.UPDATE_BUILT_CACHE === 0) {
         //     this.updateBuiltCache(room);
         // }
@@ -173,22 +199,23 @@ class ConstructionManager {
         this.drawVisuals(room);
     }
 
-    updateBuiltCache(room) {
+    updateBuiltCache(room: Room): void {
+        const cache: { [coords: string]: string } = {};
         const structures = roomCache.in(room.name).structures;
-        const cache = {};
 
-        structures.forEach(s => {
+
+        structures.forEach((s: Structure) => {
             cache[`${s.pos.x},${s.pos.y}`] = s.structureType;
         });
 
-        const constructionMem = Memory.rooms[roomName][MEMORY_KEYS.ROOT];
+        const constructionMem = Memory.rooms[room.name][MEMORY_KEYS.ROOT];
         constructionMem[MEMORY_KEYS.STRUCTURES] = cache;
     } // end of updateBuiildCache
 
 
 
 
-    processConstruction(room) {
+    processConstruction(room: Room): void {
         const cache = roomCache.in(room.name);
         let sites = cache.constructionSites;
 
@@ -199,12 +226,13 @@ class ConstructionManager {
             return;
         }
 
-        const constructionMem = Memory.rooms[roomName][MEMORY_KEYS.ROOT];
+        const constructionMem = Memory.rooms[room.name][MEMORY_KEYS.ROOT];
         const builtMap = constructionMem[MEMORY_KEYS.STRUCTURES] || {};
         const rcl = room.controller.level;
 
-        const fullPlan = this.info[room.name].constructionRemain;
-        if (fullPlan.length === 0) return;
+        const fullPlan = this.info[room.name]?.constructionRemain;
+        if (!fullPlan || fullPlan.length === 0)
+            return;
 
         let remainingQuota = maxSites - sites.length;
         let startingRemainingQuota = remainingQuota;

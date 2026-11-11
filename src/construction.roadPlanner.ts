@@ -1,5 +1,5 @@
 class RoadPlanner {
-    static getRoadMetadata(x, y, rawData, buildingEntries, roomName) {
+    static getRoadMetadata(x: number, y: number, rawData, buildingEntries, roomName) {
         if (!roomName) return { rcl: 8, bonus: 0, category: 'infrastructure' };
 
         const spawns = rawData.buildings.spawn || [];
@@ -79,4 +79,4 @@ class RoadPlanner {
         return false;
     }
 }
-module.exports = RoadPlanner;
+export = RoadPlanner;

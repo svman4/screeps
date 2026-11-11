@@ -61,7 +61,7 @@ class BaseLayout {
         }
 
         // Φόρτωση, αξιολόγηση και αποθήκευση νέου πλάνου
-        const rawData = this.loadRawData();
+        const rawData: RawBlueprintData = this.loadRawData();
         if (rawData) {
             console.log(`[BaseLayout] Processing new layout for ${this.roomName}...`);
             this.blueprint = LayoutScorer.process(rawData, this.roomName);

@@ -16,9 +16,11 @@ declare global {
         obsTarget?: string;
         observerQueue?: string[];
         world?: World;
+        debug?: {
+            construction?: boolean;
+        };
         pixels?: {
             counter?: number
-
         }
     }
     // Δημιουργία τύπου από τα values του ROOM_TYPE

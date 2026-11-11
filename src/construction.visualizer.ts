@@ -201,5 +201,3 @@ export class ConstructionVisualizer {
         });
     }
 }
-
-module.exports = ConstructionVisualizer;

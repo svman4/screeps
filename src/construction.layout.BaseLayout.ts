@@ -31,7 +31,9 @@ class BaseLayout {
 
     /** Η τελική, ταξινομημένη λίστα των κτιρίων προς κατασκευή */
     protected blueprint: BlueprintStructure[] = [];
-
+    getBlueprint(): BlueprintStructure[] {
+        return this.blueprint;
+    }
     /**
      * Δημιουργεί ένα νέο instance της BaseLayout για το συγκεκριμένο δωμάτιο.
      * 

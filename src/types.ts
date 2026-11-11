@@ -1,11 +1,3 @@
-// Ορισμός της δομής ενός στοιχείου στο blueprint
-export interface BlueprintStructure {
-    x: number;
-    y: number;
-    type: string;
-    rcl: number;
-    category?: 'critical' | 'logistics' | 'industrial' | string;
-}
 
 
 import { ROOM_TYPE } from "./expansion.constants";
@@ -36,6 +28,7 @@ declare global {
         cache?: RoomCacheData;
         lastEnergyStore?: number;
         energyNetFlow?: number;
+        wallLimit?: number;
         enemyInfo?: {
             owner: string;
             level: number;

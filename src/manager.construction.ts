@@ -14,18 +14,22 @@
     - Κατάργηση hardcoded strings στη διαχείριση μνήμης.
 */
 import defenceManager = require('./manager.defense');
-import ConstructionVisualizer = require('./construction.visualizer');
+import { ConstructionVisualizer } from './construction.visualizer';
 import BaseLayout = require('./construction.layout.BaseLayout');
 import FileLayout = require('./construction.layout.FileLayout');
 import RoadPlanner = require('./construction.roadPlanner');
 const debugConsole = require("./utils.debugConsole");
-import roomCache = require('./utils.RoomCache');
-import {
+import roomCacheClass = require('./utils.RoomCache');
+// Ορισμός τύπου για να σταματήσει να διαμαρτύρεται ο compiler
+const roomCache = roomCacheClass as any;
+import Constants = require('./construction.constants');
+const {
     MEMORY_KEYS,
     MAX_CONSTRUCTION_SITE,
     STORAGE_LIMIT_FOR_INDUSTRIAL_ERA,
-    CONTROLLER_LEVEL_FOR_INDUSTRIAL_ERA
-} = require('construction.constants');
+    CONTROLLER_LEVEL_FOR_INDUSTRIAL_ERA,
+    SCAN_INTERVALS
+} = Constants as any;
 const constructionFSM = new FSM({
     'earlyEra': function () {
 
@@ -114,26 +118,20 @@ const constructionFSM = new FSM({
         }
     } // end of warTime
 }); // end of constructionFSM
-interface RoomInfoData {
-    level: number;
-    constructionRemain: BlueprintStructure[];
-}
+// interface RoomInfoData {
+//     level: number;
+//     constructionRemain: BlueprintStructure[];
+// }
 /**
  * CONSTRUCTION MANAGER CLASS
  */
 class ConstructionManager {
     public roomName!: string;
-    public visualizer: ConstructionVisualizer;
+    public visualizer = new ConstructionVisualizer();
     public layout: BaseLayout;
     public info: { [roomName: string]: RoomInfoData };
 
-    constructor(roomName: string) {
-
-        if (roomName) {
-            this.roomName = roomName;
-            this.visualizer = new ConstructionVisualizer(roomName);
-            this.layout = new FileLayout(roomName);
-        }
+    constructor() {
         this.info = {};
     }
     checkIfMemoryIsOk(room: Room): boolean {
@@ -183,18 +181,11 @@ class ConstructionManager {
         this.roomName = room.name;
         const limits = constructionFSM.run(this, "earlyEra", Memory.
             rooms[room.name]);
-
-        if (!this.visualizer)
-            this.visualizer = new ConstructionVisualizer(room.name);
-        if (!this.layout)
-            this.layout = new FileLayout(room.name);
-        // if (Game.time % SCAN_INTERVALS.UPDATE_BUILT_CACHE === 0) {
-        //     this.updateBuiltCache(room);
-        // }
-
-        // if (Game.time % SCAN_INTERVALS.CHECK_CONSTRUCTION_SITES === 0) {
-        //     this.processConstruction(room);
-        // }
+        if (this.visualizer)
+            this.drawVisuals(room);
+        if (Game.time % SCAN_INTERVALS.UPDATE_BUILT_CACHE === 0) {
+            this.updateBuiltCache(room);
+        }
 
         this.drawVisuals(room);
     }
@@ -236,12 +227,12 @@ class ConstructionManager {
 
         let remainingQuota = maxSites - sites.length;
         let startingRemainingQuota = remainingQuota;
-        remainingQuota = this.buildStructures(fullPlan, remainingQuota);
+        remainingQuota = this.buildStructures(room, fullPlan, remainingQuota);
         //console.log("start "+ remainingQuota + " "+startingRemainingQuota);
         if (startingRemainingQuota === remainingQuota) {
             const remainQuotaForDefence = 100;
             // Θέλουμε να χτίζει μονομιάς όλα τα αμυντικά κτίρια.
-            remainingQuota = this.buildDefenses(fullPlan, remainQuotaForDefence);
+            remainingQuota = this.buildDefenses(room, fullPlan, remainQuotaForDefence);
             if (remainingQuota != remainQuotaForDefence) {
                 remainingQuota = 0;
             } else {
@@ -253,25 +244,25 @@ class ConstructionManager {
             const remainQuotaForRoads = 100;
             //console.log("Defence " +remainingQuota + " "+startingRemainingQuota);
             // Θέλουμε να χτίζει μονομιάς όλους τους δρόμους στο τρέχον rcl.
-            this.buildRoads(fullPlan, remainQuotaForRoads, rcl, builtMap);
+            this.buildRoads(room, fullPlan, remainQuotaForRoads);
         }
     } // end of processConstruction
     /**
      * Αναζητεί από το blueprint του δωματίου τα critical roads.
-     * @param {*} room 
+     * @param {room} room 
      */
-    getCriticalRoads(room) {
+    getCriticalRoads(room: Room) {
 
         const blueprint = room.memory[MEMORY_KEYS.ROOT][MEMORY_KEYS.BLUE_PRINT];
-        const roads = blueprint.filter(s => s.type === 'road');
+        const roads = blueprint.filter((s: { type: string; }) => s.type === 'road');
         debugConsole.debugText("Construction,getCriticalRoads", "found " + roads.length + " roads");
 
         // TODO πρεπει να βρίσκει τη θέση των storage, firstSpawn και containers
-        const placeOfstorage = { x=5, y=5 }; // Ο χώρος που θα μπει το storage
-        const placeOfFirstSpawn = { x=5, y=5 }; // Ο χώρος που θα μπει το spawn
-        const placeOfContainers = [{ x=5, y=5 }, { x=5, y=5 }, { x=5, y=5 }, { x=5, y=5 }] // ο χώρος που θα βρίσκονται τα containers (Πηγών και controller)
+        const placeOfstorage = { x: 5, y: 5 }; // Ο χώρος που θα μπει το storage
+        const placeOfFirstSpawn = { x: 5, y: 5 }; // Ο χώρος που θα μπει το spawn
+        const placeOfContainers = [{ x: 5, y: 5 }, { x: 5, y: 5 }, { x: 5, y: 5 }, { x: 5, y: 5 }] // ο χώρος που θα βρίσκονται τα containers (Πηγών και controller)
 
-        const criticalRoads = findCriticalPath(roads, placeOfstorage, placeOfFirstSpawn, placeOfContainers);
+        const criticalRoads = this.findCriticalPath(roads, placeOfstorage, placeOfFirstSpawn, placeOfContainers);
 
         debugConsole.debugText("Construction,getCriticalRoads", "found " + criticalRoads.length + " critical roads");
 
@@ -280,46 +271,46 @@ class ConstructionManager {
         return criticalRoads;
 
     } // end of getCriticalRoads
-    findCriticalPath(roads, storage, spawn, containers) {
+    findCriticalPath(roads: BlueprintStructure[], placeOfStorage: BlueprintCoord, placeOfSpawn: BlueprintCoord, placeOfContainers: BlueprintCoord[]): BlueprintStructure[] {
         throw new Error(`[BaseLayout] loadRawData not implemented for ${this.constructor.name}`);
     }
-    buildStructures(fullPlan, quota) {
+    buildStructures(room: Room, fullPlan: BlueprintStructure[], quota: number) {
         const structures = fullPlan.filter(s => !['road', 'rampart', 'constructedWall'].includes(s.type));
 
         for (const s of structures) {
             if (quota <= 0) {
                 break;
             }
-            if (this.createSite(s.x, s.y, s.type)) quota--;
+            if (this.createSite(room, s.x, s.y, s.type)) quota--;
         }
         return quota;
     } // end of buildStructures
 
-    buildDefenses(fullPlan, quota) {
+    buildDefenses(room: Room, fullPlan: BlueprintStructure[], quota: number) {
         const defenses = fullPlan.filter(s => ['rampart', 'constructedWall'].includes(s.type));
         let placed = 0;
         for (const s of defenses) {
             if (placed >= quota) break;
-            if (this.createSite(s.x, s.y, s.type)) placed++;
+            if (this.createSite(room, s.x, s.y, s.type)) placed++;
         }
         return quota - placed;
     } // end of buildDefences
 
-    buildRoads(fullPlan, quota, rcl, builtMap) {
+    buildRoads(room: Room, fullPlan: BlueprintStructure[], quota: number) {
         const roads = fullPlan.filter(s => s.type === 'road');
         let placed = 0;
         for (const s of roads) {
             if (placed >= quota) break;
-            //if (RoadPlanner.shouldBuildRoad(s, {}, builtMap, rcl)) {
-            if (this.createSite(s.x, s.y, 'road')) placed++;
-            //}
+
+            if (this.createSite(room, s.x, s.y, "road")) placed++;
+
         }
         return quota - placed;
     }
 
-    createSite(x, y, type) {
+    createSite(room: Room, x: number, y: number, type: string) {
         const structureType = this.mapType(type);
-        const res = this.room.createConstructionSite(x, y, structureType);
+        const res = room.createConstructionSite(x, y, structureType);
         if (res === OK) {
             console.log(`[Construction] ${this.roomName}: Placed ${type} at ${x},${y}`);
             return true;
@@ -327,7 +318,7 @@ class ConstructionManager {
         return false;
     }
 
-    mapType(type) {
+    mapType(type: string): BuildableStructureConstant {
         const types = {
             'spawn': STRUCTURE_SPAWN,
             'extension': STRUCTURE_EXTENSION,
@@ -345,24 +336,28 @@ class ConstructionManager {
         return types[type] || type;
     }
 
-    drawVisuals() {
+    drawVisuals(room: Room): void {
         if (Memory.debug && Memory.debug.construction === false) {
             return;
         }
-        if (!this.layout || !this.layout.blueprint) {
+        if (!this.layout) {
+            return;
+        }
+        const blueprint = this.layout.getBlueprint();
+        if (!blueprint) {
             return;
         }
 
-        const currentRCL = this.room.controller ? this.room.controller.level : 0;
+        const currentRCL = room.controller ? room.controller.level : 0;
 
         // Ανάκτηση του builtMap από τη μνήμη (όπως γίνεται και στην processConstruction)
         const constructionMem = Memory.rooms[this.roomName][MEMORY_KEYS.ROOT] || {};
         const builtMap = constructionMem[MEMORY_KEYS.STRUCTURES] || {};
 
-        // Κλήση του visualizer με το σωστό object
-        this.visualizer.drawBlueprint(this.layout.blueprint, builtMap, currentRCL);
+
+        this.visualizer.drawBlueprint(room.name, blueprint, builtMap, currentRCL);
 
 
     }
 } // end of class ConstructionManager
-module.exports = new ConstructionManager();
+export = new ConstructionManager();

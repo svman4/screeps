@@ -84,7 +84,7 @@ class RoomCacheManager {
      * @param {string} roomName Το όνομα του δωματίου (π.χ. W1N1)
      * @returns {RoomCacheInstance}
      */
-    in(roomName: string): RoomCacheInstance {
+    public in(roomName: string): RoomCacheInstance {
         if (!this._rooms[roomName]) {
             this._rooms[roomName] = new RoomCacheInstance(roomName);
         }

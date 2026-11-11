@@ -51,7 +51,7 @@ class FileLayout extends BaseLayout {
      * @override
      * @returns {any | null} Τα ακατέργαστα δεδομένα του blueprint ή `null` αν αποτύχει η φόρτωση.
      */
-    protected loadRawData(): any | null {
+    protected loadRawData(): RawBlueprintData | null {
         try {
             // Δυναμική εισαγωγή του module με βάση το όνομα του δωματίου
             return require(`blueprints.${this.roomName}`);

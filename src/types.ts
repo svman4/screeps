@@ -22,9 +22,8 @@ declare global {
         city?: string;
         lastScouted?: number;
         scoutNeeded?: boolean;
-        storageLinkId?: string;
         sources?: Array<{ id: string; x: number; y: number }>;
-        controllerPos?: { x: number; y: number };
+        controllerPos?: Coordination;
         cache?: RoomCacheData;
         lastEnergyStore?: number;
         energyNetFlow?: number;
@@ -41,7 +40,7 @@ declare global {
         leadTime?: number;
         homeRoom?: string;
         targetRoom?: string;
-        sourceId?: string;
+        sourceId?: Id<Source>;
     }
 
     interface EnemyInfo {
@@ -52,7 +51,7 @@ declare global {
 
     interface RoomMemoryData {
         type?: string;
-        sources?: Array<{ id: string, x: number, y: number }>;
+        sources?: Array<{ id: Id<Source>, x: number, y: number }>;
         controllerPos?: { x: number; y: number };
         enemyInfo?: EnemyInfo;
         lastScouted?: number;
@@ -84,7 +83,7 @@ declare global {
     /**
      * Αντιπροσωπεύει ένα ζεύγος συντεταγμένων (X, Y) μέσα στο δωμάτιο.
      */
-    export interface BlueprintCoord {
+    export interface Coordination {
         /** Συντεταγμένη X (0 - 49) */
         x: number;
         /** Συντεταγμένη Y (0 - 49) */
@@ -104,7 +103,7 @@ declare global {
          * σε μια λίστα με τις συντεταγμένες τοποθέτησής του.
          * Χρησιμοποιεί `Partial` επειδή ένα δωμάτιο μπορεί να μην περιέχει όλους τους τύπους κτιρίων.
          */
-        buildings: Partial<Record<BuildableStructureConstant, BlueprintCoord[]>>;
+        buildings: Partial<Record<BuildableStructureConstant, Coordination[]>>;
 
         /** Το όνομα του δωματίου στο οποίο ανήκει το blueprint (π.χ. "W1N3") */
         name?: string;
@@ -112,4 +111,18 @@ declare global {
         /** Προαιρετικό αναγνωριστικό του shard (π.χ. "05d12231a3fd" ή "shard3") */
         shard?: string;
     }
-}
+    /**
+   * Αντιπροσωπεύει την ακατέργαστη δομή (Raw JSON) ενός αρχείου blueprint δωματίου,
+   * όπως επιστρέφεται από τη μέθοδο {@link BaseLayout.loadRawData}.
+   */
+    interface SpawnRequest {
+        priority: number;
+        role: string;
+        targetRoom: string;
+        homeRoom: string;
+        memory: {
+            sourceId: Id<Source>;
+        }
+        addedAt: number;
+    }  // end of interface SpawnRequest
+} // end of globalDeclaration

@@ -271,7 +271,7 @@ class ConstructionManager {
         return criticalRoads;
 
     } // end of getCriticalRoads
-    findCriticalPath(roads: BlueprintStructure[], placeOfStorage: BlueprintCoord, placeOfSpawn: BlueprintCoord, placeOfContainers: BlueprintCoord[]): BlueprintStructure[] {
+    findCriticalPath(roads: BlueprintStructure[], placeOfStorage: Coordination, placeOfSpawn: Coordination, placeOfContainers: Coordination[]): BlueprintStructure[] {
         throw new Error(`[BaseLayout] loadRawData not implemented for ${this.constructor.name}`);
     }
     buildStructures(room: Room, fullPlan: BlueprintStructure[], quota: number) {

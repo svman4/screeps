@@ -14,18 +14,9 @@
  */
 const debugConsole = require("utils.debugConsole");
 class SpawnQueue {
+    private data: SpawnRequest[];
+    private _needsSort: boolean = true;
     constructor() {
-        // Αρχικοποίηση στη Memory αν δεν υπάρχει
-        if (!Memory.spawnQueue) {
-            Memory.spawnQueue = [];
-        }
-
-        /** @type {Array} */
-        this.data = Memory.spawnQueue;
-
-        /** @private */
-        this._needsSort = true;
-
         // Καθαρισμός αν η ουρά μείνει "κολλημένη" για πάνω από 500 ticks
         this.cleanStaleRequests();
     }
@@ -40,7 +31,7 @@ class SpawnQueue {
      * @param {Object} [request.memory] - Επιπλέον δεδομένα μνήμης (π.χ. sourceId).
      * @returns {boolean} True αν προστέθηκε επιτυχώς, False αν υπήρχε ήδη.
      */
-    add(request) {
+    add(request: SpawnRequest) {
         // Έλεγχος για αποφυγή spamming ίδιων αιτημάτων
         const isAlreadyInQueue = this.data.some(r =>
             r.role === request.role &&
@@ -49,17 +40,8 @@ class SpawnQueue {
         );
 
         if (!isAlreadyInQueue) {
-            this.data.push({
-                role: request.role,
-                priority: request.priority,
-                homeRoom: request.homeRoom,
-                targetRoom: request.targetRoom || request.homeRoom,
-                body: request.body,
-                budget: request.budget,
-                memory: request.memory || {},
-                addedAt: Game.time // Χρήσιμο για τον εντοπισμό stale requests
-            });
-            Memory.spawnQueue = this.data; // Ενημέρωση στη Memory μετά την ταξινόμηση
+            this.data.push(request);
+
             this._needsSort = true;
             return true;
         }
@@ -69,10 +51,10 @@ class SpawnQueue {
      * 
      * @param {string} roomName 
      */
-     flushOnRoom(roomName) {
-        
+    flushOnRoom(roomName: string) {
+
         _.remove(this.data, r => r.homeRoom === roomName || r.targetRoom === roomName);
-        Memory.spawnQueue = this.data; // Ενημέρωση στη Memory μετά την ταξινόμηση
+
 
     }
 
@@ -91,24 +73,25 @@ class SpawnQueue {
             });
             this._needsSort = false;
         }
-        Memory.spawnQueue = this.data; // Ενημέρωση στη Memory μετά την ταξινόμηση
+
     }
 
     /**
      * Αφαιρεί ένα αίτημα από την ουρά (συνήθως μετά από επιτυχημένο spawn).
      * @param {number} index 
      */
-    removeAt(index) {
+    removeAt(index: number): void {
         this.data.splice(index, 1);
-        Memory.spawnQueue = this.data; // Ενημέρωση στη Memory μετά την ταξινόμηση
     }
 
     /**
      * Επιστρέφει το τρέχον μέγεθος της ουράς.
      * @returns {number}
      */
-    get length() {
-        return this.data.length;
+    get length(): number {
+        if (this.data) {
+            return this.data.length;
+        } return 0;
     }
 
     /**
@@ -116,16 +99,16 @@ class SpawnQueue {
      * @param {number} index 
      * @returns {Object}
      */
-    getAt(index) {
+    getAt(index: number): SpawnRequest {
         return this.data[index];
     }
 
     /**
      * Καθαρίζει ολόκληρη την ουρά (χρήσιμο σε καταστάσεις Recovery).
      */
-    flush() {
-        Memory.spawnQueue = [];
-        this.data = Memory.spawnQueue;
+    flush(): void {
+
+        this.data = [];
     }
 
     /**
@@ -133,18 +116,17 @@ class SpawnQueue {
      * Προλαμβάνει το "μπούκωμα" της παραγωγής από αιτήματα που δεν μπορούν να ικανοποιηθούν.
      * 
      */
-    cleanStaleRequests() {
-        
-            const TIMEOUT = 500;
-            const initialLength = this.data.length;
+    cleanStaleRequests(): void {
 
-            _.remove(this.data, r => (Game.time - r.addedAt) > TIMEOUT);
+        const TIMEOUT = 500;
+        const initialLength = this.data.length;
 
-            if (this.data.length < initialLength) {
-                console.log(`[SpawnQueue] Cleaned ${initialLength - this.data.length} stale requests.`);
-            }
-     
-        Memory.spawnQueue = this.data; // Ενημέρωση στη Memory μετά την ταξινόμηση
+        _.remove(this.data, r => (Game.time - r.addedAt) > TIMEOUT);
+
+        if (this.data.length < initialLength) {
+            console.log(`[SpawnQueue] Cleaned ${initialLength - this.data.length} stale requests.`);
+        }
+
     }
 } // end of class
 

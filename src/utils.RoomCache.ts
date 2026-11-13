@@ -32,14 +32,14 @@ export interface RoomCacheData {
     sourceDistanceIds?: {};
     containers?: null;
     links?: null;
-    patrolPoints?: any[];
-    sourceContainerIds?: any;
+    patrolPoints?: RoomPosition[];
+    sourceContainerIds?: { [sourceId: Id<Source>]: Id<StructureContainer> }; // Mapping { sourceId: containerId }
     sourceIds?: Id<Source>[];
-    controllerLinkId?: string;
+    controllerLinkId?: Id<StructureLink>;
 
-    storageLinkId?: string;
-    sourceLinkIds?: { [sourceId: string]: string }; // Mapping { sourceId: linkId }
-    recoveryContainerId?: string | null;
+    storageLinkId?: Id<StructureLink>;
+    sourceLinkIds?: { [sourceId: Id<Source>]: Id<StructureLink> }; // Mapping { sourceId: linkId }
+    recoveryContainerId?: Id<StructureContainer> | null;
     controllerContainerId?: string | null;
 
     lastUpdated: number;
@@ -315,7 +315,7 @@ class RoomCacheInstance {
             if (!this.room) return null;
 
             // Προσοχή: Χρησιμοποιούμε || επειδή η this.spawns μπορεί να είναι άδειος πίνακας []
-            const target: RoomPosition = this.room.storage || (this.spawns.length > 0 ? this.spawns[0] : null) || new RoomPosition(25, 25, this.roomName);
+            const target: RoomPosition = this.room.storage.pos || (this.spawns.length > 0 ? this.spawns[0].pos : null) || new RoomPosition(25, 25, this.roomName);
             if (!target) return null;
 
             // Αποθηκεύουμε μόνο απλό object στη μνήμη, όχι ολόκληρο το RoomPosition class
@@ -338,7 +338,7 @@ class RoomCacheInstance {
     get sources() {
         return this.sourceIds.map(id => Game.getObjectById(id)).filter(Boolean);
     }
-    get controllerDistance() {
+    get controllerDistance(): number {
         if (this.cache.controllerDistance === undefined || this.cache.controllerDistance === null) {
             if (!this.room || !this.room.controller)
                 return Infinity;
@@ -372,19 +372,19 @@ class RoomCacheInstance {
             const links = this.room.controller.pos.findInRange(FIND_MY_STRUCTURES, 3, {
                 filter: { structureType: STRUCTURE_LINK }
             });
-            this.cache.controllerLinkId = links.length > 0 ? links[0].id : null;
+            this.cache.controllerLinkId = links.length > 0 ? (links[0].id as Id<StructureLink>) : null;
         }
         return Game.getObjectById(this.cache.controllerLinkId) || null;
     }
 
-    get storageLink() {
+    get storageLink(): StructureLink {
         if (this.cache.storageLinkId === undefined || this.cache.storageLinkId === null) {
             if (!this.room || !this.room.storage) return null;
 
             const links = this.room.storage.pos.findInRange(FIND_MY_STRUCTURES, 2, {
                 filter: { structureType: STRUCTURE_LINK }
             });
-            this.cache.storageLinkId = links.length > 0 ? links[0].id : null;
+            this.cache.storageLinkId = links.length > 0 ? (links[0].id as Id<StructureLink>) : null;
         }
         return Game.getObjectById(this.cache.storageLinkId) || null;
     }
@@ -402,7 +402,7 @@ class RoomCacheInstance {
 
 
     }
-    getSourceContainer(sourceId) {
+    getSourceContainer(sourceId: Id<Source>): StructureContainer {
         // 1. Σιγουρευόμαστε ότι η δομή στη μνήμη είναι σωστά αρχικοποιημένη
         if (!this.cache.sourceContainerIds) {
             this.cache.sourceContainerIds = {};
@@ -410,7 +410,7 @@ class RoomCacheInstance {
 
         // 2. Αν έχουμε ήδη αποθηκευμένο ID, προσπαθούμε να επιστρέψουμε το αντικείμενο απευθείας
         if (this.cache.sourceContainerIds[sourceId]) {
-            const cachedObj = Game.getObjectById(this.cache.sourceContainerIds[sourceId]);
+            const cachedObj = (Game.getObjectById(this.cache.sourceContainerIds[sourceId]) as StructureContainer);
             if (cachedObj) return cachedObj;
 
             // Αν το ID υπάρχει αλλά το Game.getObjectById επέστρεψε null ΕΝΩ έχουμε vision, 
@@ -447,12 +447,12 @@ class RoomCacheInstance {
             const links = source.pos.findInRange(FIND_MY_STRUCTURES, 2, {
                 filter: { structureType: STRUCTURE_LINK }
             });
-            this.cache.sourceLinkIds[sourceId] = links.length > 0 ? links[0].id : null;
+            this.cache.sourceLinkIds[sourceId] = links.length > 0 ? (links[0].id as Id<StructureLink>) : null;
 
         }
         return Game.getObjectById(this.cache.sourceLinkIds[sourceId]) || null;
     }
-    get sourceContainers() {
+    get sourceContainers(): StructureContainer[] {
         const sourceIDs = this.sourceIds;
 
         // Χρησιμοποιούμε .map() για να επιστρέψουμε έναν πίνακα με τα αντικείμενα
@@ -463,7 +463,7 @@ class RoomCacheInstance {
         return containers || [];
     }
 
-    get recoveryContainer() {
+    get recoveryContainer(): StructureContainer {
         if (!this.cache.recoveryContainerId) {
             if (!this.room) return null;
             const spawns = this.room.find(FIND_MY_SPAWNS);
@@ -488,7 +488,7 @@ class RoomCacheInstance {
         }
         return Game.getObjectById(this.cache.controllerContainerId) || null;
     }
-    get patrolPoints() {
+    get patrolPoints(): RoomPosition[] {
         if (!this.cache.patrolPoints) {
             if (!this.room) return [];
             let points: RoomPosition[] = [];
@@ -522,19 +522,19 @@ class RoomCacheInstance {
         return this._tickCache.myStructures || [];
     }
 
-    get groupedStructures() {
+    get groupedStructures(): Partial<Record<StructureConstant, Structure[]>> {
         if (!this._tickCache.groupedStructures) {
             this._tickCache.groupedStructures = _.groupBy(this.structures, 'structureType');
         }
         return this._tickCache.groupedStructures || [];
     }
-    get spawns() {
-        return this.groupedStructures[STRUCTURE_SPAWN] || [];
+    get spawns(): StructureSpawn[] {
+        return (this.groupedStructures[STRUCTURE_SPAWN] as StructureSpawn[]) || [];
     }
-    get containers() {
-        return this.groupedStructures[STRUCTURE_CONTAINER] || [];
+    get containers(): StructureContainer[] {
+        return (this.groupedStructures[STRUCTURE_CONTAINER] as StructureContainer[]) || [];
     }
-    get hasContainers() {
+    get hasContainers(): boolean {
         const sourceLength = this.sources.length;
         const containersCount = this.containers.length || 0;
         const hasControllerContainer = (this.controllerContainer && this.controllerContainer != null);
@@ -550,43 +550,40 @@ class RoomCacheInstance {
 
         return answer;
     }
-    get hasRoads() {
+    get hasRoads(): boolean {
 
         const answer = this.roads.length > CONFIG.ROADS_THRESHOLD;
         return answer;
     }
-    get roads() {
+    get roads(): StructureRoad[] {
 
-        return this.groupedStructures[STRUCTURE_ROAD] || [];
+        return (this.groupedStructures[STRUCTURE_ROAD] as StructureRoad[]) || [];
     }
-    get structures() {
+    get structures(): Structure[] {
         if (!this._tickCache.structures) {
             if (!this.room) return [];
             this._tickCache.structures = this.room.find(FIND_STRUCTURES);
         }
         return this._tickCache.structures || [];
     }
-    get hasLinks() {
+    get hasLinks(): boolean {
         const linkNumber = this.links.length;
         if (linkNumber >= CONFIG.LINKS_THRESHOLD) {
             return true;
         }
         return false;
     }
-    get links() {
-
-        return this.groupedStructures[STRUCTURE_LINK] || [];
-
-
+    get links(): StructureLink[] {
+        return (this.groupedStructures[STRUCTURE_LINK] as StructureLink[]) || [];
     }
-    get myCreeps() {
+    get myCreeps(): Creep[] {
         if (!this._tickCache.myCreeps) {
             if (!this.room) return [];
             this._tickCache.myCreeps = this.room.find(FIND_MY_CREEPS);
         }
         return this._tickCache.myCreeps || [];
     }
-    get hostileCreeps() {
+    get hostileCreeps(): Creep[] | [] {
         if (!this._tickCache.hostileCreeps) {
             if (!this.room) return [];
             this._tickCache.hostileCreeps = this.room.find(FIND_HOSTILE_CREEPS);
@@ -594,7 +591,7 @@ class RoomCacheInstance {
         return this._tickCache.hostileCreeps || [];
     }
 
-    get constructionSites() {
+    get constructionSites(): ConstructionSite[] {
         if (!this._tickCache.constructionSites) {
             if (!this.room) return [];
             this._tickCache.constructionSites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
@@ -602,7 +599,7 @@ class RoomCacheInstance {
         return this._tickCache.constructionSites || [];
     }
 
-    get damagedStructures() {
+    get damagedStructures(): Structure[] {
         if (!this._tickCache.damagedStructures) {
             this._tickCache.damagedStructures = this.structures.filter(s => {
                 return s.hits < s.hitsMax &&
@@ -612,7 +609,7 @@ class RoomCacheInstance {
         }
         return this._tickCache.damagedStructures || [];
     }
-    get ruins() {
+    get ruins(): Ruin[] {
         if (!this._tickCache.ruins) {
             if (!this.room) return [];
             this._tickCache.ruins = this.room.find(FIND_RUINS);

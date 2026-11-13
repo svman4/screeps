@@ -249,7 +249,7 @@ class DefenceManager {
         }
 
         return limit;
-    }
+    } // end of calculateWallLimit
 } // end of class
 
 export = new DefenceManager();

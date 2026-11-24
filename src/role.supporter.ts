@@ -4,7 +4,8 @@
  */
 //const BaseRole = require('role.base');
 const movementManager = require('manager.movement');
-const roomCache = require('utils.RoomCache');
+import roomCacheClass = require("./utils.RoomCache");
+const roomCache = roomCacheClass as any;
 //const debugConsole = require('utils.debugConsole');
 
 class Supporter extends BaseRole {

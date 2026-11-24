@@ -12,16 +12,12 @@
  * επαναλαμβανόμενες κλήσεις FIND_STRUCTURES στο ίδιο tick.
  */
 
-var debugConsole = require("utils.debugConsole");
+//var debugConsole = require("utils.debugConsole");
 import * as _ from "lodash";
-import { EXPANSION } from "./constants";
+import { EXPANSION, ROOM_CACHE_CONSTANTS } from "./constants";
 
 
-/**  Σταθερές ρυθμίσεις για thresholds αξιολόγησης οικονομίας του δωματίου */
-const CONFIG = {
-    ROADS_THRESHOLD: 30,
-    LINKS_THRESHOLD: 2,
-};
+
 export interface World {
     cities?: string[];
     Shires?: string[];
@@ -552,7 +548,7 @@ class RoomCacheInstance {
     }
     get hasRoads(): boolean {
 
-        const answer = this.roads.length > CONFIG.ROADS_THRESHOLD;
+        const answer = this.roads.length > ROOM_CACHE_CONSTANTS.ROADS_THRESHOLD;
         return answer;
     }
     get roads(): StructureRoad[] {
@@ -568,7 +564,7 @@ class RoomCacheInstance {
     }
     get hasLinks(): boolean {
         const linkNumber = this.links.length;
-        if (linkNumber >= CONFIG.LINKS_THRESHOLD) {
+        if (linkNumber >= ROOM_CACHE_CONSTANTS.LINKS_THRESHOLD) {
             return true;
         }
         return false;

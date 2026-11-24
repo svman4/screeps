@@ -14,9 +14,11 @@
 
 const movementManager = require('./manager.movement');
 const { LEAD_TIME_KEY, SPAWN_MANAGER_CONFIG } = require("spawn.constants")
-const roomCache = require('./utils.RoomCache');
+import { ICreepRole } from "./manager.role";
+import roomCacheClass = require("./utils.RoomCache");
+const roomCache = roomCacheClass as any;
 
-class BaseRole {
+abstract class BaseRole implements ICreepRole {
     protected creep: Creep;
     /**
      * Αρχικοποίηση της βασικής κλάσης.
@@ -25,6 +27,9 @@ class BaseRole {
     constructor(creep: Creep) {
         /** @type {Creep} */
         this.creep = creep;
+    }
+    run(): void {
+        throw new Error("Method not implemented.");
     }
 
     /**

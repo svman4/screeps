@@ -1,14 +1,14 @@
 import roomCacheClass = require("./utils.RoomCache");
-
+import { MOVEMENT_CONSTANTS } from "./constants";
 const roomCache = roomCacheClass as any;
 
 type MoveTarget = RoomPosition | { pos: RoomPosition };
 
+
 export class MovementManager {
     private readonly matrixCache: Record<string, CostMatrix> = {};
     private readonly lastMatrixUpdate: Record<string, number> = {};
-    private readonly MATRIX_TTL = 50;
-    private readonly STUCK_THRESHOLD = 2;
+
 
     /**
      * Επιστρέφει (ή δημιουργεί με cache) το CostMatrix ενός room.
@@ -16,7 +16,7 @@ export class MovementManager {
     public getRoomCostMatrix = (roomName: string): CostMatrix => {
         if (
             this.matrixCache[roomName] &&
-            this.lastMatrixUpdate[roomName] > Game.time - this.MATRIX_TTL
+            this.lastMatrixUpdate[roomName] > Game.time - MOVEMENT_CONSTANTS.MATRIX_TTL
         ) {
             return this.matrixCache[roomName];
         }
@@ -39,17 +39,6 @@ export class MovementManager {
                 costs.set(struct.pos.x, struct.pos.y, 0xff);
             }
         });
-
-        // Αν θέλεις να αποφεύγουν τα creeps εργοτάξια δομών που κλείνουν το πέρασμα:
-        // cachedRoom.constructionSites.forEach((site: ConstructionSite) => {
-        //     if (
-        //         site.structureType !== STRUCTURE_ROAD &&
-        //         site.structureType !== STRUCTURE_CONTAINER &&
-        //         site.structureType !== STRUCTURE_RAMPART
-        //     ) {
-        //         costs.set(site.pos.x, site.pos.y, 0xff);
-        //     }
-        // });
 
         this.matrixCache[roomName] = costs;
         this.lastMatrixUpdate[roomName] = Game.time;
@@ -93,7 +82,7 @@ export class MovementManager {
             };
         }
 
-        const isStuck = (creep.memory._stuckCount || 0) > this.STUCK_THRESHOLD;
+        const isStuck = (creep.memory._stuckCount || 0) > MOVEMENT_CONSTANTS.STUCK_THRESHOLD;
 
         const ret = PathFinder.search(
             creep.pos,
@@ -158,4 +147,4 @@ export class MovementManager {
 
         return scanner.length > 0;
     };
-}
+} // end of class MovementManager

@@ -124,8 +124,13 @@ export const EXPANSION = {
       METROPOLIS: "Metropolis"
    }, // END OF ROOM_TYPE
 } // end of EXPANSION
+export const MOVEMENT_CONSTANTS = {
+   MATRIX_TTL: 50,
+   STUCK_THRESHOLD: 2,
+} // end of MOVEMENT_CONSTANTS
 export default {
    DEFENCE,
    MARKET_CONSTANTS,
-   EXPANSION
+   EXPANSION,
+   MOVEMENT_CONSTANTS
 };

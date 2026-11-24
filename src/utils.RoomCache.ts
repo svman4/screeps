@@ -14,7 +14,7 @@
 
 var debugConsole = require("utils.debugConsole");
 import * as _ from "lodash";
-import { ROOM_TYPE } from "./expansion.constants";
+import { EXPANSION } from "./constants";
 
 
 /**  Σταθερές ρυθμίσεις για thresholds αξιολόγησης οικονομίας του δωματίου */
@@ -202,7 +202,7 @@ class WorldCacheInstance {
         if (!this.World.Shires) {
             const rooms = Memory.rooms || {}; // Διόρθωση: Ήταν [] ενώ το Memory.rooms είναι Object
             const roomsName = Object.keys(rooms);
-            const remoteMiningNames = roomsName.filter(name => rooms[name].type === ROOM_TYPE.REMOTE_MINING);
+            const remoteMiningNames = roomsName.filter(name => rooms[name].type === EXPANSION.ROOM_TYPE.REMOTE_MINING);
 
             if (remoteMiningNames && remoteMiningNames.length > 0) {
                 this.World.Shires = remoteMiningNames;

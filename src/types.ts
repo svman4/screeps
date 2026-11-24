@@ -1,6 +1,7 @@
 
 
-import { ROOM_TYPE } from "./expansion.constants";
+import { constant } from "lodash";
+import { EXPANSION } from "./constants";
 import { RoomCacheData, World } from "./utils.RoomCache";
 declare global {
     interface Memory {
@@ -18,7 +19,7 @@ declare global {
     // Δημιουργία τύπου από τα values του ROOM_TYPE
 
     interface RoomMemory {
-        type?: typeof ROOM_TYPE[keyof typeof ROOM_TYPE];
+        type?: typeof EXPANSION.ROOM_TYPE[keyof typeof EXPANSION.ROOM_TYPE];
         city?: string;
         lastScouted?: number;
         scoutNeeded?: boolean;
@@ -41,6 +42,17 @@ declare global {
         homeRoom?: string;
         targetRoom?: string;
         sourceId?: Id<Source>;
+        _lastPos?: {
+            x: number;
+            y: number;
+            roomName: string;
+        };
+        _stuckCount?: number;
+        _nextStep?: {
+            x: number;
+            y: number;
+            t: number;
+        };
     }
 
     interface EnemyInfo {
@@ -70,10 +82,7 @@ declare global {
      * Αντιπροσωπεύει ένα μεμονωμένο κτίριο μέσα στο αρχιτεκτονικό πλάνο (Blueprint).
      */
     export interface BlueprintStructure extends Coordination {
-        // /** Συντεταγμένη X στο δωμάτιο */
-        // x: number;
-        // /** Συντεταγμένη Y στο δωμάτιο */
-        // y: number;
+
         /** Τύπος κτιρίου (π.χ. STRUCTURE_SPAWN, STRUCTURE_EXTENSION) */
         type: StructureConstant;
         /** Το ελάχιστο Room Controller Level (RCL) που απαιτείται για την κατασκευή */
@@ -110,12 +119,8 @@ declare global {
 
         /** Προαιρετικό αναγνωριστικό του shard (π.χ. "05d12231a3fd" ή "shard3") */
         shard?: string;
-    }
-    /**
-   * Αντιπροσωπεύει την ακατέργαστη δομή (Raw JSON) ενός αρχείου blueprint δωματίου,
-   * όπως επιστρέφεται από τη μέθοδο {@link BaseLayout.loadRawData}.
-   */
-    interface SpawnRequest {
+    } // end of interface RawBlueprintData
+    export interface SpawnRequest {
         priority: number;
         role: string;
         targetRoom: string;
@@ -125,4 +130,8 @@ declare global {
         }
         addedAt: number;
     }  // end of interface SpawnRequest
+    export interface RoomInfoData {
+        level?: number;
+        constructionRemain?: BlueprintStructure[],
+    } // end of RoomInfoData
 } // end of globalDeclaration

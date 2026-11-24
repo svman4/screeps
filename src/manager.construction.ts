@@ -16,8 +16,8 @@
 import defenceManager = require('./manager.defense');
 import { ConstructionVisualizer } from './construction.visualizer';
 import BaseLayout = require('./construction.layout.BaseLayout');
-import FileLayout = require('./construction.layout.FileLayout');
-import RoadPlanner = require('./construction.roadPlanner');
+//import FileLayout = require('./construction.layout.FileLayout');
+//import RoadPlanner = require('./construction.roadPlanner');
 const debugConsole = require("./utils.debugConsole");
 import roomCacheClass = require('./utils.RoomCache');
 // Ορισμός τύπου για να σταματήσει να διαμαρτύρεται ο compiler

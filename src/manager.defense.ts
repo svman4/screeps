@@ -146,11 +146,11 @@ class DefenceManager {
         );
 
         const targets = dangerous.length > 0 ? dangerous : hostiles;
-
+        const criticalTypes = DEFENCE_CONSTANTS.CRITICAL_STRUCTURE_TYPES;
         // Βελτιωμένη επιλογή: προτεραιότητα σε εχθρούς που επιτίθενται σε κρίσιμες δομές
         const criticalStructures = room.find(FIND_MY_STRUCTURES, {
             filter: structure => {
-                return [STRUCTURE_SPAWN, STRUCTURE_TOWER, STRUCTURE_STORAGE, STRUCTURE_TERMINAL].includes(structure.structureType);
+                return criticalStructures.includes(structure.structureType);
             }
         });
 
@@ -201,13 +201,7 @@ class DefenceManager {
                 if (structure.hits >= structure.hitsMax) return false;
 
                 // Προτεραιότητα σε κρίσιμες δομές
-                const criticalTypes = [
-                    STRUCTURE_SPAWN,
-                    STRUCTURE_EXTENSION,
-                    STRUCTURE_TOWER,
-                    STRUCTURE_STORAGE,
-                    STRUCTURE_TERMINAL
-                ];
+                const criticalTypes = DEFENCE_CONSTANTS.CRITICAL_STRUCTURE_TYPES;
 
                 if (criticalTypes.includes(structure.structureType)) {
                     return true;
@@ -221,7 +215,7 @@ class DefenceManager {
                 }
 
                 // Άλλες δομές (roads, containers κλπ)
-                return structure.hits < structure.hitsMax * 0.8;
+                return structure.hits < structure.hitsMax * DEFENCE_CONSTANTS.OTHER_REPAIR_HITS_RATIO;
             }
         });
 

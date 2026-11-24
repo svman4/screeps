@@ -4,9 +4,13 @@
  * μέσω Observers και Scouts.
  */
 import * as _ from "lodash";
-import { EXPANSION_CONSTANTS, ROOM_TYPE, CPU_BUCKET_SAFETY_THRESHOLD } from "./expansion.constants";
+
 import spawnManager = require("./manager.spawn");
 import { ROLES } from "./spawn.constants";
+import Constants = require('./construction.constants');
+const {
+    EXPANSION
+} = Constants as any;
 
 class ExpansionManager {
     constructor() {
@@ -18,11 +22,11 @@ class ExpansionManager {
      */
     run(): void {
         // Εξοικονόμηση CPU: Σταματάμε αν το bucket είναι χαμηλό
-        if (Game.cpu.bucket < CPU_BUCKET_SAFETY_THRESHOLD) return;
+        if (Game.cpu.bucket < EXPANSION.CPU_BUCKET_SAFETY_THRESHOLD) return;
 
         const lastCheck = Memory.expansionCheckTime;
 
-        if (!lastCheck || (Game.time - EXPANSION_CONSTANTS.REFRESH_INTEL_GRAPH_INTERVAL) >= lastCheck) {
+        if (!lastCheck || (Game.time - EXPANSION.REFRESH_INTEL_GRAPH_INTERVAL) >= lastCheck) {
             Memory.expansionCheckTime = Game.time;
             //console.log(Memory.expansionCheckTime);
             this._refreshViewInNeigbors();
@@ -30,7 +34,7 @@ class ExpansionManager {
         }
 
 
-        if (Game.time % EXPANSION_CONSTANTS.DELEGATE_VISION_TASKS_INTERVAL === 0) {
+        if (Game.time % EXPANSION.DELEGATE_VISION_TASKS_INTERVAL === 0) {
             //  this.delegateVisionTasks();
         }
     }
@@ -44,7 +48,7 @@ class ExpansionManager {
             const room = Game.rooms[roomName];
             if (room.controller && room.controller.my) {
                 // ΓΙα κάθε δωμάτιο στο οποίο είμαστε κάτοχοι(άρα είναι ή θα γίνει metropolis.
-                room.memory.type = ROOM_TYPE.METROPOLIS;
+                room.memory.type = EXPANSION.ROOM_TYPE.METROPOLIS;
                 // έλεγχος για το level του room. 
                 if (room.controller.level < 3) {
                     return;
@@ -120,7 +124,7 @@ class ExpansionManager {
 
     }
     public updateRoomIntel(room: Room, hasGCL: boolean = true): void {
-        const mem = ((Memory.rooms[room.name] || (Memory.rooms[room.name] = {})) as RoomMemory);
+        const mem = ((Memory.rooms[room.name] || (Memory.rooms[room.name] = {})) as RoomMemoryData);
         const controller = room.controller;
 
         mem.lastScouted = Game.time;
@@ -131,12 +135,12 @@ class ExpansionManager {
             return;
         }
 
-        if (controller.my || (controller.reservation?.username === EXPANSION_CONSTANTS.USERNAME)) {
+        if (controller.my || (controller.reservation?.username === EXPANSION.EXPANSION_CONSTANTS.USERNAME)) {
             this.clearIntelTags(mem);
             return;
         }
 
-        const isFree = !controller.owner && (!controller.reservation || controller.reservation.username === EXPANSION_CONSTANTS.USERNAME);
+        const isFree = !controller.owner && (!controller.reservation || controller.reservation.username === EXPANSION.EXPANSION_CONSTANTS.USERNAME);
 
         if (isFree) {
             const sources = room.find(FIND_SOURCES);
@@ -163,13 +167,13 @@ class ExpansionManager {
 
         const targets = _.filter(Memory.observerQueue, name => {
             const mem = Memory.rooms[name] as RoomMemoryData;
-            return !mem || !mem.lastScouted || (Game.time - mem.lastScouted > EXPANSION_CONSTANTS.INTEL_STALE_TIME);
+            return !mem || !mem.lastScouted || (Game.time - mem.lastScouted > EXPANSION.EXPANSION_CONSTANTS.INTEL_STALE_TIME);
         }).slice(0, Math.max(observers.length, 5));
 
         if (observers.length > 0) {
             targets.forEach((targetName, index) => {
                 const obs = observers[index % observers.length];
-                if (Game.map.getRoomLinearDistance(obs.room.name, targetName) <= EXPANSION_CONSTANTS.OBSERVER_RANGE) {
+                if (Game.map.getRoomLinearDistance(obs.room.name, targetName) <= EXPANSION.EXPANSION_CONSTANTS.OBSERVER_RANGE) {
                     if ((obs as StructureObserver).observeRoom(targetName) === OK) {
                         Memory.obsTarget = targetName;
                     }

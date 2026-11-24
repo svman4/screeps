@@ -1,8 +1,6 @@
 // --- ΡΥΘΜΙΣΕΙΣ (CONFIG) ---
-import Constants = require('./construction.constants');
-const {
-    MARKET_CONSTANTS
-} = Constants as any;
+import { MARKET_CONSTANTS } from "./constants";
+
 
 
 class MarketManager {

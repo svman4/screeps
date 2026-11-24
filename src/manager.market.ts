@@ -1,45 +1,16 @@
 // --- ΡΥΘΜΙΣΕΙΣ (CONFIG) ---
+import Constants = require('./construction.constants');
+const {
+    MARKET_CONSTANTS
+} = Constants as any;
 
-const INTERVALS = {
-    RUN: 100 // Κάθε πόσους ticks θα εκτελείται
-};
-
-const STORE_LIMITS = {
-    STORAGE: 0.9, // Όριο πώλησης ενέργειας (Storage)
-    TERMINAL: 0.5 // Όριο πώλησης ενέργειας (Terminal)
-};
-
-const MARKET_CONFIG = {
-    // Ελάχιστη ποσότητα για να κάνουμε deal (αποφεύγει το bug της 1 μονάδας)
-    MIN_DEAL_AMOUNT: 40,
-
-    // Μέγιστο Ratio Κόστους Μεταφοράς (Energy / Amount).
-    // 0.6 σημαίνει: Για να στείλω 1000 items, δέχομαι να πληρώσω μέχρι 600 Energy.
-    // Αν το κόστος είναι μεγαλύτερο, ο αγοραστής θεωρείται πολύ μακριά.
-    MAX_ENERGY_RATIO: 0.6
-};
-
-const POWER_CONFIG = {
-    TARGET_AMOUNT: 3000,   // Στόχος: 3000 Power στο Terminal
-    MAX_PRICE: 25.0,       // Μέγιστη τιμή ανά Power
-    BATCH_SIZE: 500        // Αγορά ανά 500
-};
-
-const NUKER_CONFIG = {
-    TARGET_AMOUNT: 5000,   // Στόχος: 5000 Ghodium
-    MAX_PRICE: 1.5,        // Μέγιστη τιμή ανά Ghodium
-    BATCH_SIZE: 1000       // Αγορά ανά 1000
-};
-
-// Κοινό όριο ασφαλείας χρημάτων
-const GLOBAL_MIN_CREDITS = 50000;
 
 class MarketManager {
     constructor() {
 
     }
     run(roomName: string): void {
-        if (Game.time % INTERVALS.RUN !== 0)
+        if (Game.time % MARKET_CONSTANTS.INTERVALS.RUN !== 0)
             return;
 
         const room = Game.rooms[roomName];
@@ -75,14 +46,14 @@ class MarketManager {
             const amountInTerminal = terminal.store.getUsedCapacity(resourceType);
 
             // Αν έχουμε λιγότερα από το ελάχιστο όριο, δεν ασχολούμαστε
-            if (amountInTerminal < MARKET_CONFIG.MIN_DEAL_AMOUNT)
+            if (amountInTerminal < MARKET_CONSTANTS.MARKET_CONFIG.MIN_DEAL_AMOUNT)
                 continue;
 
             // 1. Βρες Αγοραστές
             const buyOrders = Game.market.getAllOrders(order =>
                 order.resourceType === resourceType &&
                 order.type === ORDER_BUY &&
-                order.remainingAmount >= MARKET_CONFIG.MIN_DEAL_AMOUNT // Να θέλει μια σεβαστή ποσότητα
+                order.remainingAmount >= MARKET_CONSTANTS.MARKET_CONFIG.MIN_DEAL_AMOUNT // Να θέλει μια σεβαστή ποσότητα
             );
 
             if (buyOrders.length === 0)
@@ -103,7 +74,7 @@ class MarketManager {
 
                 // ΦΙΛΤΡΟ 1: Είναι πολύ μακριά; (Ratio Check)
                 // Αν το κόστος είναι π.χ. 800 ενέργεια για 1000 items (0.8), το προσπερνάμε.
-                if (transactionCost > amountToDeal * MARKET_CONFIG.MAX_ENERGY_RATIO) {
+                if (transactionCost > amountToDeal * MARKET_CONSTANTS.MARKET_CONFIG.MAX_ENERGY_RATIO) {
                     continue; // Πάμε στον επόμενο αγοραστή
                 }
 
@@ -120,7 +91,7 @@ class MarketManager {
                 }
 
                 // ΦΙΛΤΡΟ 3: Μετά τις μειώσεις, αξίζει τον κόπο;
-                if (amountToDeal < MARKET_CONFIG.MIN_DEAL_AMOUNT) {
+                if (amountToDeal < MARKET_CONSTANTS.MARKET_CONFIG.MIN_DEAL_AMOUNT) {
                     continue; // Πολύ μικρή ποσότητα, δεν αξίζει, πάμε στον επόμενο
                 }
 
@@ -152,12 +123,12 @@ class MarketManager {
         const storageCapacity = room.storage.store.getCapacity();
         const energyAmount = room.storage.store.getUsedCapacity(RESOURCE_ENERGY);
 
-        if (energyAmount < STORE_LIMITS.STORAGE * storageCapacity) return;
+        if (energyAmount < MARKET_CONSTANTS.STORE_LIMITS.STORAGE * storageCapacity) return;
 
         const terminalEnergy = room.terminal.store.getUsedCapacity(RESOURCE_ENERGY);
         const terminalTotalCapacity = room.terminal.store.getCapacity();
 
-        if (terminalEnergy < (STORE_LIMITS.TERMINAL * terminalTotalCapacity)) return;
+        if (terminalEnergy < (MARKET_CONSTANTS.STORE_LIMITS.TERMINAL * terminalTotalCapacity)) return;
 
         this.searchAndSellEnergy(roomName, terminalEnergy / 2);
     }
@@ -168,12 +139,12 @@ class MarketManager {
         if (!powerSpawn) return;
 
         const currentPower = room.terminal.store.getUsedCapacity(RESOURCE_POWER);
-        if (currentPower >= POWER_CONFIG.TARGET_AMOUNT) return;
+        if (currentPower >= MARKET_CONSTANTS.POWER_CONFIG.TARGET_AMOUNT) return;
 
-        let amountNeeded = POWER_CONFIG.TARGET_AMOUNT - currentPower;
-        amountNeeded = Math.min(amountNeeded, POWER_CONFIG.BATCH_SIZE);
+        let amountNeeded = MARKET_CONSTANTS.POWER_CONFIG.TARGET_AMOUNT - currentPower;
+        amountNeeded = Math.min(amountNeeded, MARKET_CONSTANTS.POWER_CONFIG.BATCH_SIZE);
 
-        this.searchAndBuyResource(roomName, RESOURCE_POWER, amountNeeded, POWER_CONFIG.MAX_PRICE);
+        this.searchAndBuyResource(roomName, RESOURCE_POWER, amountNeeded, MARKET_CONSTANTS.POWER_CONFIG.MAX_PRICE);
     }
 
     // --- Διαχείριση Αγοράς Ghodium (Nuker) ---
@@ -182,17 +153,17 @@ class MarketManager {
         if (!nuker) return;
 
         const currentGhodium = room.terminal.store.getUsedCapacity(RESOURCE_GHODIUM);
-        if (currentGhodium >= NUKER_CONFIG.TARGET_AMOUNT) return;
+        if (currentGhodium >= MARKET_CONSTANTS.NUKER_CONFIG.TARGET_AMOUNT) return;
 
-        let amountNeeded = NUKER_CONFIG.TARGET_AMOUNT - currentGhodium;
-        amountNeeded = Math.min(amountNeeded, NUKER_CONFIG.BATCH_SIZE);
+        let amountNeeded = MARKET_CONSTANTS.NUKER_CONFIG.TARGET_AMOUNT - currentGhodium;
+        amountNeeded = Math.min(amountNeeded, MARKET_CONSTANTS.NUKER_CONFIG.BATCH_SIZE);
 
-        this.searchAndBuyResource(roomName, RESOURCE_GHODIUM, amountNeeded, NUKER_CONFIG.MAX_PRICE);
+        this.searchAndBuyResource(roomName, RESOURCE_GHODIUM, amountNeeded, MARKET_CONSTANTS.NUKER_CONFIG.MAX_PRICE);
     }
 
     // --- Generic Συνάρτηση Αγοράς ---
     searchAndBuyResource(roomName: string, resourceType: ResourceConstant, amountToBuy: number, maxPrice: number) {
-        if (Game.market.credits < GLOBAL_MIN_CREDITS) return;
+        if (Game.market.credits < MARKET_CONSTANTS.GLOBAL_MIN_CREDITS) return;
 
         const terminal = Game.rooms[roomName].terminal;
 
@@ -201,7 +172,7 @@ class MarketManager {
             order.resourceType === resourceType &&
             order.type === ORDER_SELL &&
             order.price <= maxPrice &&
-            order.amount >= MARKET_CONFIG.MIN_DEAL_AMOUNT // Να έχει ποσότητα ο πωλητής
+            order.amount >= MARKET_CONSTANTS.MARKET_CONFIG.MIN_DEAL_AMOUNT // Να έχει ποσότητα ο πωλητής
         );
 
         if (sellOrders.length === 0) return;
@@ -224,7 +195,7 @@ class MarketManager {
             }
 
             // Check Ratio και στην αγορά για να μην αδειάσουμε το τερματικό από ενέργεια
-            if (transactionCost > dealAmount * MARKET_CONFIG.MAX_ENERGY_RATIO) {
+            if (transactionCost > dealAmount * MARKET_CONSTANTS.MARKET_CONFIG.MAX_ENERGY_RATIO) {
                 continue;
             }
 
@@ -238,7 +209,7 @@ class MarketManager {
         if (bestOrder) {
             const costInCredits = bestOrder.amountToDeal * bestOrder.price;
 
-            if (Game.market.credits - costInCredits < GLOBAL_MIN_CREDITS) {
+            if (Game.market.credits - costInCredits < MARKET_CONSTANTS.GLOBAL_MIN_CREDITS) {
                 console.log(`⚠️ Ακύρωση αγοράς ${resourceType}: Χαμηλό υπόλοιπο credits.`);
                 return;
             }

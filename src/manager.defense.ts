@@ -1,12 +1,12 @@
 import * as _ from "lodash";
 import roomCacheClass = require('./utils.RoomCache');
-// Ορισμός τύπου για να σταματήσει να διαμαρτύρεται ο compiler
+import Constants = require('./construction.constants');
+const {
+    DEFENCE_CONSTANTS
+} = Constants as any;
 const roomCache = roomCacheClass as any;
-const WALL_STEP_HITS = 1000;
-const RCL8_RICH_WALL_STEP_HITS = 10000;
-const RCL8_RICH_ENERGY_THRESHOLD = 900000;
-const MAX_WALL_LIMIT_HITS = 100000000;
-const DEFAULT_WALL_LIMIT_HITS = 1000;
+
+
 class DefenceManager {
 
     /**
@@ -88,7 +88,7 @@ class DefenceManager {
         }
 
         if (typeof room.memory.wallLimit !== "number") {
-            room.memory.wallLimit = DEFAULT_WALL_LIMIT_HITS;
+            room.memory.wallLimit = DEFENCE_CONSTANTS.DEFAULT_WALL_LIMIT_HITS;
         }
 
         const defenses = room.find(FIND_STRUCTURES, {
@@ -117,18 +117,18 @@ class DefenceManager {
         let baselineHits = minHits;
 
         if (rcl > 0) {
-            baselineHits = Math.max(rcl * WALL_STEP_HITS, baselineHits);
+            baselineHits = Math.max(rcl * DEFENCE_CONSTANTS.WALL_STEP_HITS, baselineHits);
         }
 
-        const quantizedHits = Math.floor(baselineHits / WALL_STEP_HITS) * WALL_STEP_HITS;
+        const quantizedHits = Math.floor(baselineHits / DEFENCE_CONSTANTS.WALL_STEP_HITS) * DEFENCE_CONSTANTS.WALL_STEP_HITS;
 
         const isRichRcl8 =
             rcl === 8 &&
             room.storage != null &&
-            room.storage.store.getUsedCapacity(RESOURCE_ENERGY) > RCL8_RICH_ENERGY_THRESHOLD;
+            room.storage.store.getUsedCapacity(RESOURCE_ENERGY) > DEFENCE_CONSTANTS.RCL8_RICH_ENERGY_THRESHOLD;
 
-        const increment = isRichRcl8 ? RCL8_RICH_WALL_STEP_HITS : WALL_STEP_HITS;
-        const nextLimit = Math.min(quantizedHits + increment, MAX_WALL_LIMIT_HITS);
+        const increment = isRichRcl8 ? DEFENCE_CONSTANTS.RCL8_RICH_WALL_STEP_HITS : DEFENCE_CONSTANTS.WALL_STEP_HITS;
+        const nextLimit = Math.min(quantizedHits + increment, DEFENCE_CONSTANTS.MAX_WALL_LIMIT_HITS);
 
         room.memory.wallLimit = nextLimit;
     }
@@ -185,7 +185,7 @@ class DefenceManager {
     private shouldRepair(tower: StructureTower, hostiles: Creep[]): boolean {
         // Αν υπάρχουν εχθροί, επισκευή μόνο με υψηλή energy
         if (hostiles.length > 0) {
-            return tower.store.getUsedCapacity(RESOURCE_ENERGY) > tower.store.getCapacity(RESOURCE_ENERGY) * 0.7; // 70% capacity
+            return tower.store.getUsedCapacity(RESOURCE_ENERGY) > tower.store.getCapacity(RESOURCE_ENERGY) * DEFENCE_CONSTANTS.HOSTILE_REPAIR_ENERGY_RATIO;
         }
 
         // Χωρίς εχθρούς, επισκευή με οποιαδήποτε energy

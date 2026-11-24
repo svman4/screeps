@@ -1,8 +1,12 @@
-import _ from "lodash";
+import * as _ from "lodash";
 import roomCacheClass = require('./utils.RoomCache');
 // Ορισμός τύπου για να σταματήσει να διαμαρτύρεται ο compiler
 const roomCache = roomCacheClass as any;
-
+const WALL_STEP_HITS = 1000;
+const RCL8_RICH_WALL_STEP_HITS = 10000;
+const RCL8_RICH_ENERGY_THRESHOLD = 900000;
+const MAX_WALL_LIMIT_HITS = 100000000;
+const DEFAULT_WALL_LIMIT_HITS = 1000;
 class DefenceManager {
 
     /**
@@ -65,41 +69,69 @@ class DefenceManager {
         }
     } // end of run
 
+
+
+    /**
+     * Refreshes the target hit threshold for walls and ramparts in a room
+     * using quantized step increments based on current minimum structure hits,
+     * controller level, and RCL 8 storage energy reserves.
+     *
+     * @param room - Target Screeps room to evaluate.
+     */
     private refreshWallThreshold(room: Room): void {
         if (!room) {
             return;
         }
-        const step = 1000;
 
-        if (!room.memory)
-            room.memory = {};
+        if (!room.memory) {
+            room.memory = {} as RoomMemory;
+        }
 
-        if (!room.memory.wallLimit)
-            room.memory.wallLimit = 1000;
+        if (typeof room.memory.wallLimit !== "number") {
+            room.memory.wallLimit = DEFAULT_WALL_LIMIT_HITS;
+        }
 
-        const walls = room.find(FIND_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART });
-        if (walls.length === 0) {
+        const defenses = room.find(FIND_STRUCTURES, {
+            filter: (s): s is StructureWall | StructureRampart =>
+                (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) &&
+                typeof s.hits === "number"
+        });
+
+        if (defenses.length === 0) {
             return;
         }
-        let hits_minimum_value = _.min(walls, 'hits').hits;
-        if (room.controller) {
-            hits_minimum_value = Math.max(room.controller.level * 1000, hits_minimum_value);
-        }
-        hits_minimum_value = Math.floor(hits_minimum_value / step) * step;
 
-        if (room.controller && room.controller.level === 8) {
-            if (room.storage && room.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 900000) {
-                hits_minimum_value += 10000;
-            } else {
-                hits_minimum_value += 1000;
+        let minHits = Infinity;
+        for (let i = 0; i < defenses.length; i++) {
+            const hits = defenses[i].hits;
+            if (hits < minHits) {
+                minHits = hits;
             }
-            hits_minimum_value = Math.min(hits_minimum_value, 100000000);
-        } else {
-            hits_minimum_value += 1000;
-            hits_minimum_value = Math.min(hits_minimum_value, 100000000);
         }
-        room.memory.wallLimit = hits_minimum_value;
-    } // end of refreshWallThreshold
+
+        if (!Number.isFinite(minHits)) {
+            return;
+        }
+
+        const rcl = room.controller ? room.controller.level : 0;
+        let baselineHits = minHits;
+
+        if (rcl > 0) {
+            baselineHits = Math.max(rcl * WALL_STEP_HITS, baselineHits);
+        }
+
+        const quantizedHits = Math.floor(baselineHits / WALL_STEP_HITS) * WALL_STEP_HITS;
+
+        const isRichRcl8 =
+            rcl === 8 &&
+            room.storage != null &&
+            room.storage.store.getUsedCapacity(RESOURCE_ENERGY) > RCL8_RICH_ENERGY_THRESHOLD;
+
+        const increment = isRichRcl8 ? RCL8_RICH_WALL_STEP_HITS : WALL_STEP_HITS;
+        const nextLimit = Math.min(quantizedHits + increment, MAX_WALL_LIMIT_HITS);
+
+        room.memory.wallLimit = nextLimit;
+    }
 
     /**
      * Βρίσκει τον καλύτερο στόχο για επίθεση

@@ -69,11 +69,11 @@ declare global {
     /**
      * Αντιπροσωπεύει ένα μεμονωμένο κτίριο μέσα στο αρχιτεκτονικό πλάνο (Blueprint).
      */
-    export interface BlueprintStructure {
-        /** Συντεταγμένη X στο δωμάτιο */
-        x: number;
-        /** Συντεταγμένη Y στο δωμάτιο */
-        y: number;
+    export interface BlueprintStructure extends Coordination {
+        // /** Συντεταγμένη X στο δωμάτιο */
+        // x: number;
+        // /** Συντεταγμένη Y στο δωμάτιο */
+        // y: number;
         /** Τύπος κτιρίου (π.χ. STRUCTURE_SPAWN, STRUCTURE_EXTENSION) */
         type: StructureConstant;
         /** Το ελάχιστο Room Controller Level (RCL) που απαιτείται για την κατασκευή */

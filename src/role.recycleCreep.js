@@ -1,14 +1,14 @@
 const BaseRole = require('role.base');
 const movementManager = require('manager.movement');
 const roomCache = require('utils.RoomCache');
-const debugConsole=require('utils.debugConsole');
+const debugConsole = require('utils.debugConsole');
 class To_be_recycled extends BaseRole {
     run() {
         if (this.travelToHomeRoom()) return;
         const container = roomCache.in(this.creep.room.name).recoveryContainer;
-        
+
         const spawns = roomCache.in(this.creep.room.name).spawns;
-            
+
         if (container) {
             if (!this.creep.pos.inRangeTo(container, 0)) {
                 movementManager.smartMove(this.creep, container, 0);
@@ -18,18 +18,18 @@ class To_be_recycled extends BaseRole {
             }
             return;
         }
-		// Αν δεν υπάρχει container, πάμε κατευθείαν στο spawn
+        // Αν δεν υπάρχει container, πάμε κατευθείαν στο spawn
         const spawn = this.creep.pos.findClosestByRange(spawns);
-		
+
         if (spawn) {
-            
+
             if (!this.creep.pos.inRangeTo(spawn, 1)) {
                 movementManager.smartMove(this.creep, spawn, 0);
             } else {
                 spawn.recycleCreep(this.creep);
-				
+
             }
-			return;
+            return;
         }
         // Αν δεν υπάρχει spawn, απλά αυτοκτονία για να μην σπαταλάμε πόρους
         this.creep.suicide();

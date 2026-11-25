@@ -1,7 +1,6 @@
 import roomCacheClass = require("./utils.RoomCache");
-import { MOVEMENT_CONSTANTS } from "./constants";
 const roomCache = roomCacheClass as any;
-
+import { MOVEMENT_CONSTANTS } from "./constants";
 type MoveTarget = RoomPosition | { pos: RoomPosition };
 
 
@@ -125,7 +124,7 @@ export class MovementManager {
 
         return creep.moveTo(targetPos, {
             reusePath: 10,
-            visualizePathStyle: { stroke: "#ffaa00" }
+            //visualizePathStyle: { stroke: "#ffaa00" }
         });
     };
 

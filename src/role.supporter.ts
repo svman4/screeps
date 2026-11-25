@@ -2,7 +2,7 @@
  * Supporter Role: Ένας ευέλικτος ρόλος υποστήριξης που διαχειρίζεται ενέργεια, 
  * χτίζει δομές και προστατεύει τον Controller από υποβάθμιση (downgrade).
  */
-//const BaseRole = require('role.base');
+import BaseRole from './role.base';
 const movementManager = require('manager.movement');
 import roomCacheClass = require("./utils.RoomCache");
 const roomCache = roomCacheClass as any;

@@ -1,5 +1,5 @@
-const BaseRole = require('role.base');
-const movementManager = require('manager.movement');
+import BaseRole from './role.base';
+const movementManager = require('./manager.movement');
 
 class Miner extends BaseRole {
     run() {

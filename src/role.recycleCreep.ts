@@ -1,6 +1,8 @@
-const BaseRole = require('role.base');
+import BaseRole from './role.base';
 const movementManager = require('manager.movement');
-const roomCache = require('utils.RoomCache');
+import roomCacheClass = require('./utils.RoomCache');
+// Ορισμός τύπου για να σταματήσει να διαμαρτύρεται ο compiler
+const roomCache = roomCacheClass as any;
 const debugConsole = require('utils.debugConsole');
 class To_be_recycled extends BaseRole {
     run() {

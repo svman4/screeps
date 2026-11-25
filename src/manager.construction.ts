@@ -23,6 +23,7 @@ import roomCacheClass = require('./utils.RoomCache');
 // Ορισμός τύπου για να σταματήσει να διαμαρτύρεται ο compiler
 const roomCache = roomCacheClass as any;
 import Constants = require('./construction.constants');
+import { FSM } from './utils.fsm';
 const {
     MEMORY_KEYS,
     MAX_CONSTRUCTION_SITE,

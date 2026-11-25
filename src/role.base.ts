@@ -19,7 +19,7 @@ import roomCacheClass = require("./utils.RoomCache");
 const roomCache = roomCacheClass as any;
 
 abstract class BaseRole implements ICreepRole {
-    protected creep: Creep;
+    public creep: Creep;
     /**
      * Αρχικοποίηση της βασικής κλάσης.
      * @param {Creep} creep - Το αντικείμενο του creep από το Game.creeps.

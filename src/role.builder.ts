@@ -21,7 +21,7 @@ const builderStates = new FSM({
         }
         return;
     }
-}); // end of upgraderStates
+}); // end of builderStates
 
 
 class Builder extends BaseRole {

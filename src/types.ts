@@ -42,6 +42,7 @@ declare global {
         homeRoom?: string;
         targetRoom?: string;
         sourceId?: Id<Source>;
+        mineralId?: Id<Mineral>;
         _lastPos?: {
             x: number;
             y: number;

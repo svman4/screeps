@@ -25,10 +25,7 @@ const LDHarvesterStates = new FSM({
             LDHarvesterStates.transition(this, 'COLLECTING', this.creep.memory);
             return;
         }
-
-        const road = this.creep.pos.lookFor(LOOK_STRUCTURES)
-            .find(s => s.structureType === STRUCTURE_ROAD && s.hits < s.hitsMax);
-        if (road) this.creep.repair(road);
+        this.fixRoad();
         if (this.travelToHomeRoom()) return;
         if (this.fillSpawnExtension()) return;
 
@@ -36,8 +33,13 @@ const LDHarvesterStates = new FSM({
             filter: s => (s.structureType === STRUCTURE_CONTAINER || s.structureType === STRUCTURE_STORAGE) && s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
         });
         if (target) {
-            if (this.creep.pos.inRangeTo(target, 1)) this.creep.transfer(target, RESOURCE_ENERGY);
-            else movementManager.smartMove(this.creep, target, 1);
+            if (this.creep.pos.inRangeTo(target, 1)) {
+                this.creep.transfer(target, RESOURCE_ENERGY);
+            }
+            else {
+                movementManager.smartMove(this.creep, target, 1);
+            }
+
         }
 
     }
@@ -52,6 +54,11 @@ class LDHarvester extends BaseRole {
     run() {
         LDHarvesterStates.run(this, 'COLLECTING', this.creep.memory);
     }
-}
+    fixRoad(): void {
+        const road = this.creep.pos.lookFor(LOOK_STRUCTURES)
+            .find(s => s.structureType === STRUCTURE_ROAD && s.hits < s.hitsMax);
+        if (road) this.creep.repair(road);
+    }
+} // end of class 
 export default LDHarvester;
 

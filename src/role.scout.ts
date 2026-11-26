@@ -3,7 +3,7 @@
  * @description Περιέχει τη λογική συμπεριφοράς για τα creeps με ρόλο Scout, 
  * τα οποία είναι υπεύθυνα για την αναγνώριση δωματίων και τη συλλογή πληροφοριών (Intel).
  */
-
+import BaseRole from './role.base';
 import expansionManager = require("./manager.expansion");
 
 /**
@@ -41,9 +41,6 @@ export class Scout extends BaseRole {
             this.creep.room.name,
             expansionManager.canIExpand()
         );
-
-        // getInfoForNeighborRoom(targetRoom);
-
         // Εξοικονόμηση CPU: Το creep αυτοκαταστρέφεται μόλις συλλέξει τα δεδομένα
         this.creep.suicide();
     } // end of run

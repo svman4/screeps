@@ -8,7 +8,8 @@ import supporter = require("./role.supporter");
 import lDHarvester = require("./role.lDHarvester");
 import miner = require("./role.miner");
 import recycleCreep = require("./role.recycleCreep");
-
+import roomCacheClass = require("./utils.RoomCache");
+const roomCache = roomCacheClass as any;
 /**
  * Βασικό συμβόλαιο που πρέπει να υλοποιεί κάθε κλάση ρόλου creep.
  */

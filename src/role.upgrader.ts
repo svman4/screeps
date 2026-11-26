@@ -32,5 +32,4 @@ class Upgrader extends BaseRole {
         upgraderStates.run(this, 'COLLECTING', this.creep.memory);
     }
 } // end of upgraders
-
-module.exports = Upgrader;
+export default Upgrader;

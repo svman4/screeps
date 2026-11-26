@@ -1,4 +1,4 @@
-import BaseRole = require('./role.base');
+import BaseRole from './role.base';
 const FSM = require('utils.fsm');
 const simpleHarvesterStates = new FSM({
     COLLECTING: function () {

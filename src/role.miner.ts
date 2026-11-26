@@ -11,7 +11,7 @@ const minerStates = new FSM({
         const target = this.creep.room.terminal || this.creep.room.storage;
         if (target) {
             if (this.creep.pos.inRangeTo(target, 1)) {
-                for (const res in this.creep.store as unknown as ResourceConstant) {
+                for (const res of Object.keys(this.creep.store) as ResourceConstant[]) {
                     this.creep.transfer(target, res);
                 }
             } else {
@@ -48,4 +48,3 @@ class Miner extends BaseRole {
     } // end of run()
 } // end of Miner
 module.exports = Miner;
-

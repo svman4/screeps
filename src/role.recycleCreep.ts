@@ -1,9 +1,9 @@
 import BaseRole from './role.base';
-const movementManager = require('manager.movement');
+import movementManager from './manager.movement';
 import roomCacheClass = require('./utils.RoomCache');
 // Ορισμός τύπου για να σταματήσει να διαμαρτύρεται ο compiler
 const roomCache = roomCacheClass as any;
-const debugConsole = require('utils.debugConsole');
+
 class To_be_recycled extends BaseRole {
     run() {
         if (this.travelToHomeRoom()) return;
@@ -15,13 +15,13 @@ class To_be_recycled extends BaseRole {
             if (!this.creep.pos.inRangeTo(container, 0)) {
                 movementManager.smartMove(this.creep, container, 0);
             } else {
-                const spawn = this.creep.pos.findClosestByRange(spawns);
+                const spawn = this.creep.pos.findClosestByRange(spawns) as StructureSpawn;
                 if (spawn) spawn.recycleCreep(this.creep);
             }
             return;
         }
         // Αν δεν υπάρχει container, πάμε κατευθείαν στο spawn
-        const spawn = this.creep.pos.findClosestByRange(spawns);
+        const spawn = this.creep.pos.findClosestByRange(spawns) as StructureSpawn;
 
         if (spawn) {
 

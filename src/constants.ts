@@ -1,4 +1,17 @@
-
+export const ROLES = {
+   STATIC_HARVESTER: 'staticHarvester',
+   SIMPLE_HARVESTER: 'simpleHarvester',
+   HAULER: 'hauler',
+   UPGRADER: 'upgrader',
+   BUILDER: 'builder',
+   LD_HARVESTER: 'LDHarvester',
+   LD_HAULER: 'LDHauler',
+   CLAIMER: 'claimer',
+   SCOUT: 'scout',
+   SUPPORTER: 'supporter',
+   MINER: 'miner',
+   DEFAULT: 'default'
+};
 export const DEFENCE = {
    /** Προσαύξηση ορίου hits τοίχων/ramparts ανά επίπεδο RCL */
    WALL_STEP_HITS: 1000,
@@ -131,12 +144,84 @@ export const MOVEMENT_CONSTANTS = {
 export const ROOM_CACHE_CONSTANTS = {
    ROADS_THRESHOLD: 30,
    LINKS_THRESHOLD: 2,
-};
 } // end of ROOM_CAcHE_CONSTANTS
+export const SPAWN_CONSTANTS = {
+   BODY_ENERGY_LIMITS: {
+      [ROLES.STATIC_HARVESTER]: 800,
+      [ROLES.HAULER]: 2000,
+      [ROLES.UPGRADER]: 1000,
+      [ROLES.BUILDER]: 1000,
+      [ROLES.SIMPLE_HARVESTER]: 800,
+      [ROLES.DEFAULT]: 800
+   },
+
+   PRIORITY: {
+      [ROLES.SIMPLE_HARVESTER]: 10,
+      [ROLES.STATIC_HARVESTER]: 15,
+      [ROLES.HAULER]: 20,
+      [ROLES.MINER]: 35,
+      [ROLES.LD_HARVESTER]: 35,
+      [ROLES.LD_HAULER]: 40,
+      [ROLES.CLAIMER]: 45,
+      [ROLES.UPGRADER]: 60,
+      [ROLES.BUILDER]: 70,
+      [ROLES.SUPPORTER]: 80,
+      [ROLES.SCOUT]: 100
+   },
+   NEED_REPLACEMENT_FLAG: "needReplacementFlag",
+   LEAD_TIME_KEY: "leadTime",
+
+   // --- GLOBAL CONFIGURATION ---
+
+   POPULATION_GLOBAL_CONFIG: {
+      MEMORY_KEY: 'populationLimits',
+      RECOVERY_KEY: 'isRecovery',
+      HAVE_ROAD_KEY: 'hasRoads',
+      HAVE_LINK_KEY: 'hasLinks',
+      MEMORY_KEY_CREEP: "creeps",
+      MEMORY_KEY_PARTS: "parts",
+      ROOM_LEVEL_KEY: "level"
+
+   },
+   SPAWN_MANAGER_CONFIG: {
+      POPULATION_LIMIT_REFRESH_RATE: 100, //κάθε 100 Tick
+      EMA_SMOOTHING_PERIODS: 13, // Πόσους κύκλους πίσω θέλουμε να "θυμάται" το EMA 
+      //CREEP_PARTS_THRESHOLD: 0.3 // Αν η διαφορά στα parts είναι μικρότερη από 30%, περιμένουμε να πεθάνουν τα παλιά creeps για να κάνουμε πιο αποδοτική αντικατάσταση.
+      DEFAULT_RETIREMENT_THRESHOLD: 30
+   },
+
+} // end of SPAWN_CONSTANTS
+// --- MODULE SPECIFIC CONFIGURATION ---
+// Ρυθμίσεις που αφορούν αποκλειστικά τη λογική του Population Manager
+export const POPULATION_MODULE_CONFIG = {
+
+   // Efficiency values
+   BUILDING_EFFICIENCY: 5,      // 1 WORK PART = 5 energy per tick
+   WORK_EFFICIENCY: 2,          // 1 WORK part = 2 energy per tick harvest
+   UPGRADE_EFFICIENCY: 1,       // 1 WORK part = 1 energy per tick upgrade
+
+   // Economic Balancing
+   MAINTENANCE_BUFFER: 3,       // Ενέργεια που κρατάμε για Towers/Spawning
+   BUILDER_INCOME_SHARE: 0.5,   // Ποσοστό του εισοδήματος που πάει σε χτίσιμο
+   MAX_BUILDER_WORK_BASELINE: 13, // Μέγιστο WORK για builders από το τρέχον εισόδημα
+   SURPLUS_THRESHOLD: 0.5,      // Πάνω από ποιο ποσοστό Storage θεωρούμε ότι έχουμε πλεόνασμα
+   SURPLUS_SCALER: 50,          // Πόσο επιθετικά αυξάνουμε τα parts στο πλεόνασμα
+   MAX_UPGRADER_WORK_RCL8: 15,  // Το όριο του controller στο RCL 8 (15 energy/tick cap)
+   STATIC_HARVESTERS_PER_SOURCE: 1,
+   SIMPLE_HARVESTERS_PER_SOURCE: 2,
+   // Logistics
+   EXTENSION_CARRY_BONUS: 7,   // Σταθερό quota για τον ανεφοδιασμό extensions
+   DISTANCE_PADDING: 1.1,       // 10% έξτρα carry για κάλυψη απωλειών/κίνησης
+   ROAD_THRESHOLD: 30,           // Ελάχιστος αριθμός δρόμων για να θεωρηθεί το δωμάτιο "στρωμένο"
+   LINK_THRESHOLD: 2           // Ελάχιστος αριθμός link για να θεωρηθεί το δωμάτιο "εξοπλισμένο με links"
+}
 export default {
+   ROLES,
    DEFENCE,
    MARKET_CONSTANTS,
    EXPANSION,
    MOVEMENT_CONSTANTS,
-   ROOM_CACHE_CONSTANTS
+   ROOM_CACHE_CONSTANTS,
+   SPAWN_CONSTANTS,
+   POPULATION_MODULE_CONFIG
 };

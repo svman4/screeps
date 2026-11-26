@@ -624,4 +624,4 @@ class RoomCacheInstance {
 }
 
 // Εξαγωγή ενός μοναδικού (Singleton) instance της κλάσης RoomCache
-module.exports = new RoomCacheManager();
+export default new RoomCacheManager();

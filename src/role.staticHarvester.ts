@@ -9,11 +9,11 @@
  * 2.4.1: Διόρθωση logs και debugging για το NEED_REPLACEMENT_FLAG.
  */
 //import debugConsole from './utils.debugConsole';
-import BaseRole = require('./role.base');
-const movementManager = require('manager.movement');
+import BaseRole from './role.base';
+import movementManager from './manager.movement';
 const { NEED_REPLACEMENT_FLAG } = require('spawn.constants');
-const roomCache = require('./utils.RoomCache');
-const FSM = require('utils.fsm');
+import roomCache from './utils.RoomCache';
+import { FSM } from './utils.fsm';
 
 const staticHarvesterStates = new FSM(
     {

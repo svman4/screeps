@@ -147,3 +147,4 @@ export class MovementManager {
         return scanner.length > 0;
     };
 } // end of class MovementManager
+export default new MovementManager();

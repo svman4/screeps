@@ -407,4 +407,4 @@ abstract class BaseRole implements ICreepRole {
     }
 }
 
-export = BaseRole;
+export default BaseRole;

@@ -1,7 +1,7 @@
 
 
 import { constant } from "lodash";
-import { EXPANSION } from "./constants";
+import { EXPANSION, ROLES } from "./constants";
 import { RoomCacheData, World } from "./utils.RoomCache";
 declare global {
     interface Memory {
@@ -29,20 +29,17 @@ declare global {
         lastEnergyStore?: number;
         energyNetFlow?: number;
         wallLimit?: number;
-        enemyInfo?: {
-            owner: string;
-            level: number;
-            towers: number;
-        };
+        enemyInfo?: EnemyInfo;
     }
     interface CreepMemory {
-        role?: string;
+        role?: typeof ROLES[keyof typeof ROLES];
         init?: boolean;
         leadTime?: number;
         homeRoom?: string;
         targetRoom?: string;
         sourceId?: Id<Source>;
         mineralId?: Id<Mineral>;
+        working?: boolean;
         _lastPos?: {
             x: number;
             y: number;

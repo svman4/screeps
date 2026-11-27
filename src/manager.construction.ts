@@ -13,24 +13,53 @@
     - Πλήρης ενσωμάτωση των MEMORY_KEYS από το αρχείο constants.
     - Κατάργηση hardcoded strings στη διαχείριση μνήμης.
 */
-import defenceManager = require('./manager.defense');
+import defenceManager from './manager.defense';
 import { ConstructionVisualizer } from './construction.visualizer';
-import BaseLayout = require('./construction.layout.BaseLayout');
-//import FileLayout = require('./construction.layout.FileLayout');
-//import RoadPlanner = require('./construction.roadPlanner');
-const debugConsole = require("./utils.debugConsole");
-import roomCacheClass = require('./utils.RoomCache');
-// Ορισμός τύπου για να σταματήσει να διαμαρτύρεται ο compiler
-const roomCache = roomCacheClass as any;
-import Constants = require('./construction.constants');
+import BaseLayout from './construction.layout.BaseLayout';
+import debugConsole from './utils.debugConsole';
+import roomCache from './utils.RoomCache';
+import { CONSTRUCTION_CONSTANT } from "./constants";
 import { FSM } from './utils.fsm';
-const {
-    MEMORY_KEYS,
-    MAX_CONSTRUCTION_SITE,
-    STORAGE_LIMIT_FOR_INDUSTRIAL_ERA,
-    CONTROLLER_LEVEL_FOR_INDUSTRIAL_ERA,
-    SCAN_INTERVALS
-} = Constants as any;
+
+
+const CONSTANT = {
+    // Επίπεδα RCL ανά ποσότητα κτιρίων
+    STRUCTURE_RCL_STEPS: {
+        'spawn': [1, 7, 8],
+        'tower': [3, 5, 7, 8, 8, 8],
+        'extension': { 1: 0, 2: 5, 3: 10, 4: 20, 5: 30, 6: 40, 7: 50, 8: 60 },
+        'link': { 5: 2, 6: 3, 7: 4, 8: 6 },
+        'lab': [6, 6, 6, 7, 7, 8, 8, 8, 8, 8],
+        'container': { 1: 5 },
+    },
+
+    // Προεπιλεγμένα RCL ξεκλειδώματος αν δεν ορίζεται στα steps
+    DEFAULTS_RCL: {
+        road: 3,
+        container: 2,
+        spawn: 1,
+        extension: 2,
+        rampart: 5,
+        constructedWall: 4,
+        tower: 3,
+        storage: 4,
+        link: 5,
+        terminal: 6,
+        extractor: 6,
+        factory: 7
+    },
+
+}
+export const MEMORY_KEYS = {
+    ROOT: 'construction',
+    STRUCTURES: 'builtStructures',
+    RECOVERY: 'recoveryContainerId',
+    CONTROLLER: 'controllerContainerId',
+    ROAD_PLAN: 'roadPlannerData',
+    BLUE_PRINT: 'blueprint'
+
+}; // end of MEMORY_KEYS
+
 const constructionFSM = new FSM({
     'earlyEra': function () {
 
@@ -80,10 +109,10 @@ const constructionFSM = new FSM({
         debugConsole.debugText("ConstructionMAnager,basicEra", "constructionRemain length is " + this.info[this.room.name].constructionRemain.length);
 
         if (
-            this.room.controller.level > CONTROLLER_LEVEL_FOR_INDUSTRIAL_ERA &&
+            this.room.controller.level > CONSTRUCTION_CONSTANT.CONTROLLER_LEVEL_FOR_INDUSTRIAL_ERA &&
             this.info[this.room.name].constructionRemain.length === 0
             && this.room.storage &&
-            this.room.storage.store.getUsedCapacity() < STORAGE_LIMIT_FOR_INDUSTRIAL_ERA
+            this.room.storage.store.getUsedCapacity() < CONSTRUCTION_CONSTANT.STORAGE_LIMIT_FOR_INDUSTRIAL_ERA
         ) {
             // ο controller είναι πάνω από level 2
             constructionFSM.transition(this, 'basicEra', this.room.memory);
@@ -119,10 +148,6 @@ const constructionFSM = new FSM({
         }
     } // end of warTime
 }); // end of constructionFSM
-// interface RoomInfoData {
-//     level: number;
-//     constructionRemain: BlueprintStructure[];
-// }
 /**
  * CONSTRUCTION MANAGER CLASS
  */
@@ -184,7 +209,7 @@ class ConstructionManager {
             rooms[room.name]);
         if (this.visualizer)
             this.drawVisuals(room);
-        if (Game.time % SCAN_INTERVALS.UPDATE_BUILT_CACHE === 0) {
+        if (Game.time % CONSTRUCTION_CONSTANT.SCAN_INTERVALS.UPDATE_BUILT_CACHE === 0) {
             this.updateBuiltCache(room);
         }
 
@@ -211,7 +236,7 @@ class ConstructionManager {
         const cache = roomCache.in(room.name);
         let sites = cache.constructionSites;
 
-        const maxSites = MAX_CONSTRUCTION_SITE || 2;
+        const maxSites = CONSTRUCTION_CONSTANT.MAX_CONSTRUCTION_SITE || 2;
 
         if (sites.length >= maxSites) {
             // Εφόσον τα buildingSite είναι περισσότερα ή όσα επιτρέπονται 
@@ -361,4 +386,4 @@ class ConstructionManager {
 
     }
 } // end of class ConstructionManager
-export = new ConstructionManager();
+export default new ConstructionManager();

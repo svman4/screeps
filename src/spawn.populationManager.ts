@@ -44,19 +44,15 @@ import { FSM } from './utils.fsm';
 export interface IContext {
     room: Room,
     sources: Source[],
+    spawns: StructureSpawn[];
     storage: StructureStorage,
     hasConstruction: boolean,
     level: number,
+    hasContainers: boolean,
+    isRecovery: boolean,
 
 }
-class Context implements IContext {
 
-    room: Room;
-    sources: Source[];
-    storage: StructureStorage;
-    hasConstruction: boolean;
-    level: number
-}
 const populationManagerStates = new FSM({
     'earlyGameEra': function () {
         const context = this._createContext(this.room);
@@ -197,7 +193,7 @@ export class PopulationManager {
     /**
      * Κατανομή των διαθέσιμων WORK parts σε Builders και Upgraders (Μπαίνουν στη λίστα 'parts').
      */
-    _distributeWorkQuotas(context: IContext, limits) {
+    _distributeWorkQuotas(context: IContext, limits: IPopulationLimits) {
         let availableEnergyPerTick = this.calculateAvailableEnergyPerTick(context); // πόσα energy ανά tick μπορούμε να χρησιμοποιήσουμε.
 
         let builderWork = 0;
@@ -284,7 +280,7 @@ export class PopulationManager {
             (c.memory.role === ROLES.HAULER || c.memory.role === ROLES.SIMPLE_HARVESTER)
         );
 
-        const answer = {
+        const answer: IContext = {
             room: room,
             level: room.controller ? room.controller.level : 0,
             sources: cache.sources,
@@ -304,7 +300,7 @@ export class PopulationManager {
 
     _getStorageLimits(context: IContext): IPopulationLimits {
 
-        let limits = {
+        let limits: IPopulationLimits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
                 [ROLES.SIMPLE_HARVESTER]: 0,
                 [ROLES.STATIC_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
@@ -312,13 +308,14 @@ export class PopulationManager {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
                 [ROLES.HAULER]: this._calculateCarryQuota(context)
             },
-            isRecovery: false
+            isRecovery: false,
+            parts: undefined
         };
         this._distributeWorkQuotas(context, limits);
         return limits;
     }
     _getNoContainerLimits(context: IContext): IPopulationLimits {
-        let limits = {
+        let limits: IPopulationLimits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
                 [ROLES.SIMPLE_HARVESTER]: context.sources.length,
                 [ROLES.STATIC_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
@@ -328,16 +325,17 @@ export class PopulationManager {
                 [ROLES.UPGRADER]: 1,
                 [ROLES.BUILDER]: 5
             },
-            isRecovery: false
+            isRecovery: false,
+            parts: undefined
         };
         this._distributeWorkQuotas(context, limits);
         return limits;
     }
 
     _getContainerLimits(context: IContext): IPopulationLimits {
-        let limits = {
+        let limits: IPopulationLimits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
-                [ROLES.SIMPLE_HARVESTER]: 1,//Math.ceil(context.sources.length * POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE/4),
+                [ROLES.SIMPLE_HARVESTER]: 1, //Math.ceil(context.sources.length * POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE/4),
                 [ROLES.STATIC_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
             },
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
@@ -345,17 +343,18 @@ export class PopulationManager {
                 [ROLES.UPGRADER]: 2,
                 [ROLES.BUILDER]: 2
             },
-            isRecovery: false
+            isRecovery: false,
+            parts: undefined
         };
         this._distributeWorkQuotas(context, limits);
         return limits;
     }
 
     _getEarlyGameLimits(context: IContext): IPopulationLimits {
-        let limits = {
+        let limits: IPopulationLimits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
                 [ROLES.SIMPLE_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE,
-                [ROLES.STATIC_HARVESTER]: 0,//context.sources.length //* POPULATION_MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
+                [ROLES.STATIC_HARVESTER]: 0, //context.sources.length //* POPULATION_MODULE_CONFIG.STATIC_HARVESTERS_PER_SOURCE
             },
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_PARTS]: {
                 [ROLES.HAULER]: 0,
@@ -363,7 +362,8 @@ export class PopulationManager {
                 [ROLES.BUILDER]: 0
                 // this._calculateCarryQuota(context)
             },
-            isRecovery: false
+            isRecovery: false,
+            parts: undefined
         };
         //this._distributeWorkQuotas(context, limits);
         return limits;
@@ -380,7 +380,8 @@ export class PopulationManager {
                 [ROLES.UPGRADER]: 1,
                 [ROLES.BUILDER]: 0
             },
-            isRecovery: true
+            isRecovery: true,
+            parts: undefined,
         };
     } // end of _getRecoveryLimits
 

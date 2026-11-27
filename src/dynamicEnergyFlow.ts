@@ -1,5 +1,6 @@
 import debugConsole from "./utils.debugConsole";
-var roomCache = require('utils.RoomCache');
+import roomCache from './utils.RoomCache';
+
 
 const DYNAMIC_ENERGY_FLOW_CONSTANT = {
    REFRESH_RATE: 100,

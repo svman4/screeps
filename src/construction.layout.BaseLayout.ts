@@ -13,10 +13,8 @@
  * - Αρχική δομή BaseLayout.
  */
 
-import LayoutScorer = require("./construction.layout.Scorer");
-import CONSTANTS from "./construction.constants";
-
-
+import LayoutScorer from "./construction.layout.Scorer";
+import { MEMORY_KEYS } from "./manager.construction";
 
 /**
  * Βασική κλάση Orchestrator για τη διαχείριση των αρχιτεκτονικών πλάνων ενός δωματίου.
@@ -54,11 +52,11 @@ class BaseLayout {
      */
     public init(): void {
         const roomMem = Memory.rooms[this.roomName] as any;
-        const rootMem = roomMem && roomMem[CONSTANTS.MEMORY_KEYS.ROOT];
+        const rootMem = roomMem && roomMem[MEMORY_KEYS.ROOT];
 
         // Έλεγχος για υπάρχον blueprint στην cache (Memory)
-        if (rootMem && rootMem[CONSTANTS.MEMORY_KEYS.BLUE_PRINT]) {
-            this.blueprint = rootMem[CONSTANTS.MEMORY_KEYS.BLUE_PRINT];
+        if (rootMem && rootMem[MEMORY_KEYS.BLUE_PRINT]) {
+            this.blueprint = rootMem[MEMORY_KEYS.BLUE_PRINT];
             return;
         }
 
@@ -85,10 +83,10 @@ class BaseLayout {
             Memory.rooms[this.roomName] = {};
         }
         const roomMem = Memory.rooms[this.roomName] as any;
-        if (!roomMem[CONSTANTS.MEMORY_KEYS.ROOT]) {
-            roomMem[CONSTANTS.MEMORY_KEYS.ROOT] = {};
+        if (!roomMem[MEMORY_KEYS.ROOT]) {
+            roomMem[MEMORY_KEYS.ROOT] = {};
         }
-        roomMem[CONSTANTS.MEMORY_KEYS.ROOT][CONSTANTS.MEMORY_KEYS.BLUE_PRINT] = this.blueprint;
+        roomMem[MEMORY_KEYS.ROOT][MEMORY_KEYS.BLUE_PRINT] = this.blueprint;
     }
 
     /**

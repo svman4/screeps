@@ -142,6 +142,34 @@ export const MOVEMENT_CONSTANTS = {
    MATRIX_TTL: 50,
    STUCK_THRESHOLD: 2,
 } // end of MOVEMENT_CONSTANTS
+export const CONSTRUCTION_CONSTANT = {
+
+   MAX_CONSTRUCTION_SITE: 1,
+   STORAGE_LIMIT_FOR_INDUSTRIAL_ERA: 600000,
+   CONTROLLER_LEVEL_FOR_INDUSTRIAL_ERA: 6,
+   // Προτεραιότητες κατασκευής (Υψηλότερο = Πιο σημαντικό)
+   PRIORITIES: {
+      SPAWN: 130,
+      TOWER: 120,
+      EXTENSION: 110,
+      STORAGE: 100,
+      CONTAINER: 110,
+      TERMINAL: 80,
+      LINK: 70,
+      LAB: 60,
+      FACTORY: 50,
+      POWER_SPAWN: 40,
+      NUKER: 30,
+      OBSERVER: 20,
+      ROAD: 10,
+      RAMPART: 1,
+      CONSTRUCTEDWALL: 3
+   },
+   SCAN_INTERVALS: {
+      UPDATE_BUILT_CACHE: 10,
+      CHECK_CONSTRUCTION_SITES: 5
+   },
+} // end of CONSTRUCTION_CONSTANT;
 export const ROOM_CACHE_CONSTANTS = {
    ROADS_THRESHOLD: 30,
    LINKS_THRESHOLD: 2,
@@ -205,8 +233,7 @@ export const POPULATION_MODULE_CONFIG = {
    ROAD_THRESHOLD: 30,           // Ελάχιστος αριθμός δρόμων για να θεωρηθεί το δωμάτιο "στρωμένο"
    LINK_THRESHOLD: 2           // Ελάχιστος αριθμός link για να θεωρηθεί το δωμάτιο "εξοπλισμένο με links"
 }
-// --- GLOBAL CONFIGURATION ---
-
+// --- GLOBAL CONFIGURATION ---=
 export const POPULATION_GLOBAL_CONFIG = {
    MEMORY_KEY: 'populationLimits',
    RECOVERY_KEY: 'isRecovery',

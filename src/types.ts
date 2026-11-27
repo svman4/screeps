@@ -75,6 +75,8 @@ declare global {
         txCost: number;
     }
     interface IPopulationLimits {
+        parts: any;
+        isRecovery: boolean;
 
     }
     interface BestSellOrder extends Order {

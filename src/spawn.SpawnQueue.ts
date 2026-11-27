@@ -1,5 +1,3 @@
-import _ from "lodash";
-
 /**
  * MODULE: Spawn Queue Manager
  * VERSION: 1.2.0
@@ -14,7 +12,7 @@ import _ from "lodash";
  * 1.0.1: Βελτίωση του ελέγχου διπλοτύπων με βάση το sourceId και targetRoom.
  * 1.0.0: Αρχική υλοποίηση βασισμένη σε Singleton Pattern.
  */
-const debugConsole = require("utils.debugConsole");
+import debug from './utils.debugConsole';
 export class SpawnQueue {
     private data: SpawnRequest[];
     private _needsSort: boolean = true;
@@ -61,7 +59,7 @@ export class SpawnQueue {
      * Ταξινομεί την ουρά βάσει προτεραιότητας.
      * Χρησιμοποιεί το flag _needsSort για αποφυγή περιττών calculations στο ίδιο tick.
      */
-    private sort(): void {
+    public sort(): void {
         if (this._needsSort) {
             // Priority first, then Age (τα παλαιότερα αιτήματα προηγούνται σε ίδια προτεραιότητα)
             this.data.sort((a, b) => {

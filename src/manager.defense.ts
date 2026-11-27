@@ -1,10 +1,7 @@
 import * as _ from "lodash";
-import roomCacheClass = require('./utils.RoomCache');
-import Constants = require('./construction.constants');
-const {
-    DEFENCE_CONSTANTS
-} = Constants as any;
-const roomCache = roomCacheClass as any;
+import roomCache from './utils.RoomCache';
+import { DEFENCE } from './constants';
+
 
 
 class DefenceManager {
@@ -88,7 +85,7 @@ class DefenceManager {
         }
 
         if (typeof room.memory.wallLimit !== "number") {
-            room.memory.wallLimit = DEFENCE_CONSTANTS.DEFAULT_WALL_LIMIT_HITS;
+            room.memory.wallLimit = DEFENCE.DEFAULT_WALL_LIMIT_HITS;
         }
 
         const defenses = room.find(FIND_STRUCTURES, {
@@ -117,18 +114,18 @@ class DefenceManager {
         let baselineHits = minHits;
 
         if (rcl > 0) {
-            baselineHits = Math.max(rcl * DEFENCE_CONSTANTS.WALL_STEP_HITS, baselineHits);
+            baselineHits = Math.max(rcl * DEFENCE.WALL_STEP_HITS, baselineHits);
         }
 
-        const quantizedHits = Math.floor(baselineHits / DEFENCE_CONSTANTS.WALL_STEP_HITS) * DEFENCE_CONSTANTS.WALL_STEP_HITS;
+        const quantizedHits = Math.floor(baselineHits / DEFENCE.WALL_STEP_HITS) * DEFENCE.WALL_STEP_HITS;
 
         const isRichRcl8 =
             rcl === 8 &&
             room.storage != null &&
-            room.storage.store.getUsedCapacity(RESOURCE_ENERGY) > DEFENCE_CONSTANTS.RCL8_RICH_ENERGY_THRESHOLD;
+            room.storage.store.getUsedCapacity(RESOURCE_ENERGY) > DEFENCE.RCL8_RICH_ENERGY_THRESHOLD;
 
-        const increment = isRichRcl8 ? DEFENCE_CONSTANTS.RCL8_RICH_WALL_STEP_HITS : DEFENCE_CONSTANTS.WALL_STEP_HITS;
-        const nextLimit = Math.min(quantizedHits + increment, DEFENCE_CONSTANTS.MAX_WALL_LIMIT_HITS);
+        const increment = isRichRcl8 ? DEFENCE.RCL8_RICH_WALL_STEP_HITS : DEFENCE.WALL_STEP_HITS;
+        const nextLimit = Math.min(quantizedHits + increment, DEFENCE.MAX_WALL_LIMIT_HITS);
 
         room.memory.wallLimit = nextLimit;
     }
@@ -146,7 +143,7 @@ class DefenceManager {
         );
 
         const targets = dangerous.length > 0 ? dangerous : hostiles;
-        const criticalTypes = DEFENCE_CONSTANTS.CRITICAL_STRUCTURE_TYPES;
+        const criticalTypes = DEFENCE.CRITICAL_STRUCTURE_TYPES;
         // Βελτιωμένη επιλογή: προτεραιότητα σε εχθρούς που επιτίθενται σε κρίσιμες δομές
         const criticalStructures = room.find(FIND_MY_STRUCTURES, {
             filter: structure => {
@@ -185,7 +182,7 @@ class DefenceManager {
     private shouldRepair(tower: StructureTower, hostiles: Creep[]): boolean {
         // Αν υπάρχουν εχθροί, επισκευή μόνο με υψηλή energy
         if (hostiles.length > 0) {
-            return tower.store.getUsedCapacity(RESOURCE_ENERGY) > tower.store.getCapacity(RESOURCE_ENERGY) * DEFENCE_CONSTANTS.HOSTILE_REPAIR_ENERGY_RATIO;
+            return tower.store.getUsedCapacity(RESOURCE_ENERGY) > tower.store.getCapacity(RESOURCE_ENERGY) * DEFENCE.HOSTILE_REPAIR_ENERGY_RATIO;
         }
 
         // Χωρίς εχθρούς, επισκευή με οποιαδήποτε energy
@@ -201,7 +198,7 @@ class DefenceManager {
                 if (structure.hits >= structure.hitsMax) return false;
 
                 // Προτεραιότητα σε κρίσιμες δομές
-                const criticalTypes = DEFENCE_CONSTANTS.CRITICAL_STRUCTURE_TYPES;
+                const criticalTypes = DEFENCE.CRITICAL_STRUCTURE_TYPES;
 
                 if (criticalTypes.includes(structure.structureType)) {
                     return true;
@@ -215,7 +212,7 @@ class DefenceManager {
                 }
 
                 // Άλλες δομές (roads, containers κλπ)
-                return structure.hits < structure.hitsMax * DEFENCE_CONSTANTS.OTHER_REPAIR_HITS_RATIO;
+                return structure.hits < structure.hitsMax * DEFENCE.OTHER_REPAIR_HITS_RATIO;
             }
         });
 

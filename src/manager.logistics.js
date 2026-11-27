@@ -39,7 +39,7 @@ const TARGET_FULL_PERCENT = {
     POWER_SPAWN: 1
 };
 
-const MIN_LIFE_TO_LIVE = SPAWN_MANAGER_CONFIG.DEFAULT_RETIREMENT_THRESHOLD+10;
+const MIN_LIFE_TO_LIVE = SPAWN_MANAGER_CONFIG.DEFAULT_RETIREMENT_THRESHOLD + 10;
 const UPDATE_TASKS_INTERVAL = 2;
 
 const DROPPED_SOURCE_ENERGY_LIMIT = 200;
@@ -431,8 +431,8 @@ const logisticsManager = {
              * Εκτελείται μία φορά όταν το creep φτάσει στη θέση του.
              */
     initialiseLifecycle: function (creep) {
-        
-        
+
+
         if (creep.memory.init === true) {
             creep.memory[LEAD_TIME_KEY] = this.getSpawningDuration(creep) + 30;
             delete creep.memory.init;
@@ -459,7 +459,7 @@ const logisticsManager = {
         if (!assignment) {
             //TODO να πηγαίνει στην άκρη, εφόσον χρειάζεται για να μην ενοχλεί.
             return;
-            }
+        }
 
         const isCarrying = creep.store[RESOURCE_ENERGY] > 0;
 
@@ -489,7 +489,7 @@ const logisticsManager = {
             // Αν δεν έχει γεμίσει το store και έχει δίπλα(απόσταση 1) άλλη πηγή να παίρνει απο εκεί.
             if (result !== OK) {
 
-                
+
 
 
 
@@ -497,21 +497,21 @@ const logisticsManager = {
             }
             // FEATURE: Scavenge adjacent structures/piles if hauler has free space left
             if (creep.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
-              // creep.say("I am hungry");
+                // creep.say("I am hungry");
                 const adjacentStructures = creep.pos.findInRange(FIND_STRUCTURES, 1, {
-					filter: (s) => s.store && 
-						s.store[RESOURCE_ENERGY] > 0 && 
-						s.id !== source.id &&
-						(s.type===STRUCTURE_CONTAINER || s.type===STRUCTURE_STORAGE)
+                    filter: (s) => s.store &&
+                        s.store[RESOURCE_ENERGY] > 0 &&
+                        s.id !== source.id &&
+                        (s.type === STRUCTURE_CONTAINER || s.type === STRUCTURE_STORAGE)
                 });
                 if (adjacentStructures.length > 0) {
                     creep.withdraw(adjacentStructures[0], RESOURCE_ENERGY);
                 } else {
                     const adjacentDrops = creep.pos.findInRange(FIND_DROPPED_RESOURCES, 1, {
                         filter: (d) => d.resourceType === RESOURCE_ENERGY
-					});
-                    if (adjacentDrops.length > 0) 
-						creep.pickup(adjacentDrops[0]);
+                    });
+                    if (adjacentDrops.length > 0)
+                        creep.pickup(adjacentDrops[0]);
                 }
             }
         } else {

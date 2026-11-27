@@ -18,7 +18,7 @@
  * - Προσθήκη error handling για δωμάτια χωρίς αρχείο blueprint.
  */
 
-import BaseLayout = require("./construction.layout.BaseLayout");
+import BaseLayout from "./construction.layout.BaseLayout";
 
 /**
  * Υποκλάση της {@link BaseLayout} για τη διαχείριση προκαθορισμένων (static) blueprints 

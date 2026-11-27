@@ -26,6 +26,7 @@ import { PopulationManager } from "./spawn.populationManager";
 import { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG, BODY_ENERGY_LIMITS, PRIORITY, SPAWN_MANAGER_CONFIG, NEED_REPLACEMENT_FLAG, LEAD_TIME_KEY } from './spawn.constants';
 const UPGRADER_LIMIT = 5;
 import roomCache from './utils.RoomCache';
+import _ from "lodash";
 
 class SpawnManager {
     queue: SpawnQueue;
@@ -353,7 +354,7 @@ class SpawnManager {
     /**
      * Βρίσκει το καταλληλότερο Spawn για ένα αίτημα.
      */
-    findBestSpawn(request) {
+    findBestSpawn(request: SpawnRequest): StructureSpawn | undefined {
         // Προτεραιότητα σε spawns του ίδιου δωματίου
         // θα πρέπει να μπορεί να φτιάξει το body που ζηταιίαται και να μην είναι ήδη busy
         const localSpawns = _.filter(Game.spawns, s => s.room.name === request.targetRoom && !s.spawning);
@@ -371,12 +372,12 @@ class SpawnManager {
     /**
      * Υπολογίζει το βέλτιστο σώμα βάσει διαθέσιμης ενέργειας και ρόλου.
      */
-    calculateBody(roomName, role, maxEnergy, diffParts) {
-        let body = [];
+    calculateBody(roomName: string, role: string, maxEnergy: number, diffParts: number): string[] {
+        let body: string[] = [];
         const cache = roomCache.in(roomName);
         const hasRoads = cache.hasRoads;
         const hasLinks = cache.hasLinks;
-        const roomLevel = Memory.rooms[roomName] ? Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.ROOM_LEVEL_KEY] : 1;
+        // const roomLevel = Memory.rooms[roomName] ? Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.ROOM_LEVEL_KEY] : 1;
 
         let parts = 0;
         let costPerUnit = 0;
@@ -461,14 +462,14 @@ class SpawnManager {
     /**
      * Επιστρέφει το κόστος ενός σώματος σε ενέργεια.
      */
-    getBodyCost(body) {
+    getBodyCost(body): number {
         return _.sum(body, part => BODYPART_COST[part]);
     } // end of getBodyCost
 
     /**
      * Καθαρισμός της Memory από νεκρά creeps.
      */
-    cleanup() {
+    cleanup(): void {
         if (Game.time % 100 === 0) {
             for (const name in Memory.creeps) {
                 if (!Game.creeps[name]) {
@@ -478,5 +479,4 @@ class SpawnManager {
         }
     } // end of cleanUp
 } // end of class SpawnManager
-
-module.exports = new SpawnManager();
+export default new SpawnManager();

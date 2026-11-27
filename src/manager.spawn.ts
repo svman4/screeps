@@ -19,14 +19,17 @@
  * 2.7.0: Υλοποίηση parts-based spawning. Αντικατάσταση TODO με countPartsInRoom logic.
  * 2.6.0: Απόσπαση της διαχείρισης ουράς στην κλάση SpawnQueue.
  */
-const debugConsole = require("utils.debugConsole");
-const SpawnQueue = require('spawn.SpawnQueue');
-const PopulationManager = require('spawn.populationManager');
-const { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG, BODY_ENERGY_LIMITS, PRIORITY, SPAWN_MANAGER_CONFIG, NEED_REPLACEMENT_FLAG, LEAD_TIME_KEY } = require('./spawn.constants');
+import debugConsole from "./utils.debugConsole";
+import { SpawnQueue } from './spawn.SpawnQueue';
+import { PopulationManager } from "./spawn.populationManager";
+
+import { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG, BODY_ENERGY_LIMITS, PRIORITY, SPAWN_MANAGER_CONFIG, NEED_REPLACEMENT_FLAG, LEAD_TIME_KEY } from './spawn.constants';
 const UPGRADER_LIMIT = 5;
-const roomCache = require('utils.RoomCache');
+import roomCache from './utils.RoomCache';
 
 class SpawnManager {
+    queue: SpawnQueue;
+    populationManager: PopulationManager;
     constructor() {
         this.queue = new SpawnQueue();
         this.populationManager = new PopulationManager();
@@ -263,7 +266,7 @@ class SpawnManager {
     /**
     * Προσθήκη αιτήματος στην ουρά με κλειδωμένο προ-υπολογισμένο body.
     */
-    addRoleToQueue(roomName, role, budget, body, memory = {}, targetRoom = "") {
+    addRoleToQueue(roomName, role, budget, body: number, memory = {}, targetRoom = "") {
         if (!body || body.length === 0) {
             debugConsole.debugText("Spawn", "empty body for " + role + " at " + roomName);
         }

@@ -41,7 +41,16 @@ import debugConsole from "./utils.debugConsole";
 
 import roomCache from './utils.RoomCache';
 import { FSM } from './utils.fsm';
-class Context {
+export interface IContext {
+    room: Room,
+    sources: Source[],
+    storage: StructureStorage,
+    hasConstruction: boolean,
+    level: number,
+
+}
+class Context implements IContext {
+
     room: Room;
     sources: Source[];
     storage: StructureStorage;
@@ -161,7 +170,7 @@ export class PopulationManager {
      * Υπολογίζει τα διαθέσιμα energy per tick για την δημιουργία κατάλληλων worker
      * @return energyPerTick
      */
-    private calculateAvailableEnergyPerTick(context: Context): number {
+    private calculateAvailableEnergyPerTick(context: IContext): number {
         const INCOME_PER_SOURCE = (context.room.controller) ? 10 : 5; //energyPerTick
 
         //TODO να υπολογίζει πόσα Works Parts μπορούμε να χρησιμοποιήσουμε βάσει του room.memory.energyNetFlow Και να δούμε τι θα κάνουμε όταν δεν υπάρχει.
@@ -188,7 +197,7 @@ export class PopulationManager {
     /**
      * Κατανομή των διαθέσιμων WORK parts σε Builders και Upgraders (Μπαίνουν στη λίστα 'parts').
      */
-    _distributeWorkQuotas(context: Context, limits) {
+    _distributeWorkQuotas(context: IContext, limits) {
         let availableEnergyPerTick = this.calculateAvailableEnergyPerTick(context); // πόσα energy ανά tick μπορούμε να χρησιμοποιήσουμε.
 
         let builderWork = 0;
@@ -214,7 +223,7 @@ export class PopulationManager {
     /**
      * Υπολογισμός CARRY parts για Haulers βασισμένος σε Round-trip Distance.
      */
-    _calculateCarryQuota(context: Context): number {
+    _calculateCarryQuota(context: IContext): number {
         var cache = roomCache.in(context.room.name);
         const target = cache.center;
         if (!target) return 10;
@@ -261,7 +270,7 @@ export class PopulationManager {
     /**
      * Δημιουργία Context για το δωμάτιο (Caching δεδομένων για τον υπολογισμό).
      */
-    _createContext(room: Room): Context {
+    _createContext(room: Room): IContext {
         const cache = roomCache.in(room.name);
         const controller = room.controller;
         const creeps = cache.myCreeps;
@@ -293,7 +302,7 @@ export class PopulationManager {
         return answer;
     }
 
-    _getStorageLimits(context: Context): IPopulationLimits {
+    _getStorageLimits(context: IContext): IPopulationLimits {
 
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
@@ -308,7 +317,7 @@ export class PopulationManager {
         this._distributeWorkQuotas(context, limits);
         return limits;
     }
-    _getNoContainerLimits(context: Context): IPopulationLimits {
+    _getNoContainerLimits(context: IContext): IPopulationLimits {
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
                 [ROLES.SIMPLE_HARVESTER]: context.sources.length,
@@ -325,7 +334,7 @@ export class PopulationManager {
         return limits;
     }
 
-    _getContainerLimits(context: Context): IPopulationLimits {
+    _getContainerLimits(context: IContext): IPopulationLimits {
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
                 [ROLES.SIMPLE_HARVESTER]: 1,//Math.ceil(context.sources.length * POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE/4),
@@ -342,7 +351,7 @@ export class PopulationManager {
         return limits;
     }
 
-    _getEarlyGameLimits(context: Context): IPopulationLimits {
+    _getEarlyGameLimits(context: IContext): IPopulationLimits {
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
                 [ROLES.SIMPLE_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE,
@@ -360,7 +369,7 @@ export class PopulationManager {
         return limits;
     }
 
-    _getRecoveryLimits(context: Context): IPopulationLimits {
+    _getRecoveryLimits(context: IContext): IPopulationLimits {
         return {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
                 [ROLES.SIMPLE_HARVESTER]: 4,
@@ -385,8 +394,8 @@ export class PopulationManager {
         if (!room) return;
         this.room = room;
         //this._trackDynamicEnergyFlow(room);
-        const limits = populationManagerStates.run(this, "earlyGameEra", Memory.
-            rooms[roomName]);
+        const limits: IPopulationLimits = populationManagerStates.run(this, "earlyGameEra", Memory.
+            rooms[roomName]) as IPopulationLimits;
 
         Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY] = limits;
 

@@ -1,3 +1,5 @@
+import _ from "lodash";
+
 /**
  * MODULE: Spawn Queue Manager
  * VERSION: 1.2.0
@@ -13,7 +15,7 @@
  * 1.0.0: Αρχική υλοποίηση βασισμένη σε Singleton Pattern.
  */
 const debugConsole = require("utils.debugConsole");
-class SpawnQueue {
+export class SpawnQueue {
     private data: SpawnRequest[];
     private _needsSort: boolean = true;
     constructor() {
@@ -113,7 +115,7 @@ class SpawnQueue {
      * Προλαμβάνει το "μπούκωμα" της παραγωγής από αιτήματα που δεν μπορούν να ικανοποιηθούν.
      * 
      */
-    private cleanStaleRequests(): void {
+    public cleanStaleRequests(): void {
 
         const TIMEOUT = 500;
         const initialLength = this.data.length;
@@ -126,5 +128,4 @@ class SpawnQueue {
 
     }
 } // end of class
-
-module.exports = SpawnQueue;
+export default new SpawnQueue;

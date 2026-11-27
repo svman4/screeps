@@ -24,7 +24,7 @@ export class FSM {
         this.states = states;
     } // end of constructor
 
-    run(context: FSMContext, defaultState: string = 'IDLE', memory: FSMMemory) {
+    run(context: FSMContext, defaultState: string = 'IDLE', memory: FSMMemory): any {
 
         const currentState = memory.fsmState || defaultState;
         const stateFunction = this.states[currentState];

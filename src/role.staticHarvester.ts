@@ -9,6 +9,7 @@
  * 2.4.1: Διόρθωση logs και debugging για το NEED_REPLACEMENT_FLAG.
  */
 //import debugConsole from './utils.debugConsole';
+import { Harvester } from './role.harvester';
 import BaseRole from './role.base';
 import movementManager from './manager.movement';
 const { NEED_REPLACEMENT_FLAG } = require('spawn.constants');
@@ -61,7 +62,7 @@ const staticHarvesterStates = new FSM(
 
 
 
-class StaticHarvester extends BaseRole {
+class StaticHarvester extends Harvester {
     constructor(creep: Creep) {
         super(creep);
     }
@@ -72,16 +73,7 @@ class StaticHarvester extends BaseRole {
         staticHarvesterStates.run(this, "gotoSource", this.creep.memory);
     }
 
-    /**
-     * Εντοπίζει ή ανακτά την πηγή ενέργειας από τη μνήμη.
-     */
-    resolveSource(): Source | null {
-        if (!this.creep.memory.sourceId) {
-            const closest = this.creep.pos.findClosestByPath(FIND_SOURCES);
-            if (closest) this.creep.memory.sourceId = closest.id;
-        }
-        return this.creep.memory.sourceId ? Game.getObjectById(this.creep.memory.sourceId) : null;
-    }
+
 
 
     /**
@@ -153,14 +145,6 @@ class StaticHarvester extends BaseRole {
     }
 
 
-    /**
-     * Εκτελεί το harvest στην πηγή.
-     */
-    performHarvest(source: Source): void {
-        if (source.energy > 0) {
-            this.creep.harvest(source);
-        }
-    } // end of performHarvest
     /**
         Ο staticHarvester θέλουμε να εργάζεται μέχρι το τελευταίο tick.
     */

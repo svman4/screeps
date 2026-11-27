@@ -1,4 +1,4 @@
-import BaseRole from './role.base';
+import { Harvester } from './role.harvester';
 import movementManager from './manager.movement';
 import { FSM } from './utils.fsm';
 
@@ -12,7 +12,11 @@ const LDHarvesterStates = new FSM({
         if (this.travelToTargetRoom()) {
             return;
         }
-        const source = this.creep.pos.findClosestByRange(FIND_SOURCES_ACTIVE);
+        const source = this.resolveSource();
+        // Εκτέλεση εξόρυξης
+        this.performHarvest(source);
+
+        //const source = this.creep.pos.findClosestByRange(FIND_SOURCES_ACTIVE);
         if (source) {
             if (this.creep.pos.inRangeTo(source, 1)) this.creep.harvest(source);
             else movementManager.smartMove(this.creep, source, 1);
@@ -47,11 +51,11 @@ const LDHarvesterStates = new FSM({
 
 
 
-class LDHarvester extends BaseRole {
+class LDHarvester extends Harvester {
     constructor(creep: Creep) {
         super(creep);
     }
-    run() {
+    public run() {
         LDHarvesterStates.run(this, 'COLLECTING', this.creep.memory);
     }
     fixRoad(): void {

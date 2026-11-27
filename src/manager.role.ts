@@ -3,12 +3,13 @@ import Upgrader from "./role.upgrader";
 import staticHarvester = require("./role.staticHarvester");
 import builder = require("./role.builder");
 import claimer = require("./role.claimer");
-import scout = require("./role.scout");
+import { Scout } from "./role.scout";
 import supporter = require("./role.supporter");
-import lDHarvester = require("./role.lDHarvester");
+import lDHarvester from "./role.lDHarvester";
 import miner = require("./role.miner");
 import recycleCreep = require("./role.recycleCreep");
 import roomCacheClass = require("./utils.RoomCache");
+import { ROLES } from "./constants";
 const roomCache = roomCacheClass as any;
 /**
  * Βασικό συμβόλαιο που πρέπει να υλοποιεί κάθε κλάση ρόλου creep.
@@ -26,17 +27,8 @@ export type RoleConstructor = new (creep: Creep) => ICreepRole;
 /**
  * Υποστηριζόμενοι ρόλοι creeps στο σύστημα.
  */
-export type CreepRoleName =
-    | "simpleHarvester"
-    | "upgrader"
-    | "staticHarvester"
-    | "builder"
-    | "claimer"
-    | "scout"
-    | "supporter"
-    | "LDHarvester"
-    | "miner"
-    | "to_be_recycled";
+export type CreepRoleName = typeof ROLES[keyof typeof ROLES];
+
 
 /**
  * Διαχειρίζεται την εκτέλεση της λογικής και του κύκλου ζωής για κάθε ενεργό creep.
@@ -49,7 +41,7 @@ export class RoleManager {
         staticHarvester: staticHarvester as RoleConstructor,
         builder: builder as RoleConstructor,
         claimer: claimer as RoleConstructor,
-        scout: scout as RoleConstructor,
+        scout: Scout as RoleConstructor,
         supporter: supporter as RoleConstructor,
         LDHarvester: lDHarvester as RoleConstructor,
         miner: miner as RoleConstructor,

@@ -14,7 +14,9 @@ import expansionManager = require("./manager.expansion");
  * @extends {BaseRole}
  */
 export class Scout extends BaseRole {
-
+    constructor(creep: Creep) {
+        super(creep);
+    }
     /**
      * Κύρια μέθοδος εκτέλεσης του ρόλου ανά tick.
      * 

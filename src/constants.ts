@@ -10,7 +10,8 @@ export const ROLES = {
    SCOUT: 'scout',
    SUPPORTER: 'supporter',
    MINER: 'miner',
-   DEFAULT: 'default'
+   DEFAULT: 'default',
+   TO_BE_RECYCLED: 'to_be_recycled',
 };
 export const DEFENCE = {
    /** Προσαύξηση ορίου hits τοίχων/ramparts ανά επίπεδο RCL */

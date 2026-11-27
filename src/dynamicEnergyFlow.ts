@@ -37,16 +37,18 @@ class DynamicEnergyFlow {
       }
       //console.log("3 " + currentScore);
       if (room.memory[MEMORY_KEY.LAST_ENERGY_SCORE_KEY] !== undefined) {
-         const delta = currentScore - room.memory[MEMORY_KEY.LAST_ENERGY_SCORE_KEY]
+         const lastEnergyScore = (room.memory[MEMORY_KEY.LAST_ENERGY_SCORE_KEY] || 0) as number
+         const delta = currentScore - lastEnergyScore;
 
          const netPerTickThisInterval = delta / DYNAMIC_ENERGY_FLOW_CONSTANT.REFRESH_RATE;
 
          const alpha = 2 / (DYNAMIC_ENERGY_FLOW_CONSTANT.EMA_SMOOTHING_PERIODS + 1);
-         const lastNetFlow = (room.memory[MEMORY_KEY.ENERGY_NET_FLOW_KEY] || 0);
+         const lastNetFlow = (room.memory[MEMORY_KEY.ENERGY_NET_FLOW_KEY] || 0) as number;
          //console.log(alpha);
-         room.memory[MEMORY_KEY.ENERGY_NET_FLOW_KEY] =
-            lastNetFlow * (1 - alpha) +
+
+         room.memory[MEMORY_KEY.ENERGY_NET_FLOW_KEY] = lastNetFlow * (1 - alpha) +
             (netPerTickThisInterval * alpha);
+
 
          debugConsole.debugText("DynamicEnergyFlow",
             "energyNetFlow=" + room.memory[MEMORY_KEY.ENERGY_NET_FLOW_KEY] +

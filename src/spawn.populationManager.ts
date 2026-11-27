@@ -152,9 +152,7 @@ const populationManagerStates = new FSM({
 
     }
 }); // end of populationManagerHarvesterStates
-interface ILimits {
 
-}
 
 export class PopulationManager {
     room: Room;
@@ -295,7 +293,7 @@ export class PopulationManager {
         return answer;
     }
 
-    _getStorageLimits(context: Context): ILimits {
+    _getStorageLimits(context: Context): IPopulationLimits {
 
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
@@ -310,7 +308,7 @@ export class PopulationManager {
         this._distributeWorkQuotas(context, limits);
         return limits;
     }
-    _getNoContainerLimits(context: Context): ILimits {
+    _getNoContainerLimits(context: Context): IPopulationLimits {
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
                 [ROLES.SIMPLE_HARVESTER]: context.sources.length,
@@ -327,7 +325,7 @@ export class PopulationManager {
         return limits;
     }
 
-    _getContainerLimits(context: Context): ILimits {
+    _getContainerLimits(context: Context): IPopulationLimits {
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
                 [ROLES.SIMPLE_HARVESTER]: 1,//Math.ceil(context.sources.length * POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE/4),
@@ -344,7 +342,7 @@ export class PopulationManager {
         return limits;
     }
 
-    _getEarlyGameLimits(context: Context): ILimits {
+    _getEarlyGameLimits(context: Context): IPopulationLimits {
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
                 [ROLES.SIMPLE_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE,
@@ -362,7 +360,7 @@ export class PopulationManager {
         return limits;
     }
 
-    _getRecoveryLimits(context: Context): ILimits {
+    _getRecoveryLimits(context: Context): IPopulationLimits {
         return {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
                 [ROLES.SIMPLE_HARVESTER]: 4,
@@ -381,7 +379,7 @@ export class PopulationManager {
      * Ενημερώνει τα Memory limits του δωματίου.
      * Καλείται από το SpawnManager.
      */
-    updateRoomLimits(roomName: string): ILimits {
+    updateRoomLimits(roomName: string): IPopulationLimits {
 
         const room = Game.rooms[roomName];
         if (!room) return;

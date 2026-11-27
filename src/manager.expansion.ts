@@ -124,7 +124,7 @@ class ExpansionManager {
 
     }
     public updateRoomIntel(room: Room, hasGCL: boolean = true): void {
-        const mem = ((Memory.rooms[room.name] || (Memory.rooms[room.name] = {})) as RoomMemoryData);
+        const mem = ((Memory.rooms[room.name] || (Memory.rooms[room.name] = {})) as RoomMemory);
         const controller = room.controller;
 
         mem.lastScouted = Game.time;
@@ -166,7 +166,7 @@ class ExpansionManager {
         const observers = _.filter(Game.structures, s => s.structureType === STRUCTURE_OBSERVER && s.my);
 
         const targets = _.filter(Memory.observerQueue, name => {
-            const mem = Memory.rooms[name] as RoomMemoryData;
+            const mem = Memory.rooms[name] as RoomMemory;
             return !mem || !mem.lastScouted || (Game.time - mem.lastScouted > EXPANSION.EXPANSION_CONSTANTS.INTEL_STALE_TIME);
         }).slice(0, Math.max(observers.length, 5));
 
@@ -200,7 +200,7 @@ class ExpansionManager {
         }
     }
 
-    private clearIntelTags(mem: RoomMemoryData): void {
+    private clearIntelTags(mem: RoomMemory): void {
         delete mem.type;
         delete mem.sources;
         delete mem.enemyInfo;

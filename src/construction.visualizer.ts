@@ -4,6 +4,8 @@
  * Version 1.0.0
  */
 
+import { BlueprintStructure } from "./manager.construction";
+
 
 
 

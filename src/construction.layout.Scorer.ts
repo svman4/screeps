@@ -99,7 +99,7 @@ class Scorer {
     /**
      * Επεξεργασία Containers: Controller(R2) > Sources(R2) > Recovery(R6)
      */
-    private processContainers(rawData: RawBlueprintData, buildingEntries, context) {
+    private processContainers(rawData: RawBlueprintData, buildingEntries: BlueprintStructure[], context: IScorerContext) {
         if (!rawData.buildings || !rawData.buildings.container) return;
 
         const containers = rawData.buildings.container;
@@ -138,7 +138,8 @@ class Scorer {
                 y: c.y,
                 type: 'container',
                 rcl: c.rcl,
-                score: CONSTRUCTION_CONSTANT.PRIORITIES.CONTAINER + c.bonus - (c.dist * 0.1)
+                score: CONSTRUCTION_CONSTANT.PRIORITIES.CONTAINER + c.bonus - (c.dist * 0.1),
+                isConstructed: false
             });
         }
     } // end of processContainers
@@ -146,7 +147,7 @@ class Scorer {
     /**
      * Επεξεργασία Roads: Source Paths > Controller Paths > Infrastructure
      */
-    private processRoads(rawData: RawBlueprintData, buildingEntries, roomName, context) {
+    private processRoads(rawData: RawBlueprintData, buildingEntries: BlueprintStructure[], roomName: string, context: IScorerContext) {
         if (!rawData.buildings || !rawData.buildings.road) return;
 
         const roads = rawData.buildings.road;
@@ -215,7 +216,8 @@ class Scorer {
                 y: pos.y,
                 rcl: finalRcl,
                 bonus: finalBonus,
-                category: meta.category
+                category: meta.category,
+
             });
         }
 
@@ -232,14 +234,15 @@ class Scorer {
                 type: 'road',
                 rcl: r.rcl,
                 score: CONSTRUCTION_CONSTANT.PRIORITIES.ROAD + r.bonus,
-                category: r.category
+                category: r.category,
+                isConstructed: false,
             });
         }
     } // end of processRoads
 
-    private findCriticalRoads(blueprint) {
+    private findCriticalRoads(blueprint: RawBlueprintData, context: IScorerContext) {
         const buildings = blueprint.buildings;
-        const center = new RoomPosition(buildings.center.x, buildings.center.y, blueprint.name);
+        const center = new RoomPosition(context.center.x, context.center.y, blueprint.name);
 
         // 1. Βρες τους εξωτερικούς σταθμούς (Sources / Controller)
         // Κοιτάμε τα containers που απέχουν πολύ από το κέντρο
@@ -307,27 +310,27 @@ class Scorer {
     /**
      * Επεξεργασία Structures: Catch-all για όσα κτίρια δεν έχουν score.
      */
-    private processStructures(rawData: RawBlueprintData, buildingEntries, context: IScorerContext) {
+    private processStructures(rawData: RawBlueprintData, buildingEntries: BlueprintStructure[], context: IScorerContext) {
         if (!rawData.buildings) return;
         const { center } = context;
 
         const ignoredStructures = ['center', 'road', 'extension', 'container', 'link'];
 
         for (const [type, positions] of Object.entries(rawData.buildings)) {
-
+            const structureType = type as StructureConstant;
             // Παράκαμψη metadata και δρόμων (έχουν δικό τους process)
-            if (ignoredStructures.includes(type)) {
+            if (ignoredStructures.includes(structureType)) {
                 continue;
             }
 
             positions.forEach((pos, index) => {
-                const rcl = this.calculateRCL(type, index + 1);
+                const rcl = this.calculateRCL(structureType, index + 1);
                 const distToCenter = Math.abs(pos.x - center.x) + Math.abs(pos.y - center.y);
 
                 buildingEntries.push({
                     x: pos.x,
                     y: pos.y,
-                    type: type,
+                    type: structureType,
                     rcl: rcl,
                     score: (CONSTRUCTION_CONSTANT.PRIORITIES[type.toUpperCase()] || 50) - (distToCenter * 0.1)
                 });
@@ -338,7 +341,7 @@ class Scorer {
     /**
      * Επεξεργασία Extensions
      */
-    private processExtensions(rawData: RawBlueprintData, buildingEntries, context) {
+    private processExtensions(rawData: RawBlueprintData, buildingEntries: BlueprintStructure[], context: IScorerContext): void {
         if (!rawData.buildings || !rawData.buildings.extension) return;
         const { center } = context;
         const extensions = [...rawData.buildings.extension].sort((a, b) => {

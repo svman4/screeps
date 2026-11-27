@@ -3,7 +3,7 @@
 import { constant } from "lodash";
 import { EXPANSION, ROLES, POPULATION_GLOBAL_CONFIG } from "./constants";
 import { RoomCacheData, World } from "./utils.RoomCache";
-import { CONSTANT as CONSTRUCTION_CONSTANT, MEMORY_KEYS as CONSTRUCTION_MEMORY_KEYS } from "./manager.construction";
+import { MEMORY_KEYS as CONSTRUCTION_MEMORY_KEYS } from "./manager.construction";
 declare global {
     interface Memory {
         expansionCheckTime?: number;
@@ -96,27 +96,7 @@ declare global {
         y: number;
     }
 
-    /**
-     * Αντιπροσωπεύει την ακατέργαστη δομή (Raw JSON) ενός αρχείου blueprint δωματίου,
-     * όπως επιστρέφεται από τη μέθοδο {@link BaseLayout.loadRawData}.
-     */
-    export interface RawBlueprintData {
-        /** Το μέγιστο Room Controller Level (RCL) για το οποίο έχει σχεδιαστεί το πλάνο */
-        rcl?: number;
 
-        /** 
-         * Λεξικό που αντιστοιχίζει κάθε τύπο κτιρίου του Screeps (π.χ. "spawn", "road", "extension")
-         * σε μια λίστα με τις συντεταγμένες τοποθέτησής του.
-         * Χρησιμοποιεί `Partial` επειδή ένα δωμάτιο μπορεί να μην περιέχει όλους τους τύπους κτιρίων.
-         */
-        buildings: Partial<Record<BuildableStructureConstant, Coordination[]>>;
-
-        /** Το όνομα του δωματίου στο οποίο ανήκει το blueprint (π.χ. "W1N3") */
-        name?: string;
-
-        /** Προαιρετικό αναγνωριστικό του shard (π.χ. "05d12231a3fd" ή "shard3") */
-        shard?: string;
-    } // end of interface RawBlueprintData
     export interface SpawnRequest {
         priority: number;
         role: string;

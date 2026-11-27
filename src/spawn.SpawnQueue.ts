@@ -13,7 +13,7 @@
  * 1.0.0: Αρχική υλοποίηση βασισμένη σε Singleton Pattern.
  */
 import debug from './utils.debugConsole';
-import _ from "lodash";
+import * as _ from "lodash";
 export class SpawnQueue {
     private data: SpawnRequest[];
     private _needsSort: boolean = true;

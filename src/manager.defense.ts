@@ -275,4 +275,4 @@ class DefenceManager {
     } // end of calculateWallLimit
 } // end of class
 
-export = new DefenceManager();
+export default new DefenceManager();

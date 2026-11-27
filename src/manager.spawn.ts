@@ -26,7 +26,7 @@ import { PopulationManager } from "./spawn.populationManager";
 import { ROLES, POPULATION_GLOBAL_CONFIG, PRIORITY, SPAWN_MANAGER_CONFIG, NEED_REPLACEMENT_FLAG, LEAD_TIME_KEY } from './spawn.constants';
 const UPGRADER_LIMIT = 5;
 import roomCache from './utils.RoomCache';
-import _ from "lodash";
+import * as _ from "lodash";
 
 class SpawnManager {
     private queue: SpawnQueue;
@@ -268,7 +268,7 @@ class SpawnManager {
     /**
     * Προσθήκη αιτήματος στην ουρά με κλειδωμένο προ-υπολογισμένο body.
     */
-    addRoleToQueue(roomName: string, role: creepRole, budget: number, body: BodyPartConstant[], memory = {}, targetRoom = ""): void {
+    public addRoleToQueue(roomName: string, role: creepRole, budget: number, body: BodyPartConstant[], memory = {}, targetRoom = ""): void {
         if (!body || body.length === 0) {
             debugConsole.debugText("Spawn", "empty body for " + role + " at " + roomName);
         }

@@ -5,12 +5,10 @@
  */
 import * as _ from "lodash";
 
-import spawnManager = require("./manager.spawn");
+import spawnManager from "./manager.spawn";
 import { ROLES } from "./spawn.constants";
-import Constants = require('./construction.constants');
-const {
-    EXPANSION
-} = Constants as any;
+import { EXPANSION } from './constants';
+
 
 class ExpansionManager {
     constructor() {
@@ -135,12 +133,12 @@ class ExpansionManager {
             return;
         }
 
-        if (controller.my || (controller.reservation?.username === EXPANSION.EXPANSION_CONSTANTS.USERNAME)) {
+        if (controller.my || (controller.reservation?.username === EXPANSION.USERNAME)) {
             this.clearIntelTags(mem);
             return;
         }
 
-        const isFree = !controller.owner && (!controller.reservation || controller.reservation.username === EXPANSION.EXPANSION_CONSTANTS.USERNAME);
+        const isFree = !controller.owner && (!controller.reservation || controller.reservation.username === EXPANSION.USERNAME);
 
         if (isFree) {
             const sources = room.find(FIND_SOURCES);
@@ -167,13 +165,13 @@ class ExpansionManager {
 
         const targets = _.filter(Memory.observerQueue, name => {
             const mem = Memory.rooms[name] as RoomMemory;
-            return !mem || !mem.lastScouted || (Game.time - mem.lastScouted > EXPANSION.EXPANSION_CONSTANTS.INTEL_STALE_TIME);
+            return !mem || !mem.lastScouted || (Game.time - mem.lastScouted > EXPANSION.INTEL_STALE_TIME);
         }).slice(0, Math.max(observers.length, 5));
 
         if (observers.length > 0) {
             targets.forEach((targetName, index) => {
                 const obs = observers[index % observers.length];
-                if (Game.map.getRoomLinearDistance(obs.room.name, targetName) <= EXPANSION.EXPANSION_CONSTANTS.OBSERVER_RANGE) {
+                if (Game.map.getRoomLinearDistance(obs.room.name, targetName) <= EXPANSION.OBSERVER_RANGE) {
                     if ((obs as StructureObserver).observeRoom(targetName) === OK) {
                         Memory.obsTarget = targetName;
                     }

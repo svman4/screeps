@@ -20,7 +20,7 @@ import debugConsole from './utils.debugConsole';
 import roomCache from './utils.RoomCache';
 import { CONSTRUCTION_CONSTANT } from "./constants";
 import { FSM } from './utils.fsm';
-import _ from "lodash";
+import * as _ from "lodash";
 import FileLayout from './construction.layout.FileLayout';
 
 export const CONSTANT = {
@@ -197,7 +197,7 @@ class ConstructionManager {
         if (!this.info[room.name]) {
             this.info[room.name] = {};
         }
-        let blueprint: BlueprintStructure[] = this.layout.getBlueprint();
+        let blueprint: BlueprintStructure[] = this.layout.getBlueprint(room.name);
         this.info[room.name].level = room.controller ? room.controller.level : 0;
         this.info[room.name][MEMORY_KEYS.STRUCTURES] = blueprint;
 
@@ -393,7 +393,7 @@ class ConstructionManager {
         if (!this.layout) {
             return;
         }
-        const blueprint = this.layout.getBlueprint();
+        const blueprint = this.info[room.name][MEMORY_KEYS.BLUE_PRINT] as BlueprintStructure[];
         if (!blueprint) {
             return;
         }

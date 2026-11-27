@@ -1,5 +1,5 @@
 class RoadPlanner {
-    static getRoadMetadata(x: number, y: number, rawData, buildingEntries, roomName) {
+    public getRoadMetadata(x: number, y: number, rawData, buildingEntries, roomName) {
         if (!roomName) return { rcl: 8, bonus: 0, category: 'infrastructure' };
 
         const spawns = rawData.buildings.spawn || [];
@@ -41,7 +41,7 @@ class RoadPlanner {
         return { rcl: foundNeighbor ? minNeighborRcl : 8, bonus: foundNeighbor ? 10 : 0, category: 'infrastructure' };
     }
 
-    static isOnActualPath(x, y, start, end, roomName) {
+    private isOnActualPath(x, y, start, end, roomName) {
         if (!start || !end) return false;
         const pathKey = `path_${start.x}_${start.y}_to_${end.x}_${end.y}`;
         if (!global._pathCache) global._pathCache = {};
@@ -61,14 +61,14 @@ class RoadPlanner {
         return global._pathCache[pathKey].has(`${x},${y}`);
     }
 
-    static shouldBuildRoad(roadPos, rawData, builtMap, currentRCL) {
+    private shouldBuildRoad(roadPos, rawData, builtMap, currentRCL) {
         if (roadPos.rcl > currentRCL) return false;
         if (roadPos.category === 'critical' || roadPos.category === 'logistics') return true;
         if (currentRCL >= 4 && roadPos.category === 'infrastructure') return this.hasBuiltNeighbor(roadPos.x, roadPos.y, builtMap);
         return true;
     }
 
-    static hasBuiltNeighbor(x, y, builtMap) {
+    private hasBuiltNeighbor(x, y, builtMap) {
         for (let dx = -1; dx <= 1; dx++) {
             for (let dy = -1; dy <= 1; dy++) {
                 if (dx === 0 && dy === 0) continue;
@@ -79,4 +79,4 @@ class RoadPlanner {
         return false;
     }
 }
-export = RoadPlanner;
+export default new RoadPlanner;

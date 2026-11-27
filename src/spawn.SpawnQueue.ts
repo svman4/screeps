@@ -31,7 +31,7 @@ class SpawnQueue {
      * @param {Object} [request.memory] - Επιπλέον δεδομένα μνήμης (π.χ. sourceId).
      * @returns {boolean} True αν προστέθηκε επιτυχώς, False αν υπήρχε ήδη.
      */
-    add(request: SpawnRequest) {
+    public add(request: SpawnRequest): boolean {
         // Έλεγχος για αποφυγή spamming ίδιων αιτημάτων
         const isAlreadyInQueue = this.data.some(r =>
             r.role === request.role &&
@@ -51,18 +51,15 @@ class SpawnQueue {
      * 
      * @param {string} roomName 
      */
-    flushOnRoom(roomName: string) {
-
+    private flushOnRoom(roomName: string): void {
         _.remove(this.data, r => r.homeRoom === roomName || r.targetRoom === roomName);
-
-
     }
 
     /**
      * Ταξινομεί την ουρά βάσει προτεραιότητας.
      * Χρησιμοποιεί το flag _needsSort για αποφυγή περιττών calculations στο ίδιο tick.
      */
-    sort() {
+    private sort(): void {
         if (this._needsSort) {
             // Priority first, then Age (τα παλαιότερα αιτήματα προηγούνται σε ίδια προτεραιότητα)
             this.data.sort((a, b) => {
@@ -80,7 +77,7 @@ class SpawnQueue {
      * Αφαιρεί ένα αίτημα από την ουρά (συνήθως μετά από επιτυχημένο spawn).
      * @param {number} index 
      */
-    removeAt(index: number): void {
+    private removeAt(index: number): void {
         this.data.splice(index, 1);
     }
 
@@ -88,7 +85,7 @@ class SpawnQueue {
      * Επιστρέφει το τρέχον μέγεθος της ουράς.
      * @returns {number}
      */
-    get length(): number {
+    public get length(): number {
         if (this.data) {
             return this.data.length;
         } return 0;
@@ -99,14 +96,14 @@ class SpawnQueue {
      * @param {number} index 
      * @returns {Object}
      */
-    getAt(index: number): SpawnRequest {
+    public getAt(index: number): SpawnRequest {
         return this.data[index];
     }
 
     /**
      * Καθαρίζει ολόκληρη την ουρά (χρήσιμο σε καταστάσεις Recovery).
      */
-    flush(): void {
+    private flush(): void {
 
         this.data = [];
     }
@@ -116,7 +113,7 @@ class SpawnQueue {
      * Προλαμβάνει το "μπούκωμα" της παραγωγής από αιτήματα που δεν μπορούν να ικανοποιηθούν.
      * 
      */
-    cleanStaleRequests(): void {
+    private cleanStaleRequests(): void {
 
         const TIMEOUT = 500;
         const initialLength = this.data.length;

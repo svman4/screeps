@@ -172,18 +172,7 @@ export const SPAWN_CONSTANTS = {
    NEED_REPLACEMENT_FLAG: "needReplacementFlag",
    LEAD_TIME_KEY: "leadTime",
 
-   // --- GLOBAL CONFIGURATION ---
 
-   POPULATION_GLOBAL_CONFIG: {
-      MEMORY_KEY: 'populationLimits',
-      RECOVERY_KEY: 'isRecovery',
-      HAVE_ROAD_KEY: 'hasRoads',
-      HAVE_LINK_KEY: 'hasLinks',
-      MEMORY_KEY_CREEP: "creeps",
-      MEMORY_KEY_PARTS: "parts",
-      ROOM_LEVEL_KEY: "level"
-
-   },
    SPAWN_MANAGER_CONFIG: {
       POPULATION_LIMIT_REFRESH_RATE: 100, //κάθε 100 Tick
       EMA_SMOOTHING_PERIODS: 13, // Πόσους κύκλους πίσω θέλουμε να "θυμάται" το EMA 
@@ -215,6 +204,18 @@ export const POPULATION_MODULE_CONFIG = {
    DISTANCE_PADDING: 1.1,       // 10% έξτρα carry για κάλυψη απωλειών/κίνησης
    ROAD_THRESHOLD: 30,           // Ελάχιστος αριθμός δρόμων για να θεωρηθεί το δωμάτιο "στρωμένο"
    LINK_THRESHOLD: 2           // Ελάχιστος αριθμός link για να θεωρηθεί το δωμάτιο "εξοπλισμένο με links"
+}
+// --- GLOBAL CONFIGURATION ---
+
+export const POPULATION_GLOBAL_CONFIG = {
+   MEMORY_KEY: 'populationLimits',
+   RECOVERY_KEY: 'isRecovery',
+   HAVE_ROAD_KEY: 'hasRoads',
+   HAVE_LINK_KEY: 'hasLinks',
+   MEMORY_KEY_CREEP: "creeps",
+   MEMORY_KEY_PARTS: "parts",
+   ROOM_LEVEL_KEY: "level"
+
 }
 export default {
    ROLES,

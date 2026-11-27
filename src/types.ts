@@ -1,7 +1,7 @@
 
 
 import { constant } from "lodash";
-import { EXPANSION, ROLES } from "./constants";
+import { EXPANSION, ROLES, POPULATION_GLOBAL_CONFIG } from "./constants";
 import { RoomCacheData, World } from "./utils.RoomCache";
 declare global {
     interface Memory {
@@ -30,7 +30,9 @@ declare global {
         energyNetFlow?: number;
         wallLimit?: number;
         enemyInfo?: EnemyInfo;
+        [POPULATION_GLOBAL_CONFIG.MEMORY_KEY]?: IPopulationLimits,
     }
+
     interface CreepMemory {
         role?: typeof ROLES[keyof typeof ROLES];
         init?: boolean;
@@ -72,7 +74,9 @@ declare global {
         amountToDeal: number;
         txCost: number;
     }
+    interface IPopulationLimits {
 
+    }
     interface BestSellOrder extends Order {
         amountToDeal: number;
     }

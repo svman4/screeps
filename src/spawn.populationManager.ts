@@ -36,12 +36,18 @@
  * VERSION 1.1.0 Ακύρωση λειτουργίας storageContainer
  */
 //const { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG, SPAWN_MANAGER_CONFIG } = require('./spawn.constants');
-import { ROLES, POPULATION_MODULE_CONFIG } from "./constants";
-const debugConsole = require("utils.debugConsole");
+import { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG } from "./constants";
+import debugConsole from "./utils.debugConsole";
 
-var roomCache = require('utils.RoomCache');
-
-const FSM = require('utils.fsm');
+import roomCache from './utils.RoomCache';
+import { FSM } from './utils.fsm';
+class Context {
+    room: Room;
+    sources: Source[];
+    storage: StructureStorage;
+    hasConstruction: boolean;
+    level: number
+}
 const populationManagerStates = new FSM({
     'earlyGameEra': function () {
         const context = this._createContext(this.room);
@@ -146,20 +152,18 @@ const populationManagerStates = new FSM({
 
     }
 }); // end of populationManagerHarvesterStates
+interface ILimits {
 
+}
 
-class PopulationManager {
-    constructor() {
-
-    }
-
-
+export class PopulationManager {
+    room: Room;
 
     /**
      * Υπολογίζει τα διαθέσιμα energy per tick για την δημιουργία κατάλληλων worker
      * @return energyPerTick
      */
-    _calculateAvailableEnergyPerTick(context) {
+    private calculateAvailableEnergyPerTick(context: Context): number {
         const INCOME_PER_SOURCE = (context.room.controller) ? 10 : 5; //energyPerTick
 
         //TODO να υπολογίζει πόσα Works Parts μπορούμε να χρησιμοποιήσουμε βάσει του room.memory.energyNetFlow Και να δούμε τι θα κάνουμε όταν δεν υπάρχει.
@@ -186,8 +190,8 @@ class PopulationManager {
     /**
      * Κατανομή των διαθέσιμων WORK parts σε Builders και Upgraders (Μπαίνουν στη λίστα 'parts').
      */
-    _distributeWorkQuotas(context, limits) {
-        let availableEnergyPerTick = this._calculateAvailableEnergyPerTick(context); // πόσα energy ανά tick μπορούμε να χρησιμοποιήσουμε.
+    _distributeWorkQuotas(context: Context, limits) {
+        let availableEnergyPerTick = this.calculateAvailableEnergyPerTick(context); // πόσα energy ανά tick μπορούμε να χρησιμοποιήσουμε.
 
         let builderWork = 0;
         let upgraderWork = 1 * POPULATION_MODULE_CONFIG.UPGRADE_EFFICIENCY; // Το λιγότερο 1 work για upgrade.
@@ -212,7 +216,7 @@ class PopulationManager {
     /**
      * Υπολογισμός CARRY parts για Haulers βασισμένος σε Round-trip Distance.
      */
-    _calculateCarryQuota(context) {
+    _calculateCarryQuota(context: Context): number {
         var cache = roomCache.in(context.room.name);
         const target = cache.center;
         if (!target) return 10;
@@ -247,7 +251,7 @@ class PopulationManager {
         if (!cache.controllerLink) {
             const controllerRange = cache.controllerDistance;
             const controllerDistance = (controllerRange !== Infinity) ? controllerRange : FALLBACK_DISTANCE;
-            const upgradeRate = Math.min(this._calculateAvailableEnergyPerTick(context), 15);
+            const upgradeRate = Math.min(this.calculateAvailableEnergyPerTick(context), 15);
             totalCarryRequired += (upgradeRate * controllerDistance * 2) / CARRY_CAPACITY;
         }
         // ---------
@@ -259,7 +263,7 @@ class PopulationManager {
     /**
      * Δημιουργία Context για το δωμάτιο (Caching δεδομένων για τον υπολογισμό).
      */
-    _createContext(room) {
+    _createContext(room: Room): Context {
         const cache = roomCache.in(room.name);
         const controller = room.controller;
         const creeps = cache.myCreeps;
@@ -291,7 +295,7 @@ class PopulationManager {
         return answer;
     }
 
-    _getStorageLimits(context) {
+    _getStorageLimits(context: Context): ILimits {
 
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
@@ -306,7 +310,7 @@ class PopulationManager {
         this._distributeWorkQuotas(context, limits);
         return limits;
     }
-    _getNoContainerLimits(context) {
+    _getNoContainerLimits(context: Context): ILimits {
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
                 [ROLES.SIMPLE_HARVESTER]: context.sources.length,
@@ -323,7 +327,7 @@ class PopulationManager {
         return limits;
     }
 
-    _getContainerLimits(context) {
+    _getContainerLimits(context: Context): ILimits {
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
                 [ROLES.SIMPLE_HARVESTER]: 1,//Math.ceil(context.sources.length * POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE/4),
@@ -340,7 +344,7 @@ class PopulationManager {
         return limits;
     }
 
-    _getEarlyGameLimits(context) {
+    _getEarlyGameLimits(context: Context): ILimits {
         let limits = {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
                 [ROLES.SIMPLE_HARVESTER]: context.sources.length * POPULATION_MODULE_CONFIG.SIMPLE_HARVESTERS_PER_SOURCE,
@@ -358,7 +362,7 @@ class PopulationManager {
         return limits;
     }
 
-    _getRecoveryLimits(context) {
+    _getRecoveryLimits(context: Context): ILimits {
         return {
             [POPULATION_GLOBAL_CONFIG.MEMORY_KEY_CREEP]: {
                 [ROLES.SIMPLE_HARVESTER]: 4,
@@ -377,7 +381,7 @@ class PopulationManager {
      * Ενημερώνει τα Memory limits του δωματίου.
      * Καλείται από το SpawnManager.
      */
-    updateRoomLimits(roomName) {
+    updateRoomLimits(roomName: string): ILimits {
 
         const room = Game.rooms[roomName];
         if (!room) return;
@@ -395,5 +399,3 @@ class PopulationManager {
 
 
 } // end of class PopulationManager
-
-module.exports = PopulationManager;

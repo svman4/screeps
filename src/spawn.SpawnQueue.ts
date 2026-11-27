@@ -13,6 +13,7 @@
  * 1.0.0: Αρχική υλοποίηση βασισμένη σε Singleton Pattern.
  */
 import debug from './utils.debugConsole';
+import _ from "lodash";
 export class SpawnQueue {
     private data: SpawnRequest[];
     private _needsSort: boolean = true;
@@ -77,7 +78,7 @@ export class SpawnQueue {
      * Αφαιρεί ένα αίτημα από την ουρά (συνήθως μετά από επιτυχημένο spawn).
      * @param {number} index 
      */
-    private removeAt(index: number): void {
+    public removeAt(index: number): void {
         this.data.splice(index, 1);
     }
 

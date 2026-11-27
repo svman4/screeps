@@ -14,7 +14,28 @@
  */
 
 import LayoutScorer from "./construction.layout.Scorer";
-import { MEMORY_KEYS } from "./manager.construction";
+import { BlueprintStructure, MEMORY_KEYS } from "./manager.construction";
+/**
+ * Αντιπροσωπεύει την ακατέργαστη δομή (Raw JSON) ενός αρχείου blueprint δωματίου,
+ * όπως επιστρέφεται από τη μέθοδο {@link BaseLayout.loadRawData}.
+ */
+export interface RawBlueprintData {
+    /** Το μέγιστο Room Controller Level (RCL) για το οποίο έχει σχεδιαστεί το πλάνο */
+    rcl?: number;
+
+    /** 
+     * Λεξικό που αντιστοιχίζει κάθε τύπο κτιρίου του Screeps (π.χ. "spawn", "road", "extension")
+     * σε μια λίστα με τις συντεταγμένες τοποθέτησής του.
+     * Χρησιμοποιεί `Partial` επειδή ένα δωμάτιο μπορεί να μην περιέχει όλους τους τύπους κτιρίων.
+     */
+    buildings: Partial<Record<BuildableStructureConstant, Coordination[]>>;
+
+    /** Το όνομα του δωματίου στο οποίο ανήκει το blueprint (π.χ. "W1N3") */
+    name?: string;
+
+    /** Προαιρετικό αναγνωριστικό του shard (π.χ. "05d12231a3fd" ή "shard3") */
+    shard?: string;
+} // end of interface RawBlueprintData
 
 /**
  * Βασική κλάση Orchestrator για τη διαχείριση των αρχιτεκτονικών πλάνων ενός δωματίου.
@@ -24,70 +45,22 @@ import { MEMORY_KEYS } from "./manager.construction";
  * @class BaseLayout
  */
 class BaseLayout {
-    /** Το όνομα του δωματίου για το οποίο διαχειριζόμαστε το πλάνο */
-    protected roomName: string;
 
-    /** Η τελική, ταξινομημένη λίστα των κτιρίων προς κατασκευή */
-    protected blueprint: BlueprintStructure[] = [];
-    getBlueprint(): BlueprintStructure[] {
-        return this.blueprint;
-    }
-    /**
-     * Δημιουργεί ένα νέο instance της BaseLayout για το συγκεκριμένο δωμάτιο.
-     * 
-     * @param {string} roomName - Το όνομα του δωματίου (π.χ. "W1N1").
-     */
-    constructor(roomName: string) {
-        this.roomName = roomName;
-    }
-
-    /**
-     * Κεντρική μέθοδος αρχικοποίησης (Template Method).
-     * Ελέγχει πρώτα αν υπάρχει αποθηκευμένο blueprint στη `Memory`. Αν δεν υπάρχει,
-     * φορτώνει τα ακατέργαστα δεδομένα, τα επεξεργάζεται μέσω του {@link LayoutScorer}
-     * και τα αποθηκεύει στην cache.
-     * 
-     * @public
-     * @returns {void}
-     */
-    public init(): void {
-        const roomMem = Memory.rooms[this.roomName] as any;
-        const rootMem = roomMem && roomMem[MEMORY_KEYS.ROOT];
-
-        // Έλεγχος για υπάρχον blueprint στην cache (Memory)
-        if (rootMem && rootMem[MEMORY_KEYS.BLUE_PRINT]) {
-            this.blueprint = rootMem[MEMORY_KEYS.BLUE_PRINT];
-            return;
-        }
-
+    public getBlueprint(roomName: string): BlueprintStructure[] {
+        let blueprint: BlueprintStructure[] = [];
         // Φόρτωση, αξιολόγηση και αποθήκευση νέου πλάνου
-        const rawData: RawBlueprintData = this.loadRawData();
+        const rawData: RawBlueprintData = this.loadRawData(roomName);
         if (rawData) {
-            console.log(`[BaseLayout] Processing new layout for ${this.roomName}...`);
-            this.blueprint = LayoutScorer.process(rawData, this.roomName);
-            this.saveToCache();
-        } else {
-            this.blueprint = [];
-        }
-    }
+            console.log(`[BaseLayout] Processing new layout for ${roomName}...`);
+            blueprint = LayoutScorer.process(rawData, roomName);
 
-    /**
-     * Αποθηκεύει το επεξεργασμένο {@link blueprint} στη `Memory` του δωματίου
-     * για αποφυγή περιττών υπολογισμών στα επόμενα ticks.
-     * 
-     * @protected
-     * @returns {void}
-     */
-    protected saveToCache(): void {
-        if (!Memory.rooms[this.roomName]) {
-            Memory.rooms[this.roomName] = {};
+        } else {
+            blueprint = [];
         }
-        const roomMem = Memory.rooms[this.roomName] as any;
-        if (!roomMem[MEMORY_KEYS.ROOT]) {
-            roomMem[MEMORY_KEYS.ROOT] = {};
-        }
-        roomMem[MEMORY_KEYS.ROOT][MEMORY_KEYS.BLUE_PRINT] = this.blueprint;
-    }
+
+        return blueprint;
+    } // end of getBlueprint(roomName)
+
 
     /**
      * Επιστρέφει τα κτίρια που πρέπει να χτιστούν για το τρέχον RCL και δεν υπάρχουν ήδη.
@@ -97,11 +70,11 @@ class BaseLayout {
      * @param {Record<string, boolean>} builtMap - Αντικείμενο με κλειδιά `"x,y"` που δείχνει ποια σημεία έχουν ήδη χτιστεί.
      * @returns {BlueprintStructure[]} Η λίστα με τα υπολειπόμενα κτίρια προς κατασκευή.
      */
-    public getPlanForRCL(rcl: number, builtMap: Record<string, boolean>): BlueprintStructure[] {
-        if (!this.blueprint) {
+    public getPlanForRCL(blueprint: BlueprintStructure[], rcl: number, builtMap: Record<string, boolean>): BlueprintStructure[] {
+        if (!blueprint) {
             return [];
         }
-        return this.blueprint.filter(s => s.rcl <= rcl && !builtMap[`${s.x},${s.y}`]);
+        return blueprint.filter(s => s.rcl <= rcl && !builtMap[`${s.x},${s.y}`]);
     }
 
     /**
@@ -112,9 +85,9 @@ class BaseLayout {
      * @throws {Error} Εάν κληθεί απευθείας χωρίς να έχει γίνει override από την υποκλάση.
      * @returns {RawBlueprintData|null} Τα ακατέργαστα δεδομένα του layout.
      */
-    protected loadRawData(): RawBlueprintData | null {
+    protected loadRawData(roomName: string): RawBlueprintData | null {
         throw new Error(`[BaseLayout] loadRawData not implemented for ${this.constructor.name}`);
     }
 }
 
-export = BaseLayout;
+export default BaseLayout;

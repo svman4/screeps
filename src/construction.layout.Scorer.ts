@@ -17,15 +17,23 @@
         3. Remaining roads (Infrastructure) based on surrounding structures.
 */
 
-// Προστέθηκε το DEFAULTS_RCL στο destructuring
-const { PRIORITIES, STRUCTURE_RCL_STEPS, DEFAULTS_RCL } = require('construction.constants');
-const RoadPlanner = require('construction.roadPlanner');
 
+import { CONSTRUCTION_CONSTANT } from './constants';
+import { BlueprintStructure, CONSTANT } from './manager.construction';
+import RoadPlanner from './construction.roadPlanner';
+import { RawBlueprintData } from './construction.layout.BaseLayout';
+interface IScorerContext {
+    center: Coordination,
+    sources: Coordination[],
+    controller: Coordination,
+    roomName: string
+}
 class Scorer {
     /**
      * Κεντρική μέθοδος επεξεργασίας του blueprint.
      */
-    static process(rawData, roomName) {
+    public process(rawData: RawBlueprintData, roomName: string) {
+
         const buildingEntries = [];
         const context = this.getContext(roomName, rawData);
 
@@ -44,7 +52,7 @@ class Scorer {
     /**
      * Επεξεργασία Links: Controller > Storage > Remote Sources
      */
-    static processLinks(rawData, buildingEntries, context) {
+    private processLinks(rawData: RawBlueprintData, buildingEntries, context) {
         if (!rawData.buildings || !rawData.buildings.link) return;
 
         const links = rawData.buildings.link;
@@ -83,7 +91,7 @@ class Scorer {
                 y: link.y,
                 type: 'link',
                 rcl: rcl,
-                score: PRIORITIES.LINK + link.bonus
+                score: CONSTRUCTION_CONSTANT.PRIORITIES.LINK + link.bonus
             });
         });
     } // end of processLinks
@@ -91,7 +99,7 @@ class Scorer {
     /**
      * Επεξεργασία Containers: Controller(R2) > Sources(R2) > Recovery(R6)
      */
-    static processContainers(rawData, buildingEntries, context) {
+    private processContainers(rawData: RawBlueprintData, buildingEntries, context) {
         if (!rawData.buildings || !rawData.buildings.container) return;
 
         const containers = rawData.buildings.container;
@@ -130,7 +138,7 @@ class Scorer {
                 y: c.y,
                 type: 'container',
                 rcl: c.rcl,
-                score: PRIORITIES.CONTAINER + c.bonus - (c.dist * 0.1)
+                score: CONSTRUCTION_CONSTANT.PRIORITIES.CONTAINER + c.bonus - (c.dist * 0.1)
             });
         }
     } // end of processContainers
@@ -138,7 +146,7 @@ class Scorer {
     /**
      * Επεξεργασία Roads: Source Paths > Controller Paths > Infrastructure
      */
-    static processRoads(rawData, buildingEntries, roomName, context) {
+    private processRoads(rawData: RawBlueprintData, buildingEntries, roomName, context) {
         if (!rawData.buildings || !rawData.buildings.road) return;
 
         const roads = rawData.buildings.road;
@@ -223,13 +231,13 @@ class Scorer {
                 y: r.y,
                 type: 'road',
                 rcl: r.rcl,
-                score: PRIORITIES.ROAD + r.bonus,
+                score: CONSTRUCTION_CONSTANT.PRIORITIES.ROAD + r.bonus,
                 category: r.category
             });
         }
     } // end of processRoads
 
-    findCriticalRoads() {
+    private findCriticalRoads(blueprint) {
         const buildings = blueprint.buildings;
         const center = new RoomPosition(buildings.center.x, buildings.center.y, blueprint.name);
 
@@ -299,7 +307,7 @@ class Scorer {
     /**
      * Επεξεργασία Structures: Catch-all για όσα κτίρια δεν έχουν score.
      */
-    static processStructures(rawData, buildingEntries, context) {
+    private processStructures(rawData: RawBlueprintData, buildingEntries, context: IScorerContext) {
         if (!rawData.buildings) return;
         const { center } = context;
 
@@ -321,7 +329,7 @@ class Scorer {
                     y: pos.y,
                     type: type,
                     rcl: rcl,
-                    score: (PRIORITIES[type.toUpperCase()] || 50) - (distToCenter * 0.1)
+                    score: (CONSTRUCTION_CONSTANT.PRIORITIES[type.toUpperCase()] || 50) - (distToCenter * 0.1)
                 });
             });
         }
@@ -330,7 +338,7 @@ class Scorer {
     /**
      * Επεξεργασία Extensions
      */
-    static processExtensions(rawData, buildingEntries, context) {
+    private processExtensions(rawData: RawBlueprintData, buildingEntries, context) {
         if (!rawData.buildings || !rawData.buildings.extension) return;
         const { center } = context;
         const extensions = [...rawData.buildings.extension].sort((a, b) => {
@@ -342,26 +350,31 @@ class Scorer {
             buildingEntries.push({
                 x: pos.x, y: pos.y, type: 'extension',
                 rcl: this.calculateRCL('extension', index + 1),
-                score: PRIORITIES.EXTENSION - (index * 0.5)
+                score: CONSTRUCTION_CONSTANT.PRIORITIES.EXTENSION - (index * 0.5)
             });
         });
+    }
+    private findCenter(rawData: RawBlueprintData): Coordination {
+        let center: Coordination;
+
+        return center;
     }
 
     /**
      * Συλλέγει δεδομένα δωματίου (Center, Sources, Controller)
      */
-    static getContext(roomName, rawData) {
+    private getContext(roomName: string, rawData: RawBlueprintData): IScorerContext {
         const room = Game.rooms[roomName];
-        let center = (rawData.buildings && rawData.buildings.center) || { x: 25, y: 25 };
-        let sources = [];
-        let controller = null;
+        let center = this.findCenter(rawData) || { x: 25, y: 25 } as Coordination;
+
+        let sources: Coordination[] = [];
+        let controller: Coordination = null;
 
         if (room) {
-            sources = room.find(FIND_SOURCES).map(s => ({ x: s.pos.x, y: s.pos.y }));
-            if (room.controller) controller = { x: room.controller.pos.x, y: room.controller.pos.y };
-        } else {
-            sources = (rawData.sources || []).filter(s => s && s.x !== undefined);
-            controller = rawData.controller || null;
+            sources = room.find(FIND_SOURCES).map(s => ({ x: s.pos.x, y: s.pos.y })) as Coordination[];
+            if (room.controller) {
+                controller = { x: room.controller.pos.x, y: room.controller.pos.y } as Coordination;
+            }
         }
         return { center, sources, controller, roomName };
     }
@@ -369,13 +382,13 @@ class Scorer {
     /**
      * Υπολογίζει το απαιτούμενο RCL για το N-οστό κτίριο ενός συγκεκριμένου τύπου.
      */
-    static calculateRCL(type, count) {
-        const steps = STRUCTURE_RCL_STEPS[type];
+    private calculateRCL(type: StructureConstant, count: number): number {
+        const steps = CONSTANT.STRUCTURE_RCL_STEPS[type];
 
         // 1. Έλεγχος αν ο τύπος δεν υπάρχει στα steps (π.χ. storage, terminal, factory).
         // Σε αυτή την περίπτωση τραβάμε από τα DEFAULTS_RCL. Αν ούτε εκεί υπάρχει, βάζουμε 8.
         if (!steps) {
-            return DEFAULTS_RCL[type] || 8;
+            return CONSTANT.DEFAULTS_RCL[type] || 8;
         }
 
         // 2. Αν είναι Array (π.χ. 'spawn': [1, 7, 8])
@@ -397,6 +410,6 @@ class Scorer {
         // Αν φτάσαμε εδώ, ο αριθμός ξεπερνά τα όρια, επιστρέφουμε 8
         return 8;
     }
-}
+} // end of Scorer
 
-module.exports = Scorer;
+export default new Scorer;

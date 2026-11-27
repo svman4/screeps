@@ -23,14 +23,14 @@ import debugConsole from "./utils.debugConsole";
 import { SpawnQueue } from './spawn.SpawnQueue';
 import { PopulationManager } from "./spawn.populationManager";
 
-import { ROLES, POPULATION_MODULE_CONFIG, POPULATION_GLOBAL_CONFIG, BODY_ENERGY_LIMITS, PRIORITY, SPAWN_MANAGER_CONFIG, NEED_REPLACEMENT_FLAG, LEAD_TIME_KEY } from './spawn.constants';
+import { ROLES, POPULATION_GLOBAL_CONFIG, PRIORITY, SPAWN_MANAGER_CONFIG, NEED_REPLACEMENT_FLAG, LEAD_TIME_KEY } from './spawn.constants';
 const UPGRADER_LIMIT = 5;
 import roomCache from './utils.RoomCache';
 import _ from "lodash";
 
 class SpawnManager {
-    queue: SpawnQueue;
-    populationManager: PopulationManager;
+    private queue: SpawnQueue;
+    private populationManager: PopulationManager;
     constructor() {
         this.queue = new SpawnQueue();
         this.populationManager = new PopulationManager();
@@ -39,7 +39,7 @@ class SpawnManager {
     /**
      * Κεντρική μέθοδος που τρέχει σε κάθε tick.
      */
-    run() {
+    run(): void {
         this.cleanup();
         if (Game.time % SPAWN_MANAGER_CONFIG.POPULATION_LIMIT_REFRESH_RATE === 0) {
 
@@ -59,8 +59,8 @@ class SpawnManager {
 
         // Επεξεργασία της ουράς και εκτέλεση του spawning
         this.processQueue();
-    }
-    optimizeCreepSizes(roomName) {
+    } // end of run()
+    optimizeCreepSizes(roomName: string): void {
         const room = Game.rooms[roomName];
         if (!room) return;
 
@@ -112,11 +112,11 @@ class SpawnManager {
                 }
             }
         });
-    }
+    } // end of optimizeCreepSizes(roonName)
     /**
      * Αναλύει τις ανάγκες του δωματίου και αποφασίζει αν θα ζητήσει νέα creeps.
      */
-    checkRoomNeeds(roomName) {
+    checkRoomNeeds(roomName: string): void {
         // Ενημέρωση των ορίων (limits) βάσει της τρέχουσας κατάστασης του δωματίου
         if (Game.time % SPAWN_MANAGER_CONFIG.POPULATION_LIMIT_REFRESH_RATE === 0 || !Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY]) {
             // Κάθε 50tick ή αν δεν υπάρχει πληθυσμός.
@@ -168,7 +168,7 @@ class SpawnManager {
             if (creep.ticksToLive) {
                 // έλεγχος αν το creep είναι ακόμα ζωντανό.
                 if (creep.memory.role === ROLES.STATIC_HARVESTER) {
-                    const body = this.calculateBody(roomName, creep.memory.role, maxEnergyAvailable, 0);
+                    const body: BodyPartConstant[] = this.calculateBody(roomName, creep.memory.role, maxEnergyAvailable, 0);
 
                     this.addRoleToQueue(
                         roomName,
@@ -189,7 +189,7 @@ class SpawnManager {
     /**
      * Διαχείριση αναγκών με βάση το ΠΛΗΘΟΣ των creeps (π.χ. Harvesters).
      */
-    handleCountBasedNeed(roomName, role, currentCount, targetCount) {
+    handleCountBasedNeed(roomName: string, role: creepRole, currentCount: number, targetCount: number) {
         const room = Game.rooms[roomName];
         if (!room) return;
         // Η ενέργεια του δωματίου(και ας μην υπάρχει στα extension τώρα).
@@ -213,11 +213,11 @@ class SpawnManager {
 
         }
     } // end of handleCountBasedNeed
-    handleStaticHarvesterNeed(roomName, budget, body) {
+    handleStaticHarvesterNeed(roomName: string, budget: number, body: BodyPartConstant[]) {
         const room = Game.rooms[roomName];
         const creepsInRoom = roomCache.in(roomName).myCreeps;
-        const sources = roomCache.in(roomName).sources;
-        const roleName = ROLES.STATIC_HARVESTER;
+        const sources: Source[] = roomCache.in(roomName).sources;
+        const roleName: creepRole = ROLES.STATIC_HARVESTER;
         for (const source of sources) {
             const harvesterAtSource = _.find(creepsInRoom, c =>
                 c.memory.role === roleName && c.memory.sourceId === source.id
@@ -233,26 +233,27 @@ class SpawnManager {
     /**
          * Διαχείριση αναγκών με βάση τα BODY PARTS (π.χ. Haulers, Upgraders, Builders).
          */
-    handlePartsBasedNeed(roomName, role, currentParts, targetParts) {
+    handlePartsBasedNeed(roomName: string, role: creepRole, currentPartsCount: number, targetPartsCount: number) {
         const room = Game.rooms[roomName];
         if (!room) return;
 
         const maxEnergyAvailable = room.energyCapacityAvailable;
-        const diffParts = targetParts - currentParts;
+        const diffParts = targetPartsCount - currentPartsCount;
         if (diffParts <= 0) return; // Δεν χρειάζεται να κάνουμε τίποτα αν έχουμε ήδη αρκετά parts
 
         const isRecovery = Memory.rooms[roomName][POPULATION_GLOBAL_CONFIG.MEMORY_KEY][POPULATION_GLOBAL_CONFIG.RECOVERY_KEY];
         let body = [];
         if (role === ROLES.UPGRADER) {
 
-            const upgraderCounter = roomCache.in(roomName).myCreeps.filter(c => c.role === ROLES.UPGRADER).length;
+            const upgraderCounter = roomCache.in(roomName).myCreeps.
+                filter(c => c.memory.role === ROLES.UPGRADER).length;
 
             if (upgraderCounter > UPGRADER_LIMIT) {
                 return;
             }
         }
         // 1. Περίπτωση Ελλείμματος (Deficit)
-        if (currentParts < targetParts) {
+        if (currentPartsCount < targetPartsCount) {
             if (isRecovery) {
                 body = this.calculateBody(roomName, role, 300, diffParts);
                 this.addRoleToQueue(roomName, role, room.energyAvailable, body, { init: true });
@@ -267,11 +268,11 @@ class SpawnManager {
     /**
     * Προσθήκη αιτήματος στην ουρά με κλειδωμένο προ-υπολογισμένο body.
     */
-    addRoleToQueue(roomName, role, budget, body: number, memory = {}, targetRoom = "") {
+    addRoleToQueue(roomName: string, role: creepRole, budget: number, body: BodyPartConstant[], memory = {}, targetRoom = ""): void {
         if (!body || body.length === 0) {
             debugConsole.debugText("Spawn", "empty body for " + role + " at " + roomName);
         }
-        const request = {
+        const request: SpawnRequest = {
             role: role,
             homeRoom: roomName,
             targetRoom: targetRoom || roomName,
@@ -290,14 +291,16 @@ class SpawnManager {
     /**
      * Μετράει το σύνολο των ενεργών body parts ενός συγκεκριμένου τύπου σε ένα δωμάτιο.
      */
-    countPartsInRoom(roomName, role) {
+    countPartsInRoom(roomName: string, role: creepRole) {
         const primaryPart = (role === ROLES.HAULER || role === ROLES.LD_HAULER) ? CARRY : WORK;
         const creeps = _.filter(Game.creeps, c =>
             c.memory.homeRoom === roomName &&
             c.memory.role === role &&
             (!c.ticksToLive || c.ticksToLive > c.memory[LEAD_TIME_KEY]));
-        return _.sum(creeps, c => c.getActiveBodyparts(primaryPart));
-    }
+        return _.sumBy(creeps, c => c.getActiveBodyparts(primaryPart));
+
+
+    } // end of countPartsInRoom(roomName,role)
 
     /**
      * Επεξεργάζεται την ουρά και αναθέτει παραγωγή στα διαθέσιμα Spawns.
@@ -372,8 +375,8 @@ class SpawnManager {
     /**
      * Υπολογίζει το βέλτιστο σώμα βάσει διαθέσιμης ενέργειας και ρόλου.
      */
-    calculateBody(roomName: string, role: string, maxEnergy: number, diffParts: number): string[] {
-        let body: string[] = [];
+    calculateBody(roomName: string, role: string, maxEnergy: number, diffParts: number): BodyPartConstant[] {
+        let body: BodyPartConstant[] = [];
         const cache = roomCache.in(roomName);
         const hasRoads = cache.hasRoads;
         const hasLinks = cache.hasLinks;
@@ -393,7 +396,7 @@ class SpawnManager {
 
                 }
                 // Οι Static Harvesters χρειάζονται max 5-6 WORK. Πάνω από 800 energy είναι overkill.
-                while (this.getBodyCost(body) + 100 <= maxEnergy && parts < diffParts) {
+                while (this.getBodyCost(body) + BODYPART_COST[WORK] <= maxEnergy && parts < diffParts) {
                     body.push(WORK);
                     parts++;
                 }
@@ -462,8 +465,8 @@ class SpawnManager {
     /**
      * Επιστρέφει το κόστος ενός σώματος σε ενέργεια.
      */
-    getBodyCost(body): number {
-        return _.sum(body, part => BODYPART_COST[part]);
+    getBodyCost(body: BodyPartConstant[]): number {
+        return _.sumBy(body, (part) => BODYPART_COST[part]);
     } // end of getBodyCost
 
     /**

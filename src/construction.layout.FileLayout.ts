@@ -18,7 +18,7 @@
  * - Προσθήκη error handling για δωμάτια χωρίς αρχείο blueprint.
  */
 
-import BaseLayout from "./construction.layout.BaseLayout";
+import BaseLayout, { RawBlueprintData } from "./construction.layout.BaseLayout";
 
 /**
  * Υποκλάση της {@link BaseLayout} για τη διαχείριση προκαθορισμένων (static) blueprints 
@@ -28,17 +28,6 @@ import BaseLayout from "./construction.layout.BaseLayout";
  * @extends {BaseLayout}
  */
 class FileLayout extends BaseLayout {
-
-    /**
-     * Δημιουργεί ένα νέο instance της FileLayout και εκκινεί αυτόματα 
-     * τη διαδικασία αρχικοποίησης ({@link BaseLayout.init}).
-     * 
-     * @param {string} roomName - Το όνομα του δωματίου (π.χ. "W1N1") για το οποίο θα φορτωθεί το αρχείο.
-     */
-    constructor(roomName: string) {
-        super(roomName);
-        this.init(); // Εκκίνηση της ροής (loading -> scoring -> caching) από την BaseLayout
-    }
 
     /**
      * Υλοποίηση της αφηρημένης μεθόδου της {@link BaseLayout} ειδικά για δυναμική 
@@ -51,19 +40,19 @@ class FileLayout extends BaseLayout {
      * @override
      * @returns {any | null} Τα ακατέργαστα δεδομένα του blueprint ή `null` αν αποτύχει η φόρτωση.
      */
-    protected loadRawData(): RawBlueprintData | null {
+    protected loadRawData(roomName: string): RawBlueprintData | null {
         try {
             // Δυναμική εισαγωγή του module με βάση το όνομα του δωματίου
-            return require(`blueprints.${this.roomName}`);
+            return require(`blueprints.${roomName}`);
         } catch (e: unknown) {
             const error = e as Error;
 
             // Αν το σφάλμα είναι ότι δεν βρέθηκε το αρχείο (MODULE_NOT_FOUND)
             if (error.message && error.message.includes("Cannot find module")) {
-                console.log(`[FileLayout] Blueprint file not found for room: ${this.roomName}`);
+                console.log(`[FileLayout] Blueprint file not found for room: ${roomName}`);
             } else {
                 // Αν το αρχείο υπάρχει αλλά έχει Syntax Error ή άλλο πρόβλημα
-                console.log(`[FileLayout] Error loading blueprint "${this.roomName}": ${error.message}`);
+                console.log(`[FileLayout] Error loading blueprint "${roomName}": ${error.message}`);
                 if (error.stack) {
                     console.log(error.stack); // Εκτυπώνει ακριβώς πού είναι το λάθος
                 }
@@ -72,5 +61,4 @@ class FileLayout extends BaseLayout {
         }
     } // end of loadRawData
 } // end of class
-
-export = FileLayout;
+export default FileLayout;

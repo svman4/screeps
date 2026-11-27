@@ -3,6 +3,7 @@
 import { constant } from "lodash";
 import { EXPANSION, ROLES, POPULATION_GLOBAL_CONFIG } from "./constants";
 import { RoomCacheData, World } from "./utils.RoomCache";
+import { CONSTANT as CONSTRUCTION_CONSTANT, MEMORY_KEYS as CONSTRUCTION_MEMORY_KEYS } from "./manager.construction";
 declare global {
     interface Memory {
         expansionCheckTime?: number;
@@ -28,11 +29,13 @@ declare global {
         cache?: RoomCacheData;
         lastEnergyStore?: number;
         energyNetFlow?: number;
+        [CONSTRUCTION_MEMORY_KEYS.ROOT]: string;
         wallLimit?: number;
         enemyInfo?: EnemyInfo;
+
         [POPULATION_GLOBAL_CONFIG.MEMORY_KEY]?: IPopulationLimits,
     }
-
+    type creepRole = typeof ROLES[keyof typeof ROLES];
     interface CreepMemory {
         role?: typeof ROLES[keyof typeof ROLES];
         init?: boolean;
@@ -82,17 +85,7 @@ declare global {
     interface BestSellOrder extends Order {
         amountToDeal: number;
     }
-    /**
-     * Αντιπροσωπεύει ένα μεμονωμένο κτίριο μέσα στο αρχιτεκτονικό πλάνο (Blueprint).
-     */
-    export interface BlueprintStructure extends Coordination {
 
-        /** Τύπος κτιρίου (π.χ. STRUCTURE_SPAWN, STRUCTURE_EXTENSION) */
-        type: StructureConstant;
-        /** Το ελάχιστο Room Controller Level (RCL) που απαιτείται για την κατασκευή */
-        rcl: number;
-        category?: 'critical' | 'logistics' | 'industrial' | string;
-    }
     /**
      * Αντιπροσωπεύει ένα ζεύγος συντεταγμένων (X, Y) μέσα στο δωμάτιο.
      */
@@ -127,15 +120,13 @@ declare global {
     export interface SpawnRequest {
         priority: number;
         role: string;
-        targetRoom: string;
+        targetRoom?: string;
         homeRoom: string;
-        memory: {
-            sourceId: Id<Source>;
+        energyBudget?: number;
+        body: BodyPartConstant[];
+        memory?: {
+            sourceId?: Id<Source>;
         }
         addedAt: number;
     }  // end of interface SpawnRequest
-    export interface RoomInfoData {
-        level?: number;
-        constructionRemain?: BlueprintStructure[],
-    } // end of RoomInfoData
 } // end of globalDeclaration
